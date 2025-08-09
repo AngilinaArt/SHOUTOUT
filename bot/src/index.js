@@ -91,7 +91,8 @@ client.on("interactionCreate", async (interaction) => {
       const variant = interaction.options.getString("variant") || "default";
       const duration = interaction.options.getInteger("duration") || 3000;
       const target = interaction.options.getString("target") || undefined;
-      await sendBroadcast({ type: "hamster", variant, duration, target });
+      const sender = interaction.user?.username || undefined;
+      await sendBroadcast({ type: "hamster", variant, duration, target, sender });
       await interaction.reply({
         content: `Hamster sent (${variant}, ${duration}ms)`,
         ephemeral: true,
@@ -101,12 +102,14 @@ client.on("interactionCreate", async (interaction) => {
       const severity = interaction.options.getString("severity") || "info";
       const duration = interaction.options.getInteger("duration") || 4000;
       const target = interaction.options.getString("target") || undefined;
+      const sender = interaction.user?.username || undefined;
       await sendBroadcast({
         type: "toast",
         message,
         severity,
         duration,
         target,
+        sender,
       });
       await interaction.reply({
         content: `Toast sent (${severity}, ${duration}ms)`,

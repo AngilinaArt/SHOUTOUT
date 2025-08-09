@@ -99,6 +99,7 @@ const hamsterSchema = Joi.object({
   variant: Joi.string().min(1).max(64).default("default"),
   duration: Joi.number().integer().min(300).max(30000).default(3000),
   target: Joi.string().optional(),
+  sender: Joi.string().min(1).max(64).optional(),
 }).required();
 
 const toastSchema = Joi.object({
@@ -110,6 +111,7 @@ const toastSchema = Joi.object({
   // Cap toast duration to 10s
   duration: Joi.number().integer().min(500).max(10000).default(4000),
   target: Joi.string().optional(),
+  sender: Joi.string().min(1).max(64).optional(),
 }).required();
 
 const eventSchema = Joi.alternatives().try(hamsterSchema, toastSchema);
@@ -147,6 +149,7 @@ app.post("/broadcast", broadcastLimiter, async (req, res) => {
     return res.status(400).json({ error: error.message });
   }
 
+  // If sender provided in HTTP payload, keep it; else clients will attach their own sender on WS path
   const payload = JSON.stringify(value);
   // Broadcast to all clients
   let sent = 0;
