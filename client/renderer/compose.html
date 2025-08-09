@@ -17,11 +17,17 @@
         --crit: #ef4444;
         --radius: 14px;
       }
-      * { box-sizing: border-box; }
-      html, body { height: 100%; }
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        height: 100%;
+      }
       body {
         margin: 0;
-        font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+        font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto,
+          Arial, sans-serif;
         background: linear-gradient(180deg, #0b1020, #0f172a);
         color: #e5e7eb;
         display: flex;
@@ -34,21 +40,65 @@
         padding: 16px;
         width: 100%;
       }
-      .header { font-weight: 700; letter-spacing: 0.2px; }
+      .header {
+        font-weight: 700;
+        letter-spacing: 0.2px;
+      }
       .field {
-        background: rgba(255,255,255,0.04);
-        border: 1px solid rgba(148,163,184,0.2);
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid rgba(148, 163, 184, 0.2);
         border-radius: var(--radius);
         padding: 10px;
         position: relative;
       }
-      .toolbar { position: absolute; top: 6px; right: 8px; display: flex; gap: 6px; }
-      .btn-emoji { border: 0; background: rgba(255,255,255,0.08); color: #fff; border-radius: 8px; padding: 4px 8px; cursor: pointer; }
-      .emoji-panel { position: absolute; top: 36px; right: 8px; width: 240px; background: #0b1020; border: 1px solid rgba(148,163,184,0.25); border-radius: 10px; padding: 6px; display: grid; grid-template-columns: repeat(10, 1fr); gap: 4px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
-      .emoji-panel.hidden { display: none; }
-      .emoji-item { font-size: 18px; line-height: 1; padding: 6px; border: 0; background: transparent; cursor: pointer; border-radius: 6px; }
-      .emoji-item:hover { background: rgba(255,255,255,0.08); }
-      .field:focus-within { outline: 2px solid var(--ring); outline-offset: 0; }
+      .toolbar {
+        position: absolute;
+        top: 6px;
+        right: 8px;
+        display: flex;
+        gap: 6px;
+      }
+      .btn-emoji {
+        border: 0;
+        background: rgba(255, 255, 255, 0.08);
+        color: #fff;
+        border-radius: 8px;
+        padding: 4px 8px;
+        cursor: pointer;
+      }
+      .emoji-panel {
+        position: absolute;
+        top: 36px;
+        right: 8px;
+        width: 240px;
+        background: #0b1020;
+        border: 1px solid rgba(148, 163, 184, 0.25);
+        border-radius: 10px;
+        padding: 6px;
+        display: grid;
+        grid-template-columns: repeat(10, 1fr);
+        gap: 4px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+      }
+      .emoji-panel.hidden {
+        display: none;
+      }
+      .emoji-item {
+        font-size: 18px;
+        line-height: 1;
+        padding: 6px;
+        border: 0;
+        background: transparent;
+        cursor: pointer;
+        border-radius: 6px;
+      }
+      .emoji-item:hover {
+        background: rgba(255, 255, 255, 0.08);
+      }
+      .field:focus-within {
+        outline: 2px solid var(--ring);
+        outline-offset: 0;
+      }
       textarea {
         width: 100%;
         border: none;
@@ -59,37 +109,85 @@
         background: transparent;
         color: #e5e7eb;
       }
-      .row { display: flex; gap: 10px; }
-      .col { flex: 1; }
-      .label { font-size: 12px; color: var(--muted); margin-bottom: 6px; }
-      input[type="number"], select {
+      .row {
+        display: flex;
+        gap: 10px;
+      }
+      .col {
+        flex: 1;
+      }
+      .label {
+        font-size: 12px;
+        color: var(--muted);
+        margin-bottom: 6px;
+      }
+      input[type="number"],
+      select {
         width: 100%;
-        background: rgba(255,255,255,0.04);
-        border: 1px solid rgba(148,163,184,0.2);
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid rgba(148, 163, 184, 0.2);
         border-radius: 10px;
         padding: 8px 10px;
         color: #e5e7eb;
       }
-      .pills { display: flex; gap: 8px; }
+      .pills {
+        display: flex;
+        gap: 8px;
+      }
       .pill {
         user-select: none;
         padding: 6px 10px;
         border-radius: 999px;
-        border: 1px solid rgba(148,163,184,0.25);
+        border: 1px solid rgba(148, 163, 184, 0.25);
         cursor: pointer;
         font-size: 12px;
         color: #e5e7eb;
         opacity: 0.8;
       }
-      .pill.active { border-color: #60a5fa; background: rgba(96,165,250,0.15); opacity: 1; }
-      .pill.warn.active { border-color: var(--warn); background: rgba(245,158,11,0.15); }
-      .pill.crit.active { border-color: var(--crit); background: rgba(239,68,68,0.15); }
-      .meta { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); margin-top: 6px; }
-      .actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px; }
-      button { border: 0; border-radius: 10px; padding: 8px 12px; cursor: pointer; }
-      .btn-secondary { background: rgba(255,255,255,0.08); color: #e5e7eb; }
-      .btn-primary { background: #2563eb; color: #fff; }
-      .btn-primary:disabled { opacity: .5; cursor: not-allowed; }
+      .pill.active {
+        border-color: #60a5fa;
+        background: rgba(96, 165, 250, 0.15);
+        opacity: 1;
+      }
+      .pill.warn.active {
+        border-color: var(--warn);
+        background: rgba(245, 158, 11, 0.15);
+      }
+      .pill.crit.active {
+        border-color: var(--crit);
+        background: rgba(239, 68, 68, 0.15);
+      }
+      .meta {
+        display: flex;
+        justify-content: space-between;
+        font-size: 12px;
+        color: var(--muted);
+        margin-top: 6px;
+      }
+      .actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 8px;
+        margin-top: 8px;
+      }
+      button {
+        border: 0;
+        border-radius: 10px;
+        padding: 8px 12px;
+        cursor: pointer;
+      }
+      .btn-secondary {
+        background: rgba(255, 255, 255, 0.08);
+        color: #e5e7eb;
+      }
+      .btn-primary {
+        background: #2563eb;
+        color: #fff;
+      }
+      .btn-primary:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
     </style>
   </head>
   <body>
@@ -97,10 +195,22 @@
       <div class="header">Send Toast</div>
       <div class="field">
         <div class="toolbar">
-          <button type="button" id="emojiBtn" title="Emoji" class="btn-emoji">😊</button>
-          <div id="emojiPanel" class="emoji-panel hidden" role="menu" aria-hidden="true"></div>
+          <button
+            type="button"
+            id="emojiBtn"
+            title="Emoji"
+            class="btn-emoji">
+            😊
+          </button>
+          <div
+            id="emojiPanel"
+            class="emoji-panel hidden"
+            role="menu"
+            aria-hidden="true"></div>
         </div>
-        <textarea id="message" placeholder="Deine Nachricht… (Enter = senden)"></textarea>
+        <textarea
+          id="message"
+          placeholder="Deine Nachricht… (Enter = senden)"></textarea>
         <div class="meta">
           <span id="counter">0 / 280</span>
           <span>Max. 10s</span>
@@ -110,22 +220,54 @@
       <div class="row">
         <div class="col">
           <div class="label">Farbe</div>
-          <div class="pills" id="sev-pills">
-            <div class="pill active" data-sev="blue">blue</div>
-            <div class="pill" data-sev="green">green</div>
-            <div class="pill" data-sev="pink">pink</div>
-            <div class="pill crit" data-sev="red">red</div>
+          <div
+            class="pills"
+            id="sev-pills">
+            <div
+              class="pill active"
+              data-sev="blue">
+              blue
+            </div>
+            <div
+              class="pill"
+              data-sev="green">
+              green
+            </div>
+            <div
+              class="pill"
+              data-sev="pink">
+              pink
+            </div>
+            <div
+              class="pill crit"
+              data-sev="red">
+              red
+            </div>
           </div>
         </div>
         <div class="col">
           <div class="label">Duration (ms)</div>
-          <input id="duration" type="number" min="500" max="10000" value="3000" />
+          <input
+            id="duration"
+            type="number"
+            min="500"
+            max="10000"
+            value="3000" />
         </div>
       </div>
 
       <div class="actions">
-        <button class="btn-secondary" id="cancel">Abbrechen</button>
-        <button class="btn-primary" id="send" disabled>Senden</button>
+        <button
+          class="btn-secondary"
+          id="cancel">
+          Abbrechen
+        </button>
+        <button
+          class="btn-primary"
+          id="send"
+          disabled>
+          Senden
+        </button>
       </div>
     </div>
 
@@ -140,34 +282,50 @@
       const emojiPanel = document.getElementById("emojiPanel");
 
       function getSeverity() {
-        const active = pills.querySelector('.pill.active');
-        return active ? active.getAttribute('data-sev') : 'info';
+        const active = pills.querySelector(".pill.active");
+        return active ? active.getAttribute("data-sev") : "info";
       }
-      function clamp(n, min, max) { return Math.max(min, Math.min(max, n)); }
+      function clamp(n, min, max) {
+        return Math.max(min, Math.min(max, n));
+      }
       function validate() {
-        const text = (messageEl.value || '').trim();
+        const text = (messageEl.value || "").trim();
         const len = text.length;
         counter.textContent = `${len} / 280`;
         const dur = clamp(Number(durationEl.value || 3000), 500, 10000);
         durationEl.value = String(dur);
         sendBtn.disabled = len === 0 || len > 280;
       }
-      pills.addEventListener('click', (e) => {
-        const p = e.target.closest('.pill');
+      pills.addEventListener("click", (e) => {
+        const p = e.target.closest(".pill");
         if (!p) return;
-        pills.querySelectorAll('.pill').forEach(x => x.classList.remove('active'));
-        p.classList.add('active');
+        pills
+          .querySelectorAll(".pill")
+          .forEach((x) => x.classList.remove("active"));
+        p.classList.add("active");
         validate();
       });
-      messageEl.addEventListener('input', validate);
-      durationEl.addEventListener('input', validate);
-      messageEl.addEventListener('keydown', (e) => {
-        if ((e.key === 'Enter' && !e.shiftKey) && !sendBtn.disabled) {
+      messageEl.addEventListener("input", validate);
+      durationEl.addEventListener("input", validate);
+      messageEl.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" && !e.shiftKey && !sendBtn.disabled) {
           e.preventDefault();
           sendBtn.click();
         }
-        if (e.key === 'Escape') $("cancel").click();
+        if (e.key === "Escape") $("cancel").click();
       });
+      // Prefill last severity from query
+      try {
+        const u = new URL(window.location.href);
+        const sev = u.searchParams.get('sev');
+        if (sev) {
+          const target = pills.querySelector(`[data-sev="${sev}"]`);
+          if (target) {
+            pills.querySelectorAll('.pill').forEach(x => x.classList.remove('active'));
+            target.classList.add('active');
+          }
+        }
+      } catch (_) {}
       validate();
 
       sendBtn.addEventListener("click", () => {
@@ -181,21 +339,57 @@
 
       // Lightweight emoji panel (no dependencies)
       const EMOJIS = [
-        "😀","😂","🤣","😊","😍","😘","😎","🤔","😴","🙈",
-        "👍","👎","👏","🙏","🙌","🔥","✨","🎉","💯","✅",
-        "😅","😉","😇","🤩","🥳","🤗","😜","😡","😭","😷",
-        "🐹","🐭","🐱","🐶","🦊","🐻","🐰","🐼","🦄","🐥",
+        "😀",
+        "😂",
+        "🤣",
+        "😊",
+        "😍",
+        "😘",
+        "😎",
+        "🤔",
+        "😴",
+        "🙈",
+        "👍",
+        "👎",
+        "👏",
+        "🙏",
+        "🙌",
+        "🔥",
+        "✨",
+        "🎉",
+        "💯",
+        "✅",
+        "😅",
+        "😉",
+        "😇",
+        "🤩",
+        "🥳",
+        "🤗",
+        "😜",
+        "😡",
+        "😭",
+        "😷",
+        "🐹",
+        "🐭",
+        "🐱",
+        "🐶",
+        "🦊",
+        "🐻",
+        "🐰",
+        "🐼",
+        "🦄",
+        "🐥",
       ];
       function buildEmojiPanel() {
         if (emojiPanel.dataset.built) return;
         emojiPanel.dataset.built = "1";
         const frag = document.createDocumentFragment();
-        EMOJIS.forEach(e => {
-          const b = document.createElement('button');
-          b.type = 'button';
-          b.className = 'emoji-item';
+        EMOJIS.forEach((e) => {
+          const b = document.createElement("button");
+          b.type = "button";
+          b.className = "emoji-item";
           b.textContent = e;
-          b.addEventListener('click', () => insertAtCursor(e));
+          b.addEventListener("click", () => insertAtCursor(e));
           frag.appendChild(b);
         });
         emojiPanel.appendChild(frag);
@@ -203,7 +397,7 @@
       function insertAtCursor(text) {
         const start = messageEl.selectionStart || 0;
         const end = messageEl.selectionEnd || 0;
-        const val = messageEl.value || '';
+        const val = messageEl.value || "";
         messageEl.value = val.slice(0, start) + text + val.slice(end);
         const pos = start + text.length;
         messageEl.setSelectionRange(pos, pos);
@@ -212,20 +406,20 @@
       }
       function toggleEmojiPanel() {
         buildEmojiPanel();
-        const isHidden = emojiPanel.classList.contains('hidden');
+        const isHidden = emojiPanel.classList.contains("hidden");
         if (isHidden) {
-          emojiPanel.classList.remove('hidden');
-          emojiPanel.setAttribute('aria-hidden', 'false');
+          emojiPanel.classList.remove("hidden");
+          emojiPanel.setAttribute("aria-hidden", "false");
         } else {
-          emojiPanel.classList.add('hidden');
-          emojiPanel.setAttribute('aria-hidden', 'true');
+          emojiPanel.classList.add("hidden");
+          emojiPanel.setAttribute("aria-hidden", "true");
         }
       }
-      emojiBtn.addEventListener('click', toggleEmojiPanel);
-      document.addEventListener('mousedown', (e) => {
+      emojiBtn.addEventListener("click", toggleEmojiPanel);
+      document.addEventListener("mousedown", (e) => {
         if (!emojiPanel.contains(e.target) && e.target !== emojiBtn) {
-          emojiPanel.classList.add('hidden');
-          emojiPanel.setAttribute('aria-hidden', 'true');
+          emojiPanel.classList.add("hidden");
+          emojiPanel.setAttribute("aria-hidden", "true");
         }
       });
     </script>
