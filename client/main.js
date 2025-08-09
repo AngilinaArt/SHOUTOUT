@@ -186,45 +186,7 @@ function createTray() {
       tray.popUpContextMenu();
     } catch (_) {}
   });
-  const contextMenu = Menu.buildFromTemplate([
-    { label: `Du bist: ${displayName || "Anonymous"}`, enabled: false },
-    { type: "separator" },
-    {
-      label: "Do Not Disturb",
-      type: "checkbox",
-      checked: doNotDisturb,
-      click: (item) => {
-        doNotDisturb = item.checked;
-      },
-    },
-    { type: "separator" },
-    {
-      label: "Self Hamster (Ctrl/Cmd+Alt+H)",
-      click: () => showHamster("default", 3000),
-    },
-    {
-      label: "Name ändern…",
-      click: () => openNamePrompt(),
-    },
-    {
-      label: "Send Hamster...",
-      submenu: [
-        {
-          label: "caprisun",
-          click: () => sendHamsterUpstream("caprisun", 3000),
-        },
-        { label: "lol", click: () => sendHamsterUpstream("lol", 3000) },
-      ],
-    },
-    {
-      label: "Send Toast...",
-      click: () => openToastPrompt(),
-    },
-    { type: "separator" },
-    { role: "quit" },
-  ]);
-  tray.setToolTip("Hamster & Toast");
-  tray.setContextMenu(contextMenu);
+  buildTrayMenu();
 }
 
 function registerHotkey() {
@@ -254,7 +216,7 @@ app.whenReady().then(() => {
   createOverlayWindow();
   createTray();
   registerHotkey();
-  ensureDisplayName().then(() => connectWebSocket());
+  ensureDisplayName().then(() => { connectWebSocket(); buildTrayMenu(); });
 
   // Position overlay top-right on primary display
   positionOverlayTopRight();
@@ -331,6 +293,39 @@ function openToastPrompt() {
   ipcMain.once("compose-toast-cancel", onCancel);
 }
 
+function buildTrayMenu() {
+  if (!tray) return;
+  const template = [
+    { label: `Du bist: ${displayName || "Anonymous"}`, enabled: false },
+    { type: "separator" },
+    {
+      label: "Do Not Disturb",
+      type: "checkbox",
+      checked: doNotDisturb,
+      click: (item) => {
+        doNotDisturb = item.checked;
+      },
+    },
+    { type: "separator" },
+    { label: "Self Hamster (Ctrl/Cmd+Alt+H)", click: () => showHamster("default", 3000) },
+    { label: "Name ändern…", click: () => openNamePrompt() },
+    {
+      label: "Send Hamster...",
+      submenu: [
+        { label: "caprisun", click: () => sendHamsterUpstream("caprisun", 3000) },
+        { label: "lol", click: () => sendHamsterUpstream("lol", 3000) },
+      ],
+    },
+    { label: "Send Toast...", click: () => openToastPrompt() },
+    { type: "separator" },
+    { role: "quit" },
+  ];
+  try {
+    tray.setContextMenu(Menu.buildFromTemplate(template));
+    tray.setToolTip(`Hamster & Toast${displayName ? ` — ${displayName}` : ""}`);
+  } catch (_) {}
+}
+
 function openNamePrompt() {
   const nameWin = new BrowserWindow({
     width: 420,
@@ -370,6 +365,7 @@ function openNamePrompt() {
       } catch (_) {}
       displayName = next;
       reconnectWebSocket();
+      buildTrayMenu();
     }
     try {
       nameWin.close();
