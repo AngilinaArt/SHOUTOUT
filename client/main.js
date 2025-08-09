@@ -21,6 +21,7 @@ let overlayWindow = null;
 let doNotDisturb = false;
 let ws = null;
 let displayName = null;
+let wsConnectToken = 0;
 
 function createOverlayWindow() {
   overlayWindow = new BrowserWindow({
@@ -95,11 +96,13 @@ function showToast(message, severity, durationMs, sender) {
 }
 
 function connectWebSocket() {
+  const token = ++wsConnectToken;
   const url = new URL(WS_URL);
   if (WS_TOKEN) url.searchParams.set("token", WS_TOKEN);
   if (displayName) url.searchParams.set("name", displayName);
 
   function doConnect() {
+    if (token !== wsConnectToken) return; // aborted by newer connect
     ws = new WebSocket(url.toString());
 
     ws.on("open", () => {
@@ -129,7 +132,7 @@ function connectWebSocket() {
     });
     ws.on("close", () => {
       console.log("WS disconnected, retrying in 2s");
-      setTimeout(doConnect, 2000);
+      setTimeout(() => { if (token === wsConnectToken) doConnect(); }, 2000);
     });
     ws.on("error", () => {
       // handled by 'close' retry
@@ -137,6 +140,12 @@ function connectWebSocket() {
   }
 
   doConnect();
+}
+
+function reconnectWebSocket() {
+  try { wsConnectToken++; } catch (_) {}
+  try { if (ws) ws.close(); } catch (_) {}
+  connectWebSocket();
 }
 
 function createTray() {
@@ -147,9 +156,15 @@ function createTray() {
     const winIcon = path.join(iconDir, "icon.ico");
     const macIcon = path.join(iconDir, "iconTemplate.png");
     const pngIcon = path.join(iconDir, "icon.png");
-    const candidate = process.platform === "win32" ? winIcon : (process.platform === "darwin" ? macIcon : pngIcon);
+    const candidate =
+      process.platform === "win32"
+        ? winIcon
+        : process.platform === "darwin"
+        ? macIcon
+        : pngIcon;
     trayImage = nativeImage.createFromPath(candidate);
-    if (!trayImage || trayImage.isEmpty()) trayImage = nativeImage.createFromPath(pngIcon);
+    if (!trayImage || trayImage.isEmpty())
+      trayImage = nativeImage.createFromPath(pngIcon);
   } catch (_) {
     trayImage = nativeImage.createEmpty();
   }
@@ -180,6 +195,10 @@ function createTray() {
       click: () => showHamster("default", 3000),
     },
     {
+      label: "Name ändern…",
+      click: () => openNamePrompt(),
+    },
+    {
       label: "Send Hamster...",
       submenu: [
         {
@@ -202,10 +221,19 @@ function createTray() {
 
 function registerHotkey() {
   const bindings = [
-    { acc: "CommandOrControl+Alt+H", run: () => showHamster("default", 3000, displayName) },
+    {
+      acc: "CommandOrControl+Alt+H",
+      run: () => showHamster("default", 3000, displayName),
+    },
     { acc: "CommandOrControl+Alt+T", run: () => openToastPrompt() },
-    { acc: "CommandOrControl+Alt+1", run: () => sendHamsterUpstream("caprisun", 3000) },
-    { acc: "CommandOrControl+Alt+2", run: () => sendHamsterUpstream("lol", 3000) },
+    {
+      acc: "CommandOrControl+Alt+1",
+      run: () => sendHamsterUpstream("caprisun", 3000),
+    },
+    {
+      acc: "CommandOrControl+Alt+2",
+      run: () => sendHamsterUpstream("lol", 3000),
+    },
   ];
   for (const { acc, run } of bindings) {
     try {
@@ -293,6 +321,43 @@ function openToastPrompt() {
   };
   ipcMain.once("compose-toast-submit", onSubmit);
   ipcMain.once("compose-toast-cancel", onCancel);
+}
+
+function openNamePrompt() {
+  const nameWin = new BrowserWindow({
+    width: 420,
+    height: 200,
+    resizable: false,
+    modal: true,
+    frame: true,
+    alwaysOnTop: true,
+    webPreferences: {
+      preload: path.join(__dirname, "preload_name.js"),
+      contextIsolation: true,
+      nodeIntegration: false,
+    },
+  });
+  nameWin.loadFile(path.join(__dirname, "renderer", "name.html"));
+  const onSubmit = (_evt, payload) => {
+    try { ipcMain.removeListener("name-cancel", onCancel); } catch (_) {}
+    const next = String(payload?.name || "").trim().slice(0, 24);
+    if (next.length >= 2) {
+      try {
+        const fs = require("fs");
+        const storePath = path.join(app.getPath("userData"), "shoutout-user.json");
+        fs.writeFileSync(storePath, JSON.stringify({ displayName: next }), "utf-8");
+      } catch (_) {}
+      displayName = next;
+      reconnectWebSocket();
+    }
+    try { nameWin.close(); } catch (_) {}
+  };
+  const onCancel = () => {
+    try { ipcMain.removeListener("name-submit", onSubmit); } catch (_) {}
+    try { nameWin.close(); } catch (_) {}
+  };
+  ipcMain.once("name-submit", onSubmit);
+  ipcMain.once("name-cancel", onCancel);
 }
 
 async function ensureDisplayName() {
