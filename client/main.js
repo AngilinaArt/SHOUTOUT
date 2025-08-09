@@ -160,26 +160,42 @@ function createTray() {
   let trayImage = null;
   try {
     const iconDir = path.join(__dirname, "assets", "icon");
-    const winIcon = path.join(iconDir, "icon.ico");
-    const macIcon = path.join(iconDir, "iconTemplate.png");
-    const pngIcon = path.join(iconDir, "icon.png");
-    const candidate =
-      process.platform === "win32"
-        ? winIcon
-        : process.platform === "darwin"
-        ? macIcon
-        : pngIcon;
+    // Prefer user-provided hamster icons; fall back to default ones
+    const winPrimary = path.join(iconDir, "hamster.ico");
+    const winFallback = path.join(iconDir, "icon.ico");
+    const macPrimary = path.join(iconDir, "hamster.png");
+    const macTemplate = path.join(iconDir, "iconTemplate.png");
+    const pngFallback = path.join(iconDir, "icon.png");
+
+    let candidate;
+    if (process.platform === "win32") {
+      candidate = winPrimary;
+    } else if (process.platform === "darwin") {
+      candidate = macPrimary;
+    } else {
+      candidate = macPrimary;
+    }
     trayImage = nativeImage.createFromPath(candidate);
-    if (!trayImage || trayImage.isEmpty())
-      trayImage = nativeImage.createFromPath(pngIcon);
+    if (!trayImage || trayImage.isEmpty()) {
+      const fallback =
+        process.platform === "win32" ? winFallback : process.platform === "darwin" ? macTemplate : pngFallback;
+      trayImage = nativeImage.createFromPath(fallback);
+    }
+    if (!trayImage || trayImage.isEmpty()) {
+      trayImage = nativeImage.createFromPath(pngFallback);
+    }
   } catch (_) {
     trayImage = nativeImage.createEmpty();
   }
   tray = new Tray(trayImage);
   if (process.platform === "darwin") {
-    // Show an emoji title so the tray is visible without bundling an icon
+    // Only use emoji title if no icon asset is available
     try {
-      tray.setTitle("🐹");
+      if (!trayImage || trayImage.isEmpty()) {
+        tray.setTitle("🐹");
+      } else {
+        tray.setTitle("");
+      }
     } catch (_) {}
   }
   tray.on("click", () => {
@@ -330,9 +346,13 @@ function updateSettings(patch) {
   const fs = require("fs");
   const p = getSettingsPath();
   let curr = {};
-  try { curr = readSettings(); } catch (_) {}
+  try {
+    curr = readSettings();
+  } catch (_) {}
   const next = { ...curr, ...patch };
-  try { fs.writeFileSync(p, JSON.stringify(next), "utf-8"); } catch (_) {}
+  try {
+    fs.writeFileSync(p, JSON.stringify(next), "utf-8");
+  } catch (_) {}
 }
 
 function buildTrayMenu() {
