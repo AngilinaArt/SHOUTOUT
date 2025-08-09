@@ -243,9 +243,9 @@ function sendHamsterUpstream(variant, durationMs) {
 
 function openToastPrompt() {
   const composeWin = new BrowserWindow({
-    width: 420,
-    height: 260,
-    resizable: false,
+    width: 560,
+    height: 360,
+    resizable: true,
     modal: true,
     frame: true,
     alwaysOnTop: true,
