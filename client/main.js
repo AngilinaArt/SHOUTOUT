@@ -216,7 +216,10 @@ app.whenReady().then(() => {
   createOverlayWindow();
   createTray();
   registerHotkey();
-  ensureDisplayName().then(() => { connectWebSocket(); buildTrayMenu(); });
+  ensureDisplayName().then(() => {
+    connectWebSocket();
+    buildTrayMenu();
+  });
 
   // Position overlay top-right on primary display
   positionOverlayTopRight();
@@ -265,11 +268,11 @@ function openToastPrompt() {
       ipcMain.removeListener("compose-toast-cancel", onCancel);
     } catch (_) {}
     const message = String(payload?.message || "").slice(0, 280);
-    const severity = ["info", "success", "warn", "critical"].includes(
+    const severity = ["blue", "green", "pink", "red", "info", "success", "warn", "critical"].includes(
       payload?.severity
     )
       ? payload.severity
-      : "info";
+      : "blue";
     const duration = Math.max(
       500,
       Math.min(10000, Number(payload?.duration || 3000))
@@ -307,12 +310,18 @@ function buildTrayMenu() {
       },
     },
     { type: "separator" },
-    { label: "Self Hamster (Ctrl/Cmd+Alt+H)", click: () => showHamster("default", 3000) },
+    {
+      label: "Self Hamster (Ctrl/Cmd+Alt+H)",
+      click: () => showHamster("default", 3000),
+    },
     { label: "Name ändern…", click: () => openNamePrompt() },
     {
       label: "Send Hamster...",
       submenu: [
-        { label: "caprisun", click: () => sendHamsterUpstream("caprisun", 3000) },
+        {
+          label: "caprisun",
+          click: () => sendHamsterUpstream("caprisun", 3000),
+        },
         { label: "lol", click: () => sendHamsterUpstream("lol", 3000) },
       ],
     },

@@ -86,7 +86,16 @@ function escapeHtml(str) {
 }
 
 window.shoutout.onToast(({ message, severity, durationMs, sender }) => {
-  const sev = ["blue", "green", "pink", "red", "info", "success", "warn", "critical"].includes(severity)
+  const sev = [
+    "blue",
+    "green",
+    "pink",
+    "red",
+    "info",
+    "success",
+    "warn",
+    "critical",
+  ].includes(severity)
     ? severity
     : "blue";
   const safeMsg = escapeHtml(message || "");
