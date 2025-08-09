@@ -187,6 +187,8 @@ function createTray() {
     } catch (_) {}
   });
   const contextMenu = Menu.buildFromTemplate([
+    { label: `Du bist: ${displayName || "Anonymous"}`, enabled: false },
+    { type: "separator" },
     {
       label: "Do Not Disturb",
       type: "checkbox",
@@ -344,7 +346,7 @@ function openNamePrompt() {
     },
   });
   nameWin.loadFile(path.join(__dirname, "renderer", "name.html"), {
-    query: { current: String(displayName || "") }
+    query: { current: String(displayName || "") },
   });
   const onSubmit = (_evt, payload) => {
     try {
