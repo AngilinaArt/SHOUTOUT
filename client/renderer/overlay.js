@@ -2,7 +2,7 @@ const hamsterEl = document.getElementById("hamster");
 const hamsterImg = document.getElementById("hamster-img");
 const hamsterBadge = document.getElementById("hamster-badge");
 const toastEl = document.getElementById("toast");
-const toastContent = document.getElementById("toast-content");
+const toastsContainer = document.getElementById("toasts");
 
 function hideHamster() {
   hamsterEl.classList.add("hidden");
@@ -12,13 +12,18 @@ function hideHamster() {
 }
 
 function hideToast() {
-  toastEl.classList.add("hidden");
-  toastContent.textContent = "";
-  toastContent.className = "";
+  // If no more items, hide wrapper
+  if (!toastsContainer.children.length) {
+    toastEl.classList.add("hidden");
+  }
 }
 
 let hamsterTimer = null;
-let toastTimer = null;
+let toastTimer = null; // legacy - not used per-item; kept for safety
+const MAX_STACK = 6;
+const HAMSTER_QUEUE_LIMIT = 20;
+const hamsterQueue = [];
+let hamsterActive = false;
 
 function buildPlaceholderHamsterDataUrl() {
   const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220' viewBox='0 0 220 220'>
@@ -36,25 +41,32 @@ function buildPlaceholderHamsterDataUrl() {
   return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
 }
 
-window.shoutout.onHamster(({ variant, durationMs, url, sender }) => {
-  if (hamsterTimer) {
-    clearTimeout(hamsterTimer);
-    hamsterTimer = null;
-  }
+function showHamsterQueued({ variant, durationMs, url, sender }) {
   const candidate = url || `../assets/hamsters/${variant}.png`;
-  hamsterImg.onerror = () => {
-    hamsterImg.src = buildPlaceholderHamsterDataUrl();
-  };
+  hamsterImg.onerror = () => { hamsterImg.src = buildPlaceholderHamsterDataUrl(); };
   hamsterImg.src = candidate;
-  if (sender) {
-    hamsterBadge.textContent = sender;
-    hamsterBadge.classList.remove("hidden");
-  } else {
-    hamsterBadge.textContent = "";
-    hamsterBadge.classList.add("hidden");
-  }
+  if (sender) { hamsterBadge.textContent = sender; hamsterBadge.classList.remove("hidden"); }
+  else { hamsterBadge.textContent = ""; hamsterBadge.classList.add("hidden"); }
   hamsterEl.classList.remove("hidden");
-  hamsterTimer = setTimeout(hideHamster, Math.max(300, durationMs || 3000));
+  hamsterTimer = setTimeout(() => {
+    hideHamster();
+    hamsterActive = false;
+    processHamsterQueue();
+  }, Math.max(300, durationMs || 3000));
+}
+
+function processHamsterQueue() {
+  if (hamsterActive) return;
+  const next = hamsterQueue.shift();
+  if (!next) return;
+  hamsterActive = true;
+  showHamsterQueued(next);
+}
+
+window.shoutout.onHamster((evt) => {
+  if (hamsterQueue.length >= HAMSTER_QUEUE_LIMIT) return; // drop overflow
+  hamsterQueue.push(evt);
+  processHamsterQueue();
 });
 
 function escapeHtml(str) {
@@ -67,21 +79,24 @@ function escapeHtml(str) {
 }
 
 window.shoutout.onToast(({ message, severity, durationMs, sender }) => {
-  if (toastTimer) {
-    clearTimeout(toastTimer);
-    toastTimer = null;
-  }
-  const sev = ["info", "success", "warn", "critical"].includes(severity)
-    ? severity
-    : "info";
-  toastContent.className = `severity-${sev}`;
+  const sev = ["info", "success", "warn", "critical"].includes(severity) ? severity : "info";
   const safeMsg = escapeHtml(message || "");
   const safeSender = sender ? escapeHtml(sender) : "";
   const senderHtml = safeSender ? `<div class="sender">${safeSender}</div>` : "";
-  toastContent.innerHTML = `<div class="bubble">${senderHtml}<div class="text">${safeMsg}</div></div>`;
+  const wrapper = document.createElement('div');
+  wrapper.className = `toast-item severity-${sev}`;
+  wrapper.innerHTML = `<div class="bubble">${senderHtml}<div class="text">${safeMsg}</div></div>`;
+  toastsContainer.appendChild(wrapper);
   toastEl.classList.remove("hidden");
-  toastTimer = setTimeout(
-    hideToast,
-    Math.max(500, Math.min(10000, durationMs || 4000))
-  );
+
+  // Enforce max stack
+  while (toastsContainer.children.length > MAX_STACK) {
+    toastsContainer.removeChild(toastsContainer.firstElementChild);
+  }
+
+  const ttl = Math.max(500, Math.min(10000, durationMs || 4000));
+  setTimeout(() => {
+    if (wrapper.parentElement) wrapper.remove();
+    hideToast();
+  }, ttl);
 });

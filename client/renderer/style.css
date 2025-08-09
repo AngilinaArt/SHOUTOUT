@@ -75,12 +75,8 @@ body {
   }
 }
 
-#toast #toast-content {
-  min-width: 260px;
-  max-width: 420px;
-  margin-top: 10px;
-  animation: slideIn 180ms ease-out;
-}
+#toast #toasts { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; margin-top: 10px; }
+#toast #toasts .toast-item { min-width: 260px; max-width: 420px; animation: slideIn 180ms ease-out; }
 
 #toast .bubble {
   position: relative;
