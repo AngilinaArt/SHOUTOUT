@@ -1,0 +1,121 @@
+html,
+body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  background: transparent;
+  overflow: hidden;
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+}
+
+#container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+#hamster,
+#toast {
+  position: absolute;
+  top: 0;
+  right: 0;
+}
+
+#hamster.hidden,
+#toast.hidden {
+  display: none;
+}
+
+#hamster img {
+  width: 220px;
+  height: 220px;
+  object-fit: contain;
+  animation: pop 150ms ease-out, wobble 1200ms ease-in-out infinite;
+}
+
+#hamster .badge {
+  position: absolute;
+  top: 185px;
+  right: 0;
+  max-width: 260px;
+  padding: 4px 8px;
+  font-size: 12px;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.6);
+  border-radius: 8px;
+}
+
+@keyframes pop {
+  from {
+    transform: scale(0.8);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes wobble {
+  0% {
+    transform: rotate(0deg);
+  }
+  25% {
+    transform: rotate(2deg);
+  }
+  50% {
+    transform: rotate(-2deg);
+  }
+  75% {
+    transform: rotate(1deg);
+  }
+  100% {
+    transform: rotate(0deg);
+  }
+}
+
+#toast #toast-content {
+  min-width: 260px;
+  max-width: 420px;
+  margin-top: 10px;
+  padding: 12px 14px;
+  color: #fff;
+  border-radius: 10px;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+  animation: slideIn 180ms ease-out;
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateY(-10px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.severity-info {
+  background: rgba(59, 130, 246, 0.9);
+}
+.severity-success {
+  background: rgba(34, 197, 94, 0.9);
+}
+.severity-warn {
+  background: rgba(234, 179, 8, 0.95);
+}
+.severity-critical {
+  background: rgba(239, 68, 68, 0.95);
+}
+
+/* Fallback if no image exists: colored circle */
+#hamster.fallback {
+  width: 220px;
+  height: 220px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 70% 30%, #fff, #f59e0b);
+}

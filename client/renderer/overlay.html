@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; img-src 'self' file: data:; style-src 'self' 'unsafe-inline'; script-src 'self';" />
+    <title>Hamster & Toast Overlay</title>
+    <link
+      rel="stylesheet"
+      href="style.css" />
+  </head>
+  <body>
+    <div id="container">
+      <div
+        id="hamster"
+        class="hidden">
+        <img
+          id="hamster-img"
+          alt="hamster" />
+        <div
+          id="hamster-badge"
+          class="badge hidden"></div>
+      </div>
+      <div
+        id="toast"
+        class="hidden">
+        <div id="toast-content"></div>
+      </div>
+    </div>
+    <script src="overlay.js"></script>
+  </body>
+</html>
