@@ -105,9 +105,10 @@ const hamsterSchema = Joi.object({
 const toastSchema = Joi.object({
   type: Joi.string().valid("toast").required(),
   message: Joi.string().min(1).max(280).required(),
+  // entertainment palette + legacy values for compatibility
   severity: Joi.string()
-    .valid("info", "success", "warn", "critical")
-    .default("info"),
+    .valid("red", "pink", "green", "blue", "info", "success", "warn", "critical")
+    .default("blue"),
   // Cap toast duration to 10s
   duration: Joi.number().integer().min(500).max(10000).default(4000),
   target: Joi.string().optional(),

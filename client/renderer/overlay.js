@@ -43,10 +43,17 @@ function buildPlaceholderHamsterDataUrl() {
 
 function showHamsterQueued({ variant, durationMs, url, sender }) {
   const candidate = url || `../assets/hamsters/${variant}.png`;
-  hamsterImg.onerror = () => { hamsterImg.src = buildPlaceholderHamsterDataUrl(); };
+  hamsterImg.onerror = () => {
+    hamsterImg.src = buildPlaceholderHamsterDataUrl();
+  };
   hamsterImg.src = candidate;
-  if (sender) { hamsterBadge.textContent = sender; hamsterBadge.classList.remove("hidden"); }
-  else { hamsterBadge.textContent = ""; hamsterBadge.classList.add("hidden"); }
+  if (sender) {
+    hamsterBadge.textContent = sender;
+    hamsterBadge.classList.remove("hidden");
+  } else {
+    hamsterBadge.textContent = "";
+    hamsterBadge.classList.add("hidden");
+  }
   hamsterEl.classList.remove("hidden");
   hamsterTimer = setTimeout(() => {
     hideHamster();
@@ -79,11 +86,15 @@ function escapeHtml(str) {
 }
 
 window.shoutout.onToast(({ message, severity, durationMs, sender }) => {
-  const sev = ["info", "success", "warn", "critical"].includes(severity) ? severity : "info";
+  const sev = ["blue", "green", "pink", "red", "info", "success", "warn", "critical"].includes(severity)
+    ? severity
+    : "blue";
   const safeMsg = escapeHtml(message || "");
   const safeSender = sender ? escapeHtml(sender) : "";
-  const senderHtml = safeSender ? `<div class="sender">${safeSender}</div>` : "";
-  const wrapper = document.createElement('div');
+  const senderHtml = safeSender
+    ? `<div class="sender">${safeSender}</div>`
+    : "";
+  const wrapper = document.createElement("div");
   wrapper.className = `toast-item severity-${sev}`;
   wrapper.innerHTML = `<div class="bubble">${senderHtml}<div class="text">${safeMsg}</div></div>`;
   toastsContainer.appendChild(wrapper);
