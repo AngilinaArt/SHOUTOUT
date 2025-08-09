@@ -201,11 +201,17 @@ function createTray() {
 }
 
 function registerHotkey() {
-  const accelerator =
-    process.platform === "darwin" ? "Command+Alt+H" : "Control+Alt+H";
-  globalShortcut.register(accelerator, () => {
-    showHamster("default", 3000);
-  });
+  const bindings = [
+    { acc: "CommandOrControl+Alt+H", run: () => showHamster("default", 3000, displayName) },
+    { acc: "CommandOrControl+Alt+T", run: () => openToastPrompt() },
+    { acc: "CommandOrControl+Alt+1", run: () => sendHamsterUpstream("caprisun", 3000) },
+    { acc: "CommandOrControl+Alt+2", run: () => sendHamsterUpstream("lol", 3000) },
+  ];
+  for (const { acc, run } of bindings) {
+    try {
+      globalShortcut.register(acc, run);
+    } catch (_) {}
+  }
 }
 
 app.whenReady().then(() => {
