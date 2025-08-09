@@ -8,6 +8,7 @@ const {
   globalShortcut,
   ipcMain,
   nativeImage,
+  screen,
 } = require("electron");
 const WebSocket = require("ws");
 
@@ -48,8 +49,24 @@ function createOverlayWindow() {
   overlayWindow.showInactive();
 }
 
+function positionOverlayTopRight() {
+  if (!overlayWindow || overlayWindow.isDestroyed()) return;
+  const margin = 20;
+  const currentBounds = overlayWindow.getBounds();
+  let target = screen.getPrimaryDisplay();
+  try {
+    const pt = screen.getCursorScreenPoint();
+    target = screen.getDisplayNearestPoint(pt) || target;
+  } catch (_) {}
+  const work = target.workArea;
+  const x = Math.floor(work.x + work.width - currentBounds.width - margin);
+  const y = Math.floor(work.y + margin);
+  overlayWindow.setPosition(x, y);
+}
+
 function showHamster(variant, durationMs, sender) {
   if (!overlayWindow || overlayWindow.isDestroyed()) return;
+  positionOverlayTopRight();
   const imgFsPath = path.join(
     __dirname,
     "assets",
@@ -67,6 +84,7 @@ function showHamster(variant, durationMs, sender) {
 
 function showToast(message, severity, durationMs) {
   if (!overlayWindow || overlayWindow.isDestroyed()) return;
+  positionOverlayTopRight();
   overlayWindow.webContents.send("show-toast", {
     message,
     severity,
@@ -118,9 +136,20 @@ function connectWebSocket() {
 }
 
 function createTray() {
-  // Create empty image to avoid bundling binary assets
-  const image = nativeImage.createEmpty();
-  tray = new Tray(image);
+  // Try to load a platform icon; fallback to empty
+  let trayImage = null;
+  try {
+    const iconDir = path.join(__dirname, "assets", "icon");
+    const winIcon = path.join(iconDir, "icon.ico");
+    const macIcon = path.join(iconDir, "iconTemplate.png");
+    const pngIcon = path.join(iconDir, "icon.png");
+    const candidate = process.platform === "win32" ? winIcon : (process.platform === "darwin" ? macIcon : pngIcon);
+    trayImage = nativeImage.createFromPath(candidate);
+    if (!trayImage || trayImage.isEmpty()) trayImage = nativeImage.createFromPath(pngIcon);
+  } catch (_) {
+    trayImage = nativeImage.createEmpty();
+  }
+  tray = new Tray(trayImage);
   if (process.platform === "darwin") {
     // Show an emoji title so the tray is visible without bundling an icon
     try {
@@ -182,10 +211,12 @@ app.whenReady().then(() => {
   ensureDisplayName().then(() => connectWebSocket());
 
   // Position overlay top-right on primary display
-  const { workArea } = require("electron").screen.getPrimaryDisplay();
-  const x = Math.floor(workArea.x + workArea.width - 440);
-  const y = Math.floor(workArea.y + 20);
-  overlayWindow.setPosition(x, y);
+  positionOverlayTopRight();
+  try {
+    screen.on("display-added", positionOverlayTopRight);
+    screen.on("display-removed", positionOverlayTopRight);
+    screen.on("display-metrics-changed", positionOverlayTopRight);
+  } catch (_) {}
 });
 
 app.on("window-all-closed", (e) => {
