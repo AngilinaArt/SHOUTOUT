@@ -40,7 +40,14 @@
         border: 1px solid rgba(148,163,184,0.2);
         border-radius: var(--radius);
         padding: 10px;
+        position: relative;
       }
+      .toolbar { position: absolute; top: 6px; right: 8px; display: flex; gap: 6px; }
+      .btn-emoji { border: 0; background: rgba(255,255,255,0.08); color: #fff; border-radius: 8px; padding: 4px 8px; cursor: pointer; }
+      .emoji-panel { position: absolute; top: 36px; right: 8px; width: 240px; background: #0b1020; border: 1px solid rgba(148,163,184,0.25); border-radius: 10px; padding: 6px; display: grid; grid-template-columns: repeat(10, 1fr); gap: 4px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+      .emoji-panel.hidden { display: none; }
+      .emoji-item { font-size: 18px; line-height: 1; padding: 6px; border: 0; background: transparent; cursor: pointer; border-radius: 6px; }
+      .emoji-item:hover { background: rgba(255,255,255,0.08); }
       .field:focus-within { outline: 2px solid var(--ring); outline-offset: 0; }
       textarea {
         width: 100%;
@@ -89,6 +96,10 @@
     <div class="wrap">
       <div class="header">Send Toast</div>
       <div class="field">
+        <div class="toolbar">
+          <button type="button" id="emojiBtn" title="Emoji" class="btn-emoji">😊</button>
+          <div id="emojiPanel" class="emoji-panel hidden" role="menu" aria-hidden="true"></div>
+        </div>
         <textarea id="message" placeholder="Deine Nachricht… (Enter = senden)"></textarea>
         <div class="meta">
           <span id="counter">0 / 280</span>
@@ -125,6 +136,8 @@
       const sendBtn = $("send");
       const counter = $("counter");
       const pills = document.getElementById("sev-pills");
+      const emojiBtn = document.getElementById("emojiBtn");
+      const emojiPanel = document.getElementById("emojiPanel");
 
       function getSeverity() {
         const active = pills.querySelector('.pill.active');
@@ -165,6 +178,56 @@
         });
       });
       $("cancel").addEventListener("click", () => window.compose.cancel());
+
+      // Lightweight emoji panel (no dependencies)
+      const EMOJIS = [
+        "😀","😂","🤣","😊","😍","😘","😎","🤔","😴","🙈",
+        "👍","👎","👏","🙏","🙌","🔥","✨","🎉","💯","✅",
+        "😅","😉","😇","🤩","🥳","🤗","😜","😡","😭","😷",
+        "🐹","🐭","🐱","🐶","🦊","🐻","🐰","🐼","🦄","🐥",
+      ];
+      function buildEmojiPanel() {
+        if (emojiPanel.dataset.built) return;
+        emojiPanel.dataset.built = "1";
+        const frag = document.createDocumentFragment();
+        EMOJIS.forEach(e => {
+          const b = document.createElement('button');
+          b.type = 'button';
+          b.className = 'emoji-item';
+          b.textContent = e;
+          b.addEventListener('click', () => insertAtCursor(e));
+          frag.appendChild(b);
+        });
+        emojiPanel.appendChild(frag);
+      }
+      function insertAtCursor(text) {
+        const start = messageEl.selectionStart || 0;
+        const end = messageEl.selectionEnd || 0;
+        const val = messageEl.value || '';
+        messageEl.value = val.slice(0, start) + text + val.slice(end);
+        const pos = start + text.length;
+        messageEl.setSelectionRange(pos, pos);
+        messageEl.focus();
+        validate();
+      }
+      function toggleEmojiPanel() {
+        buildEmojiPanel();
+        const isHidden = emojiPanel.classList.contains('hidden');
+        if (isHidden) {
+          emojiPanel.classList.remove('hidden');
+          emojiPanel.setAttribute('aria-hidden', 'false');
+        } else {
+          emojiPanel.classList.add('hidden');
+          emojiPanel.setAttribute('aria-hidden', 'true');
+        }
+      }
+      emojiBtn.addEventListener('click', toggleEmojiPanel);
+      document.addEventListener('mousedown', (e) => {
+        if (!emojiPanel.contains(e.target) && e.target !== emojiBtn) {
+          emojiPanel.classList.add('hidden');
+          emojiPanel.setAttribute('aria-hidden', 'true');
+        }
+      });
     </script>
   </body>
 </html>
