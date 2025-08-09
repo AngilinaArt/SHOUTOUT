@@ -1,5 +1,6 @@
 require("dotenv").config();
 const path = require("path");
+const { pathToFileURL } = require("url");
 const {
   app,
   BrowserWindow,
@@ -73,7 +74,7 @@ function showHamster(variant, durationMs, sender) {
     "hamsters",
     `${variant}.png`
   );
-  const fileUrl = `file://${encodeURI(imgFsPath)}`;
+  const fileUrl = pathToFileURL(imgFsPath).href;
   overlayWindow.webContents.send("show-hamster", {
     variant,
     durationMs,
