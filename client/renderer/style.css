@@ -91,7 +91,7 @@ body {
 #toast .bubble {
   position: relative;
   color: #0b141a;
-  background: #dcf8c6;
+  /* background set by severity class */
   border-radius: 18px;
   padding: 10px 12px;
   box-shadow: 0 8px 28px rgba(0, 0, 0, 0.25);
@@ -104,7 +104,7 @@ body {
   right: -6px;
   width: 0;
   height: 0;
-  border-left: 6px solid #dcf8c6;
+  /* color set by severity class */
   border-top: 6px solid transparent;
   border-bottom: 6px solid transparent;
 }
@@ -133,24 +133,56 @@ body {
   }
 }
 
-.severity-blue .bubble { background: #dbeafe; }
-.severity-blue .bubble:after { border-left-color: #dbeafe; }
-.severity-green .bubble { background: #d1fae5; }
-.severity-green .bubble:after { border-left-color: #d1fae5; }
-.severity-pink .bubble { background: #fce7f3; }
-.severity-pink .bubble:after { border-left-color: #fce7f3; }
-.severity-red .bubble { background: #fee2e2; }
-.severity-red .bubble:after { border-left-color: #fee2e2; }
+#toast .severity-blue .bubble {
+  background: #dbeafe;
+}
+#toast .severity-blue .bubble:after {
+  border-left-color: #dbeafe;
+}
+#toast .severity-green .bubble {
+  background: #d1fae5;
+}
+#toast .severity-green .bubble:after {
+  border-left-color: #d1fae5;
+}
+#toast .severity-pink .bubble {
+  background: #fce7f3;
+}
+#toast .severity-pink .bubble:after {
+  border-left-color: #fce7f3;
+}
+#toast .severity-red .bubble {
+  background: #fee2e2;
+}
+#toast .severity-red .bubble:after {
+  border-left-color: #fee2e2;
+}
 
 /* legacy mapping */
-.severity-info .bubble { background: #dbeafe; }
-.severity-info .bubble:after { border-left-color: #dbeafe; }
-.severity-success .bubble { background: #d1fae5; }
-.severity-success .bubble:after { border-left-color: #d1fae5; }
-.severity-warn .bubble { background: #ffe9a1; }
-.severity-warn .bubble:after { border-left-color: #ffe9a1; }
-.severity-critical .bubble { background: #fee2e2; }
-.severity-critical .bubble:after { border-left-color: #fee2e2; }
+#toast .severity-info .bubble {
+  background: #dbeafe;
+}
+#toast .severity-info .bubble:after {
+  border-left-color: #dbeafe;
+}
+#toast .severity-success .bubble {
+  background: #d1fae5;
+}
+#toast .severity-success .bubble:after {
+  border-left-color: #d1fae5;
+}
+#toast .severity-warn .bubble {
+  background: #ffe9a1;
+}
+#toast .severity-warn .bubble:after {
+  border-left-color: #ffe9a1;
+}
+#toast .severity-critical .bubble {
+  background: #fee2e2;
+}
+#toast .severity-critical .bubble:after {
+  border-left-color: #fee2e2;
+}
 
 /* Fallback if no image exists: colored circle */
 #hamster.fallback {
