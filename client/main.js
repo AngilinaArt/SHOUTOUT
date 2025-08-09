@@ -132,7 +132,9 @@ function connectWebSocket() {
     });
     ws.on("close", () => {
       console.log("WS disconnected, retrying in 2s");
-      setTimeout(() => { if (token === wsConnectToken) doConnect(); }, 2000);
+      setTimeout(() => {
+        if (token === wsConnectToken) doConnect();
+      }, 2000);
     });
     ws.on("error", () => {
       // handled by 'close' retry
@@ -143,8 +145,12 @@ function connectWebSocket() {
 }
 
 function reconnectWebSocket() {
-  try { wsConnectToken++; } catch (_) {}
-  try { if (ws) ws.close(); } catch (_) {}
+  try {
+    wsConnectToken++;
+  } catch (_) {}
+  try {
+    if (ws) ws.close();
+  } catch (_) {}
   connectWebSocket();
 }
 
@@ -337,24 +343,43 @@ function openNamePrompt() {
       nodeIntegration: false,
     },
   });
-  nameWin.loadFile(path.join(__dirname, "renderer", "name.html"));
+  nameWin.loadFile(path.join(__dirname, "renderer", "name.html"), {
+    query: { current: String(displayName || "") }
+  });
   const onSubmit = (_evt, payload) => {
-    try { ipcMain.removeListener("name-cancel", onCancel); } catch (_) {}
-    const next = String(payload?.name || "").trim().slice(0, 24);
+    try {
+      ipcMain.removeListener("name-cancel", onCancel);
+    } catch (_) {}
+    const next = String(payload?.name || "")
+      .trim()
+      .slice(0, 24);
     if (next.length >= 2) {
       try {
         const fs = require("fs");
-        const storePath = path.join(app.getPath("userData"), "shoutout-user.json");
-        fs.writeFileSync(storePath, JSON.stringify({ displayName: next }), "utf-8");
+        const storePath = path.join(
+          app.getPath("userData"),
+          "shoutout-user.json"
+        );
+        fs.writeFileSync(
+          storePath,
+          JSON.stringify({ displayName: next }),
+          "utf-8"
+        );
       } catch (_) {}
       displayName = next;
       reconnectWebSocket();
     }
-    try { nameWin.close(); } catch (_) {}
+    try {
+      nameWin.close();
+    } catch (_) {}
   };
   const onCancel = () => {
-    try { ipcMain.removeListener("name-submit", onSubmit); } catch (_) {}
-    try { nameWin.close(); } catch (_) {}
+    try {
+      ipcMain.removeListener("name-submit", onSubmit);
+    } catch (_) {}
+    try {
+      nameWin.close();
+    } catch (_) {}
   };
   ipcMain.once("name-submit", onSubmit);
   ipcMain.once("name-cancel", onCancel);
