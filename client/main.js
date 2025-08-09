@@ -22,6 +22,7 @@ let doNotDisturb = false;
 let ws = null;
 let displayName = null;
 let wsConnectToken = 0;
+let lastSeverity = "blue";
 
 function createOverlayWindow() {
   overlayWindow = new BrowserWindow({
@@ -262,15 +263,24 @@ function openToastPrompt() {
       nodeIntegration: false,
     },
   });
-  composeWin.loadFile(path.join(__dirname, "renderer", "compose.html"));
+  composeWin.loadFile(path.join(__dirname, "renderer", "compose.html"), {
+    query: { sev: String(lastSeverity || "blue") },
+  });
   const onSubmit = (_evt, payload) => {
     try {
       ipcMain.removeListener("compose-toast-cancel", onCancel);
     } catch (_) {}
     const message = String(payload?.message || "").slice(0, 280);
-    const severity = ["blue", "green", "pink", "red", "info", "success", "warn", "critical"].includes(
-      payload?.severity
-    )
+    const severity = [
+      "blue",
+      "green",
+      "pink",
+      "red",
+      "info",
+      "success",
+      "warn",
+      "critical",
+    ].includes(payload?.severity)
       ? payload.severity
       : "blue";
     const duration = Math.max(
@@ -280,6 +290,10 @@ function openToastPrompt() {
     if (ws && ws.readyState === ws.OPEN && message) {
       ws.send(JSON.stringify({ type: "toast", message, severity, duration }));
     }
+    try {
+      updateSettings({ lastSeverity: severity });
+      lastSeverity = severity;
+    } catch (_) {}
     try {
       composeWin.close();
     } catch (_) {}
@@ -294,6 +308,31 @@ function openToastPrompt() {
   };
   ipcMain.once("compose-toast-submit", onSubmit);
   ipcMain.once("compose-toast-cancel", onCancel);
+}
+
+function getSettingsPath() {
+  return path.join(app.getPath("userData"), "shoutout-user.json");
+}
+
+function readSettings() {
+  try {
+    const fs = require("fs");
+    const p = getSettingsPath();
+    if (!fs.existsSync(p)) return {};
+    const raw = fs.readFileSync(p, "utf-8");
+    return JSON.parse(raw || "{}") || {};
+  } catch (_) {
+    return {};
+  }
+}
+
+function updateSettings(patch) {
+  const fs = require("fs");
+  const p = getSettingsPath();
+  let curr = {};
+  try { curr = readSettings(); } catch (_) {}
+  const next = { ...curr, ...patch };
+  try { fs.writeFileSync(p, JSON.stringify(next), "utf-8"); } catch (_) {}
 }
 
 function buildTrayMenu() {
@@ -393,23 +432,18 @@ function openNamePrompt() {
 }
 
 async function ensureDisplayName() {
-  const storePath = path.join(app.getPath("userData"), "shoutout-user.json");
-  try {
-    const fs = require("fs");
-    if (fs.existsSync(storePath)) {
-      const raw = fs.readFileSync(storePath, "utf-8");
-      const parsed = JSON.parse(raw);
-      if (parsed && parsed.displayName) {
-        displayName = String(parsed.displayName).slice(0, 32);
-        return;
-      }
+  const settings = readSettings();
+  if (settings && typeof settings === "object") {
+    if (settings.displayName) {
+      displayName = String(settings.displayName).slice(0, 32);
     }
-  } catch (_) {}
-  // Minimal name selection via first launch default; replace with a small modal later
-  const os = require("os");
-  displayName = (os.userInfo().username || "Anonymous").slice(0, 32);
-  try {
-    const fs = require("fs");
-    fs.writeFileSync(storePath, JSON.stringify({ displayName }), "utf-8");
-  } catch (_) {}
+    if (settings.lastSeverity) {
+      lastSeverity = String(settings.lastSeverity);
+    }
+  }
+  if (!displayName) {
+    const os = require("os");
+    displayName = (os.userInfo().username || "Anonymous").slice(0, 32);
+    updateSettings({ displayName });
+  }
 }
