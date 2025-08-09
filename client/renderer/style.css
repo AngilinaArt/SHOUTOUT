@@ -79,13 +79,41 @@ body {
   min-width: 260px;
   max-width: 420px;
   margin-top: 10px;
-  padding: 12px 14px;
-  color: #fff;
-  border-radius: 10px;
-  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.4);
-  backdrop-filter: blur(5px);
-  -webkit-backdrop-filter: blur(5px);
   animation: slideIn 180ms ease-out;
+}
+
+#toast .bubble {
+  position: relative;
+  color: #0b141a;
+  background: #dcf8c6;
+  border-radius: 18px;
+  padding: 10px 12px;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.25);
+}
+
+#toast .bubble:after {
+  content: "";
+  position: absolute;
+  top: 10px;
+  right: -6px;
+  width: 0;
+  height: 0;
+  border-left: 6px solid #dcf8c6;
+  border-top: 6px solid transparent;
+  border-bottom: 6px solid transparent;
+}
+
+#toast .sender {
+  font-size: 12px;
+  font-weight: 600;
+  color: #1a1a1a;
+  opacity: 0.8;
+  margin-bottom: 4px;
+}
+
+#toast .text {
+  font-size: 14px;
+  white-space: pre-wrap;
 }
 
 @keyframes slideIn {
@@ -99,18 +127,14 @@ body {
   }
 }
 
-.severity-info {
-  background: rgba(59, 130, 246, 0.9);
-}
-.severity-success {
-  background: rgba(34, 197, 94, 0.9);
-}
-.severity-warn {
-  background: rgba(234, 179, 8, 0.95);
-}
-.severity-critical {
-  background: rgba(239, 68, 68, 0.95);
-}
+.severity-info .bubble { background: #dcf8c6; }
+.severity-info .bubble:after { border-left-color: #dcf8c6; }
+.severity-success .bubble { background: #c7f5d6; }
+.severity-success .bubble:after { border-left-color: #c7f5d6; }
+.severity-warn .bubble { background: #ffe9a1; }
+.severity-warn .bubble:after { border-left-color: #ffe9a1; }
+.severity-critical .bubble { background: #ffd1d1; }
+.severity-critical .bubble:after { border-left-color: #ffd1d1; }
 
 /* Fallback if no image exists: colored circle */
 #hamster.fallback {

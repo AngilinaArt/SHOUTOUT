@@ -83,13 +83,14 @@ function showHamster(variant, durationMs, sender) {
   });
 }
 
-function showToast(message, severity, durationMs) {
+function showToast(message, severity, durationMs, sender) {
   if (!overlayWindow || overlayWindow.isDestroyed()) return;
   positionOverlayTopRight();
   overlayWindow.webContents.send("show-toast", {
     message,
     severity,
     durationMs,
+    sender,
   });
 }
 
@@ -115,10 +116,12 @@ function connectWebSocket() {
             event.sender
           );
         } else if (event.type === "toast") {
-          const msg = event.sender
-            ? `${event.sender}: ${event.message || ""}`
-            : event.message || "";
-          showToast(msg, event.severity || "info", event.duration || 4000);
+          showToast(
+            event.message || "",
+            event.severity || "info",
+            event.duration || 4000,
+            event.sender
+          );
         }
       } catch (e) {
         console.error("Invalid WS message", e);
@@ -265,7 +268,7 @@ function openToastPrompt() {
       : "info";
     const duration = Math.max(
       500,
-      Math.min(30000, Number(payload?.duration || 3000))
+      Math.min(10000, Number(payload?.duration || 3000))
     );
     if (ws && ws.readyState === ws.OPEN && message) {
       ws.send(JSON.stringify({ type: "toast", message, severity, duration }));

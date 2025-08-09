@@ -107,7 +107,8 @@ const toastSchema = Joi.object({
   severity: Joi.string()
     .valid("info", "success", "warn", "critical")
     .default("info"),
-  duration: Joi.number().integer().min(500).max(30000).default(4000),
+  // Cap toast duration to 10s
+  duration: Joi.number().integer().min(500).max(10000).default(4000),
   target: Joi.string().optional(),
 }).required();
 

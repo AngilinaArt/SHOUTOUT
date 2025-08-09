@@ -57,16 +57,34 @@ window.shoutout.onHamster(({ variant, durationMs, url, sender }) => {
   hamsterTimer = setTimeout(hideHamster, Math.max(300, durationMs || 3000));
 });
 
-window.shoutout.onToast(({ message, severity, durationMs }) => {
+function escapeHtml(str) {
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+window.shoutout.onToast(({ message, severity, durationMs, sender }) => {
   if (toastTimer) {
     clearTimeout(toastTimer);
     toastTimer = null;
   }
-  toastContent.textContent = message || "";
   const sev = ["info", "success", "warn", "critical"].includes(severity)
     ? severity
     : "info";
   toastContent.className = `severity-${sev}`;
+  const safeMsg = escapeHtml(message || "");
+  const safeSender = sender ? escapeHtml(sender) : "";
+  const senderHtml = safeSender ? `<div class="sender">${safeSender}</div>` : "";
+  toastContent.innerHTML = `<div class="bubble">${senderHtml}<div class="text">${safeMsg}</div></div>`;
+  const sev = ["info", "success", "warn", "critical"].includes(severity)
+    ? severity
+    : "info";
   toastEl.classList.remove("hidden");
-  toastTimer = setTimeout(hideToast, Math.max(500, durationMs || 4000));
+  toastTimer = setTimeout(
+    hideToast,
+    Math.max(500, Math.min(10000, durationMs || 4000))
+  );
 });
