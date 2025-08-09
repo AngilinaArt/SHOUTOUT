@@ -79,9 +79,6 @@ window.shoutout.onToast(({ message, severity, durationMs, sender }) => {
   const safeSender = sender ? escapeHtml(sender) : "";
   const senderHtml = safeSender ? `<div class="sender">${safeSender}</div>` : "";
   toastContent.innerHTML = `<div class="bubble">${senderHtml}<div class="text">${safeMsg}</div></div>`;
-  const sev = ["info", "success", "warn", "critical"].includes(severity)
-    ? severity
-    : "info";
   toastEl.classList.remove("hidden");
   toastTimer = setTimeout(
     hideToast,
