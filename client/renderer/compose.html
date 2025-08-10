@@ -263,7 +263,6 @@
           id="target"
           class="target-select">
           <option value="all">👥 Alle User</option>
-          <option value="me">👤 Nur ich</option>
           <option
             value="loading"
             disabled>
@@ -376,7 +375,7 @@
       function updateUserDropdown() {
         // Entferne alle User-Optionen außer den Standard-Optionen
         const defaultOptions = targetEl.querySelectorAll(
-          'option[value="all"], option[value="me"]'
+          'option[value="all"], option[value="loading"]'
         );
         targetEl.innerHTML = "";
 
@@ -392,7 +391,7 @@
               <span class="user-status ${
                 user.status === "online" ? "" : "offline"
               }"></span>
-              ${user.name}
+              ${user.displayName || user.name}
             </div>
           `;
           targetEl.appendChild(option);

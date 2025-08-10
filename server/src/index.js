@@ -61,9 +61,28 @@ wss.on("connection", (ws, request) => {
   try {
     const parsed = new URL(request.url, "http://localhost");
     const name = (parsed.searchParams.get("name") || "Anonymous").slice(0, 32);
-    ws.user = { name };
+    const ip = request.socket.remoteAddress || "unknown";
+
+    // Generiere eindeutige User-ID basierend auf Name + IP + Timestamp
+    const uniqueId = `${name}-${ip}-${Date.now()}`;
+
+    ws.user = {
+      name,
+      id: uniqueId,
+      ip: ip,
+      status: "online",
+      lastSeen: new Date().toISOString(),
+      connectedAt: new Date().toISOString(),
+    };
   } catch (_) {
-    ws.user = { name: "Anonymous" };
+    ws.user = {
+      name: "Anonymous",
+      id: `Anonymous-${Date.now()}`,
+      ip: "unknown",
+      status: "online",
+      lastSeen: new Date().toISOString(),
+      connectedAt: new Date().toISOString(),
+    };
   }
 
   // Simple per-connection rate limiter (max 5 events per 10s)
@@ -186,8 +205,11 @@ app.get("/users", (req, res) => {
     .map((ws) => ({
       id: ws.user?.id || ws.user?.name,
       name: ws.user?.name,
+      displayName: `${ws.user?.name} (${ws.user?.ip})`,
       status: ws.user?.status || "online",
+      ip: ws.user?.ip || "unknown",
       lastSeen: ws.user?.lastSeen || new Date().toISOString(),
+      connectedAt: ws.user?.connectedAt || new Date().toISOString(),
     }));
 
   res.json({
