@@ -178,12 +178,27 @@ function reconnectWebSocket() {
   try {
     wsConnectToken++;
   } catch (_) {}
-  try {
-    if (ws) ws.close();
-  } catch (_) {}
+
+  // Sofort Status auf "connecting" setzen
   wsStatus = "connecting";
   updateTrayMenu();
-  connectWebSocket();
+
+  try {
+    if (ws) {
+      // WebSocket schließen und sofort neu verbinden
+      ws.close();
+      // Kurz warten, dann neu verbinden
+      setTimeout(() => {
+        connectWebSocket();
+      }, 100);
+    } else {
+      // Kein WebSocket vorhanden, direkt neu verbinden
+      connectWebSocket();
+    }
+  } catch (_) {
+    // Bei Fehler trotzdem neu verbinden
+    connectWebSocket();
+  }
 }
 
 function createTray() {
@@ -588,9 +603,6 @@ function openToastPrompt() {
     query: { sev: String(lastSeverity || "blue") },
   });
   const onSubmit = (_evt, payload) => {
-    try {
-      ipcMain.removeListener("compose-toast-cancel", onCancel);
-    } catch (_) {}
     const message = String(payload?.message || "").slice(0, 280);
     const severity = [
       "blue",
@@ -627,20 +639,33 @@ function openToastPrompt() {
       lastSeverity = severity;
     } catch (_) {}
 
+    // Fenster bleibt offen für weitere Toasts
+    // try {
+    //   composeWin.close();
+    // } catch (_) {}
+
+    // Eingabefeld leeren
     try {
-      composeWin.close();
+      composeWin.webContents.send("clear-input");
     } catch (_) {}
   };
   const onCancel = () => {
     try {
-      ipcMain.removeListener("compose-toast-submit", onSubmit);
-    } catch (_) {}
-    try {
       composeWin.close();
     } catch (_) {}
   };
+
+  // Event-Listener registrieren
   ipcMain.on("compose-toast-submit", onSubmit);
   ipcMain.on("compose-toast-cancel", onCancel);
+
+  // Event-Listener entfernen wenn Fenster geschlossen wird
+  composeWin.on("closed", () => {
+    try {
+      ipcMain.removeListener("compose-toast-submit", onSubmit);
+      ipcMain.removeListener("compose-toast-cancel", onCancel);
+    } catch (_) {}
+  });
 }
 
 function getSettingsPath() {
@@ -718,12 +743,12 @@ function buildTrayMenu() {
         updateAutostartStatus(item.checked);
       },
     },
+    { label: "Name ändern…", click: () => openNamePrompt() },
     { type: "separator" },
     {
       label: `Self Hamster\t\t${cmdKey}⌥H`,
       click: () => showHamster("default", 3000),
     },
-    { label: "Name ändern…", click: () => openNamePrompt() },
     {
       label: "Send Hamster...",
       submenu:
@@ -791,9 +816,9 @@ function openNamePrompt() {
         updateSettings({ displayName: next });
       } catch (_) {}
       displayName = next;
-      reconnectWebSocket();
       buildTrayMenu();
-      updateServerName(); // Aktualisiere den Namen auf dem Server
+      reconnectWebSocket();
+      // updateServerName() wird nach dem Reconnect aufgerufen
     }
     try {
       nameWin.close();

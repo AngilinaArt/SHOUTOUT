@@ -218,6 +218,29 @@
         font-size: 14px;
       }
 
+      /* Windows-spezifische Dropdown-Styles */
+      .target-select option {
+        background: #374151 !important;
+        color: #e5e7eb !important;
+        padding: 8px 12px;
+      }
+
+      /* Hover-Effekt für Optionen */
+      .target-select option:hover {
+        background: #4b5563 !important;
+      }
+
+      /* Focus-Effekt für Optionen */
+      .target-select option:focus {
+        background: #4b5563 !important;
+      }
+
+      /* Selected Option */
+      .target-select option:checked {
+        background: #6b7280 !important;
+        color: #ffffff !important;
+      }
+
       .refresh-link {
         cursor: pointer;
         opacity: 0.7;
@@ -586,6 +609,13 @@
           emojiPanel.classList.add("hidden");
           emojiPanel.setAttribute("aria-hidden", "true");
         }
+      });
+
+      // Event-Listener für das Leeren des Eingabefelds
+      window.compose.clearInput(() => {
+        messageEl.value = "";
+        validate();
+        messageEl.focus();
       });
     </script>
   </body>

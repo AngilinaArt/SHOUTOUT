@@ -9,6 +9,8 @@ try {
     refreshUsers: () => ipcRenderer.invoke("refresh-users"),
     // Aktueller User-Name
     getCurrentUser: () => ipcRenderer.invoke("get-current-user"),
+    // Neue Funktion zum Leeren des Eingabefelds
+    clearInput: (callback) => ipcRenderer.on("clear-input", callback),
   });
 } catch (_e) {
   // noop
