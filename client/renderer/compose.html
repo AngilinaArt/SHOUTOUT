@@ -348,19 +348,15 @@
 
       // User-Management
       let users = [];
+      let currentUser = null;
 
       async function loadUsers() {
         try {
-          // Versuche User vom Server zu laden
-          const response = await fetch("http://localhost:3001/users");
-          if (response.ok) {
-            const data = await response.json();
-            users = data.users || [];
-            updateUserDropdown();
-          } else {
-            console.warn("Failed to load users:", response.status);
-            setDefaultUsers();
-          }
+          // Lade User über IPC (kein CORS-Problem)
+          users = await window.compose.loadUsers();
+          // Lade aktuellen User-Namen
+          currentUser = await window.compose.getCurrentUser();
+          updateUserDropdown();
         } catch (error) {
           console.warn("Could not load users:", error);
           setDefaultUsers();
@@ -369,6 +365,7 @@
 
       function setDefaultUsers() {
         users = [];
+        currentUser = null;
         updateUserDropdown();
       }
 
@@ -382,8 +379,13 @@
         // Füge Standard-Optionen wieder hinzu
         defaultOptions.forEach((option) => targetEl.appendChild(option));
 
-        // Füge User-Optionen hinzu
+        // Füge User-Optionen hinzu (ohne den aktuellen User)
         users.forEach((user) => {
+          // Überspringe den aktuellen User
+          if (currentUser && user.name === currentUser) {
+            return;
+          }
+
           const option = document.createElement("option");
           option.value = user.name;
           option.innerHTML = `
@@ -397,8 +399,11 @@
           targetEl.appendChild(option);
         });
 
-        // Update User-Count
-        userCountEl.textContent = `${users.length} User online`;
+        // Update User-Count (ohne den aktuellen User)
+        const otherUsers = users.filter(
+          (user) => !currentUser || user.name !== currentUser
+        );
+        userCountEl.textContent = `${otherUsers.length} andere User online`;
 
         // Entferne Loading-Option
         const loadingOption = targetEl.querySelector('option[value="loading"]');
@@ -411,7 +416,14 @@
       loadUsers();
 
       // Refresh-Button
-      refreshUsersEl.addEventListener("click", loadUsers);
+      refreshUsersEl.addEventListener("click", async () => {
+        try {
+          users = await window.compose.refreshUsers();
+          updateUserDropdown();
+        } catch (error) {
+          console.warn("Could not refresh users:", error);
+        }
+      });
 
       function getSeverity() {
         const active = pills.querySelector(".pill.active");

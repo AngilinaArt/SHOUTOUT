@@ -101,6 +101,16 @@ wss.on("connection", (ws, request) => {
     try {
       if (!withinRateLimit()) return;
       const parsed = JSON.parse(String(data));
+
+      // Handle name updates separately (not validated by eventSchema)
+      if (parsed.type === "update-name" && parsed.name) {
+        if (ws.user) {
+          ws.user.name = String(parsed.name).slice(0, 32);
+          console.log(`📝 User updated name to: ${ws.user.name}`);
+        }
+        return;
+      }
+
       const { error, value } = eventSchema.validate(parsed, {
         stripUnknown: true,
       });

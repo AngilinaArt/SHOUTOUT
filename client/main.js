@@ -116,6 +116,7 @@ function connectWebSocket() {
       console.log("WS connected");
       wsStatus = "connected";
       updateTrayMenu();
+      updateServerName(); // Sende aktuellen Namen beim Verbinden
     });
     ws.on("message", (data) => {
       if (doNotDisturb) return;
@@ -775,6 +776,7 @@ function openNamePrompt() {
       displayName = next;
       reconnectWebSocket();
       buildTrayMenu();
+      updateServerName(); // Aktualisiere den Namen auf dem Server
     }
     try {
       nameWin.close();
@@ -827,3 +829,53 @@ async function ensureDisplayName() {
     console.error("Failed to sync autostart setting:", error);
   }
 }
+
+// Funktion um den aktuellen Namen an den Server zu senden
+function updateServerName() {
+  if (ws && ws.readyState === ws.OPEN && displayName) {
+    ws.send(
+      JSON.stringify({
+        type: "update-name",
+        name: displayName,
+      })
+    );
+  }
+}
+
+// IPC Handlers für User-Management
+ipcMain.handle("load-users", async () => {
+  try {
+    const response = await fetch(
+      `${WS_URL.replace("ws://", "http://").replace("/ws", "")}/users`
+    );
+    if (response.ok) {
+      const data = await response.json();
+      return data.users || [];
+    }
+    return [];
+  } catch (error) {
+    console.warn("Failed to load users:", error);
+    return [];
+  }
+});
+
+ipcMain.handle("refresh-users", async () => {
+  try {
+    const response = await fetch(
+      `${WS_URL.replace("ws://", "http://").replace("/ws", "")}/users`
+    );
+    if (response.ok) {
+      const data = await response.json();
+      return data.users || [];
+    }
+    return [];
+  } catch (error) {
+    console.warn("Failed to refresh users:", error);
+    return [];
+  }
+});
+
+// Handler für aktuellen User-Namen
+ipcMain.handle("get-current-user", () => {
+  return displayName || "Anonymous";
+});
