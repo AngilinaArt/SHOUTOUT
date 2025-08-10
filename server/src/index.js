@@ -127,6 +127,11 @@ wss.on("connection", (ws, request) => {
             value.target
           )} from ${outbound.sender}`
         );
+        console.log(
+          `📋 Available clients: ${Array.from(clients)
+            .map((c) => c.user?.name || "Unknown")
+            .join(", ")}`
+        );
       }
 
       for (const c of clients) {
@@ -164,13 +169,25 @@ function shouldDeliver(client, evt) {
   const clientName = client.user?.name || "";
   const clientId = client.user?.id || clientName;
 
-  return targets.some((target) => {
+  const result = targets.some((target) => {
     const targetStr = String(target || "").toLowerCase();
-    return (
+    const matches =
       targetStr === clientName.toLowerCase() ||
-      targetStr === clientId.toLowerCase()
-    );
+      targetStr === clientId.toLowerCase();
+
+    // Debug-Logging für targeted messages
+    if (evt.type === "toast" && evt.target && evt.target !== "all") {
+      console.log(
+        `🔍 Checking delivery: target="${targetStr}" vs client="${clientName}" (${clientId}) -> ${
+          matches ? "✅ MATCH" : "❌ NO MATCH"
+        }`
+      );
+    }
+
+    return matches;
   });
+
+  return result;
 }
 
 // Validation schemas
