@@ -119,16 +119,32 @@ function connectWebSocket() {
       updateServerName(); // Sende aktuellen Namen beim Verbinden
     });
     ws.on("message", (data) => {
-      if (doNotDisturb) return;
+      console.log(
+        `📨 WS message received: ${String(data).substring(0, 100)}...`
+      );
+
+      if (doNotDisturb) {
+        console.log(`🚫 DND active, ignoring message`);
+        return;
+      }
+
       try {
         const event = JSON.parse(String(data));
+        console.log(`📋 Parsed event:`, event);
+
         if (event.type === "hamster") {
+          console.log(
+            `🐹 Showing hamster: ${event.variant} from ${event.sender}`
+          );
           showHamster(
             event.variant || "default",
             event.duration || 3000,
             event.sender
           );
         } else if (event.type === "toast") {
+          console.log(
+            `🍞 Showing toast: "${event.message}" from ${event.sender}`
+          );
           showToast(
             event.message || "",
             event.severity || "info",
@@ -611,10 +627,9 @@ function openToastPrompt() {
       lastSeverity = severity;
     } catch (_) {}
 
-    // Toast-Fenster bleibt offen für Debugging
-    // try {
-    //   composeWin.close();
-    // } catch (_) {}
+    try {
+      composeWin.close();
+    } catch (_) {}
   };
   const onCancel = () => {
     try {
@@ -624,8 +639,8 @@ function openToastPrompt() {
       composeWin.close();
     } catch (_) {}
   };
-  ipcMain.once("compose-toast-submit", onSubmit);
-  ipcMain.once("compose-toast-cancel", onCancel);
+  ipcMain.on("compose-toast-submit", onSubmit);
+  ipcMain.on("compose-toast-cancel", onCancel);
 }
 
 function getSettingsPath() {
