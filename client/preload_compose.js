@@ -11,6 +11,11 @@ try {
     getCurrentUser: () => ipcRenderer.invoke("get-current-user"),
     // Neue Funktion zum Leeren des Eingabefelds
     clearInput: (callback) => ipcRenderer.on("clear-input", callback),
+    // Toast-Fenster öffnen (optional mit vorausgewähltem Empfänger)
+    openToastPrompt: (targetUser) =>
+      ipcRenderer.invoke("open-toast-prompt", targetUser),
+    // Empfänger setzen (wird vom Main-Prozess gesendet)
+    setTargetUser: (callback) => ipcRenderer.on("set-target-user", callback),
   });
 } catch (_e) {
   // noop

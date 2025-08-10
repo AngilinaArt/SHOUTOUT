@@ -617,6 +617,19 @@
         validate();
         messageEl.focus();
       });
+
+      // Event-Listener für vorausgewählten Empfänger
+      window.compose.setTargetUser((targetUser) => {
+        if (targetUser && targetSelect) {
+          // Finde den Index des Users in der Liste
+          for (let i = 0; i < targetSelect.options.length; i++) {
+            if (targetSelect.options[i].value === targetUser) {
+              targetSelect.selectedIndex = i;
+              break;
+            }
+          }
+        }
+      });
     </script>
   </body>
 </html>

@@ -587,7 +587,7 @@ function sendHamsterUpstream(variant, durationMs) {
   showHamster(variant, durationMs, displayName);
 }
 
-function openToastPrompt() {
+function openToastPrompt(targetUser = null) {
   const composeWin = new BrowserWindow({
     width: 600,
     height: 600,
@@ -604,6 +604,15 @@ function openToastPrompt() {
   composeWin.loadFile(path.join(__dirname, "renderer", "compose.html"), {
     query: { sev: String(lastSeverity || "blue") },
   });
+
+  // Wenn ein Empfänger vorausgewählt ist, sende ihn nach dem Laden
+  if (targetUser) {
+    composeWin.webContents.once("did-finish-load", () => {
+      try {
+        composeWin.webContents.send("set-target-user", targetUser);
+      } catch (_) {}
+    });
+  }
   const onSubmit = (_evt, payload) => {
     const message = String(payload?.message || "").slice(0, 280);
     const severity = [
@@ -666,6 +675,13 @@ function openToastPrompt() {
     try {
       ipcMain.removeListener("compose-toast-submit", onSubmit);
       ipcMain.removeListener("compose-toast-cancel", onCancel);
+    } catch (_) {}
+  });
+
+  // IPC-Handler für Toast-Fenster öffnen
+  ipcMain.handle("open-toast-prompt", async (event, targetUser) => {
+    try {
+      openToastPrompt(targetUser);
     } catch (_) {}
   });
 }

@@ -115,7 +115,19 @@ window.shoutout.onToast(
 
     const wrapper = document.createElement("div");
     wrapper.className = `toast-item severity-${sev}`;
-    wrapper.innerHTML = `<div class="bubble">${senderHtml}<div class="text">${safeMsg}</div></div>`;
+
+    // Toast mit Buttons erstellen
+    wrapper.innerHTML = `
+      <div class="bubble">
+        ${senderHtml}
+        <div class="text">${safeMsg}</div>
+        <div class="toast-actions hidden">
+          <button class="toast-btn toast-ok">OK</button>
+          <button class="toast-btn toast-reply">REPLY</button>
+        </div>
+      </div>
+    `;
+
     toastsContainer.appendChild(wrapper);
     toastEl.classList.remove("hidden");
 
@@ -124,10 +136,38 @@ window.shoutout.onToast(
       toastsContainer.removeChild(toastsContainer.firstElementChild);
     }
 
-    const ttl = Math.max(500, Math.min(10000, durationMs || 4000));
+    // Nach 10 Sekunden Buttons anzeigen und Transparenz reduzieren
     setTimeout(() => {
-      if (wrapper.parentElement) wrapper.remove();
-      hideToast();
-    }, ttl);
+      if (wrapper.parentElement) {
+        wrapper.classList.add("faded");
+        const actionsEl = wrapper.querySelector(".toast-actions");
+        if (actionsEl) actionsEl.classList.remove("hidden");
+      }
+    }, 10000);
+
+    // Event-Listener für Buttons
+    const okBtn = wrapper.querySelector(".toast-ok");
+    const replyBtn = wrapper.querySelector(".toast-reply");
+
+    if (okBtn) {
+      okBtn.addEventListener("click", () => {
+        if (wrapper.parentElement) wrapper.remove();
+        hideToast();
+      });
+    }
+
+    if (replyBtn) {
+      replyBtn.addEventListener("click", () => {
+        // Toast-Fenster öffnen mit vorausgewähltem Empfänger
+        if (safeSender) {
+          window.shoutout.openToastPrompt(safeSender);
+        } else {
+          window.shoutout.openToastPrompt();
+        }
+        // Toast ausblenden
+        if (wrapper.parentElement) wrapper.remove();
+        hideToast();
+      });
+    }
   }
 );
