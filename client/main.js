@@ -257,6 +257,11 @@ function updateTrayIcon() {
     const fs = require("fs");
     const iconDir = path.join(__dirname, "assets", "icon");
 
+    // Enhanced debugging for Windows icon issues
+    console.log(
+      `[DEBUG] updateTrayIcon called: DND=${doNotDisturb}, Platform=${process.platform}`
+    );
+
     // Simplified icon logic: Windows uses ICO, macOS uses PNG
     let iconPath;
     if (process.platform === "win32") {
@@ -271,11 +276,15 @@ function updateTrayIcon() {
         : path.join(iconDir, "hamster.png"); // Normal mode
     }
 
+    console.log(`[DEBUG] Icon path: ${iconPath}`);
+    console.log(`[DEBUG] File exists: ${fs.existsSync(iconPath)}`);
+
     // Load the icon
     let baseImage = nativeImage.createFromPath(iconPath);
 
-    // If icon loading fails, try fallback
+    // Check if image loaded successfully
     if (!baseImage || baseImage.isEmpty()) {
+      console.log(`[DEBUG] Primary icon failed to load, trying fallback`);
       const fallbackPath =
         process.platform === "win32"
           ? path.join(iconDir, "hamster.ico") // Windows fallback
@@ -285,8 +294,15 @@ function updateTrayIcon() {
 
       // If fallback also fails, create empty image
       if (!baseImage || baseImage.isEmpty()) {
+        console.log(`[DEBUG] Fallback icon also failed, creating empty image`);
         baseImage = nativeImage.createEmpty();
       }
+    } else {
+      console.log(
+        `[DEBUG] Icon loaded successfully: ${baseImage.getSize().width}x${
+          baseImage.getSize().height
+        }`
+      );
     }
 
     // Platform-specific image processing
@@ -317,12 +333,63 @@ function updateTrayIcon() {
         }
 
         tray.setImage(multi);
-      } catch (_) {
+        console.log(`[DEBUG] macOS: Set multi-resolution image`);
+      } catch (error) {
+        console.log(
+          `[DEBUG] macOS multi-res failed: ${error.message}, using fallback`
+        );
         tray.setImage(baseImage); // graceful fallback
       }
     } else {
-      // Windows: Direct image setting
-      tray.setImage(baseImage);
+      // Windows: Enhanced ICO handling with multiple fallback strategies
+      try {
+        console.log(`[DEBUG] Windows: Attempting icon update with strategy 1`);
+
+        // Strategy 1: Direct update
+        tray.setImage(baseImage);
+        console.log(`[DEBUG] Windows: Direct icon update completed`);
+      } catch (error) {
+        console.log(
+          `[DEBUG] Windows strategy 1 failed: ${error.message}, trying strategy 2`
+        );
+
+        try {
+          // Strategy 2: Force refresh with empty image first
+          tray.setImage(nativeImage.createEmpty());
+
+          // Small delay to ensure Windows processes the change
+          setTimeout(() => {
+            try {
+              tray.setImage(baseImage);
+              console.log(
+                `[DEBUG] Windows: Strategy 2 completed (delayed update)`
+              );
+            } catch (error2) {
+              console.log(
+                `[DEBUG] Windows strategy 2 failed: ${error2.message}, trying strategy 3`
+              );
+
+              // Strategy 3: Try to destroy and recreate tray (last resort)
+              try {
+                tray.destroy();
+                setTimeout(() => {
+                  createTray();
+                  console.log(
+                    `[DEBUG] Windows: Strategy 3 completed (tray recreation)`
+                  );
+                }, 100);
+              } catch (error3) {
+                console.log(
+                  `[DEBUG] Windows strategy 3 failed: ${error3.message}`
+                );
+              }
+            }
+          }, 100);
+        } catch (error2) {
+          console.log(`[DEBUG] Windows strategy 2 failed: ${error2.message}`);
+          tray.setImage(baseImage);
+        }
+      }
     }
 
     // Update tooltip to show DND status
@@ -332,10 +399,10 @@ function updateTrayIcon() {
     tray.setToolTip(tooltipText);
 
     console.log(
-      `Tray icon updated: DND=${doNotDisturb}, Platform=${process.platform}, Icon=${iconPath}`
+      `[DEBUG] Tray icon updated: DND=${doNotDisturb}, Platform=${process.platform}, Icon=${iconPath}`
     );
   } catch (error) {
-    console.error("Failed to update tray icon:", error);
+    console.error("[DEBUG] Failed to update tray icon:", error);
     // If icon update fails, keep current icon
   }
 }
@@ -343,7 +410,43 @@ function updateTrayIcon() {
 function updateDNDStatus(newStatus) {
   doNotDisturb = newStatus;
   updateSettings({ doNotDisturb: newStatus });
-  updateTrayIcon();
+
+  // On Windows, sometimes we need to force a complete tray refresh
+  if (process.platform === "win32") {
+    console.log(
+      `[DEBUG] Windows DND status change: ${newStatus}, forcing tray refresh`
+    );
+
+    // Try multiple strategies for Windows
+    setTimeout(() => {
+      updateTrayIcon();
+    }, 200);
+
+    // If that doesn't work, try a more aggressive approach
+    setTimeout(() => {
+      if (tray) {
+        console.log(`[DEBUG] Windows: Attempting aggressive tray refresh`);
+        try {
+          // Force tooltip update first
+          const tooltipText = doNotDisturb
+            ? `Hamster & Toast — DND aktiv${
+                displayName ? ` — ${displayName}` : ""
+              }`
+            : `Hamster & Toast${displayName ? ` — ${displayName}` : ""}`;
+          tray.setToolTip(tooltipText);
+
+          // Then try icon update again
+          updateTrayIcon();
+        } catch (error) {
+          console.log(
+            `[DEBUG] Windows aggressive refresh failed: ${error.message}`
+          );
+        }
+      }
+    }, 500);
+  } else {
+    updateTrayIcon();
+  }
 }
 
 function scanAvailableHamsters() {
