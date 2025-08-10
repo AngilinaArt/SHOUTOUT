@@ -610,9 +610,11 @@ function openToastPrompt() {
       updateSettings({ lastSeverity: severity });
       lastSeverity = severity;
     } catch (_) {}
-    try {
-      composeWin.close();
-    } catch (_) {}
+
+    // Toast-Fenster bleibt offen für Debugging
+    // try {
+    //   composeWin.close();
+    // } catch (_) {}
   };
   const onCancel = () => {
     try {

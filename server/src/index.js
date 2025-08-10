@@ -74,6 +74,10 @@ wss.on("connection", (ws, request) => {
       lastSeen: new Date().toISOString(),
       connectedAt: new Date().toISOString(),
     };
+
+    console.log(
+      `🔌 WS connected: ${name} (${ip}) - Total clients: ${clients.size + 1}`
+    );
   } catch (_) {
     ws.user = {
       name: "Anonymous",
@@ -144,7 +148,14 @@ wss.on("connection", (ws, request) => {
     } catch (_) {}
   });
 
-  ws.on("close", () => clients.delete(ws));
+  ws.on("close", () => {
+    console.log(
+      `🔌 WS disconnected: ${ws.user?.name || "Unknown"} (${
+        ws.user?.ip || "unknown IP"
+      })`
+    );
+    clients.delete(ws);
+  });
 });
 
 // Global helper function for message delivery logic
