@@ -18,9 +18,10 @@ const WS_TOKEN = process.env.WS_TOKEN || "";
 
 let tray = null;
 let overlayWindow = null;
-let doNotDisturb = false;
+let doNotDisturb = false; // Will be loaded from settings on startup
 let ws = null;
 let displayName = null;
+let availableHamsters = []; // Dynamically loaded hamster variants
 let wsConnectToken = 0;
 let lastSeverity = "blue";
 
@@ -244,35 +245,180 @@ function createTray() {
     } catch (_) {}
   });
   buildTrayMenu();
+
+  // Set initial tooltip and icon state
+  updateTrayIcon();
+}
+
+function updateTrayIcon() {
+  if (!tray) return;
+
+  try {
+    const fs = require("fs");
+    const iconDir = path.join(__dirname, "assets", "icon");
+
+    // Simplified icon logic: Windows uses ICO, macOS uses PNG
+    let iconPath;
+    if (process.platform === "win32") {
+      // Windows: Simple ICO logic
+      iconPath = doNotDisturb
+        ? path.join(iconDir, "hamster-sleep.ico") // DND active
+        : path.join(iconDir, "hamster.ico"); // Normal mode
+    } else {
+      // macOS: Simple PNG logic
+      iconPath = doNotDisturb
+        ? path.join(iconDir, "hamster-sleep.png") // DND active
+        : path.join(iconDir, "hamster.png"); // Normal mode
+    }
+
+    // Load the icon
+    let baseImage = nativeImage.createFromPath(iconPath);
+
+    // If icon loading fails, try fallback
+    if (!baseImage || baseImage.isEmpty()) {
+      const fallbackPath =
+        process.platform === "win32"
+          ? path.join(iconDir, "hamster.ico") // Windows fallback
+          : path.join(iconDir, "hamster.png"); // macOS fallback
+
+      baseImage = nativeImage.createFromPath(fallbackPath);
+
+      // If fallback also fails, create empty image
+      if (!baseImage || baseImage.isEmpty()) {
+        baseImage = nativeImage.createEmpty();
+      }
+    }
+
+    // Platform-specific image processing
+    if (process.platform === "darwin") {
+      // macOS: Create 1x and 2x representations for menu bar
+      try {
+        const img1x = baseImage.resize({ width: 18, height: 18 });
+        const img2x = baseImage.resize({ width: 36, height: 36 });
+        const multi = nativeImage.createEmpty();
+        multi.addRepresentation({
+          scaleFactor: 1.0,
+          width: 18,
+          height: 18,
+          buffer: img1x.toPNG(),
+        });
+        multi.addRepresentation({
+          scaleFactor: 2.0,
+          width: 36,
+          height: 36,
+          buffer: img2x.toPNG(),
+        });
+
+        // Mark as template image for better macOS integration
+        if (doNotDisturb) {
+          try {
+            multi.setTemplateImage(true);
+          } catch (_) {}
+        }
+
+        tray.setImage(multi);
+      } catch (_) {
+        tray.setImage(baseImage); // graceful fallback
+      }
+    } else {
+      // Windows: Direct image setting
+      tray.setImage(baseImage);
+    }
+
+    // Update tooltip to show DND status
+    const tooltipText = doNotDisturb
+      ? `Hamster & Toast — DND aktiv${displayName ? ` — ${displayName}` : ""}`
+      : `Hamster & Toast${displayName ? ` — ${displayName}` : ""}`;
+    tray.setToolTip(tooltipText);
+
+    console.log(
+      `Tray icon updated: DND=${doNotDisturb}, Platform=${process.platform}, Icon=${iconPath}`
+    );
+  } catch (error) {
+    console.error("Failed to update tray icon:", error);
+    // If icon update fails, keep current icon
+  }
+}
+
+function updateDNDStatus(newStatus) {
+  doNotDisturb = newStatus;
+  updateSettings({ doNotDisturb: newStatus });
+  updateTrayIcon();
+}
+
+function scanAvailableHamsters() {
+  try {
+    const fs = require("fs");
+    const hamstersDir = path.join(__dirname, "assets", "hamsters");
+
+    if (!fs.existsSync(hamstersDir)) {
+      availableHamsters = [];
+      return;
+    }
+
+    const files = fs.readdirSync(hamstersDir);
+    availableHamsters = files
+      .filter((file) => {
+        const ext = path.extname(file).toLowerCase();
+        return [".png", ".jpg", ".jpeg", ".gif"].includes(ext);
+      })
+      .map((file) => path.parse(file).name) // Remove extension
+      .filter((name) => name.length > 0) // Filter out empty names
+      .sort(); // Alphabetical order
+
+    console.log(
+      `Found ${availableHamsters.length} hamsters:`,
+      availableHamsters
+    );
+  } catch (error) {
+    console.error("Error scanning hamsters:", error);
+    availableHamsters = [];
+  }
 }
 
 function registerHotkey() {
+  // First, unregister all existing shortcuts
+  globalShortcut.unregisterAll();
+
   const bindings = [
     {
       acc: "CommandOrControl+Alt+H",
       run: () => showHamster("default", 3000, displayName),
     },
     { acc: "CommandOrControl+Alt+T", run: () => openToastPrompt() },
-    {
-      acc: "CommandOrControl+Alt+1",
-      run: () => sendHamsterUpstream("caprisun", 3000),
-    },
-    {
-      acc: "CommandOrControl+Alt+2",
-      run: () => sendHamsterUpstream("lol", 3000),
-    },
   ];
+
+  // Add dynamic hotkeys for available hamsters (1-9, 0)
+  const maxHotkeys = 10; // ⌘⌥1 to ⌘⌥0
+  const hamstersToBind = availableHamsters.slice(0, maxHotkeys);
+
+  hamstersToBind.forEach((hamster, index) => {
+    const keyNumber = (index + 1) % 10; // 1,2,3,4,5,6,7,8,9,0
+    const key = keyNumber === 0 ? "0" : String(keyNumber);
+
+    bindings.push({
+      acc: `CommandOrControl+Alt+${key}`,
+      run: () => sendHamsterUpstream(hamster, 3000),
+    });
+
+    console.log(`Registered hotkey ⌘⌥${key} for hamster: ${hamster}`);
+  });
+
+  // Register all bindings
   for (const { acc, run } of bindings) {
     try {
       globalShortcut.register(acc, run);
-    } catch (_) {}
+    } catch (error) {
+      console.error(`Failed to register hotkey ${acc}:`, error);
+    }
   }
 }
 
 app.whenReady().then(() => {
   createOverlayWindow();
   createTray();
-  registerHotkey();
+  scanAvailableHamsters(); // Scan for available hamsters first
+  registerHotkey(); // Then register hotkeys
   ensureDisplayName().then(() => {
     connectWebSocket();
     buildTrayMenu();
@@ -397,6 +543,11 @@ function updateSettings(patch) {
 
 function buildTrayMenu() {
   if (!tray) return;
+
+  // Platform-specific shortcut display
+  const isMac = process.platform === "darwin";
+  const cmdKey = isMac ? "⌘" : "Ctrl";
+
   const template = [
     { label: `Du bist: ${displayName || "Anonymous"}`, enabled: false },
     { type: "separator" },
@@ -405,32 +556,44 @@ function buildTrayMenu() {
       type: "checkbox",
       checked: doNotDisturb,
       click: (item) => {
-        doNotDisturb = item.checked;
+        updateDNDStatus(item.checked);
       },
     },
     { type: "separator" },
     {
-      label: "Self Hamster (Ctrl/Cmd+Alt+H)",
+      label: `Self Hamster\t\t${cmdKey}⌥H`,
       click: () => showHamster("default", 3000),
     },
     { label: "Name ändern…", click: () => openNamePrompt() },
     {
       label: "Send Hamster...",
-      submenu: [
-        {
-          label: "caprisun",
-          click: () => sendHamsterUpstream("caprisun", 3000),
-        },
-        { label: "lol", click: () => sendHamsterUpstream("lol", 3000) },
-      ],
+      submenu:
+        availableHamsters.length > 0
+          ? availableHamsters.map((hamster, index) => {
+              const keyNumber = (index + 1) % 10; // 1,2,3,4,5,6,7,8,9,0
+              const key = keyNumber === 0 ? "0" : String(keyNumber);
+              return {
+                label: `${hamster}\t\t${cmdKey}⌥${key}`,
+                click: () => sendHamsterUpstream(hamster, 3000),
+              };
+            })
+          : [
+              {
+                label: "Keine Hamster gefunden",
+                enabled: false,
+              },
+            ],
     },
-    { label: "Send Toast...", click: () => openToastPrompt() },
+    {
+      label: `Send Toast...\t\t${cmdKey}⌥T`,
+      click: () => openToastPrompt(),
+    },
     { type: "separator" },
     { role: "quit" },
   ];
   try {
     tray.setContextMenu(Menu.buildFromTemplate(template));
-    tray.setToolTip(`Hamster & Toast${displayName ? ` — ${displayName}` : ""}`);
+    // Tooltip is now managed by updateTrayIcon()
   } catch (_) {}
 }
 
@@ -490,6 +653,9 @@ async function ensureDisplayName() {
     }
     if (settings.lastSeverity) {
       lastSeverity = String(settings.lastSeverity);
+    }
+    if (settings.doNotDisturb !== undefined) {
+      doNotDisturb = Boolean(settings.doNotDisturb);
     }
   }
   if (!displayName) {
