@@ -120,12 +120,12 @@ wss.on("connection", (ws, request) => {
       const outbound = { ...value, sender: ws.user?.name || "Anonymous" };
       const payload = JSON.stringify(outbound);
 
-      // Log für targeted messages
-      if (value.target && value.target !== "all") {
+      // Log für alle Toast-Nachrichten
+      if (value.type === "toast") {
         console.log(
-          `🎯 WS Targeted message: ${value.type} to ${JSON.stringify(
-            value.target
-          )} from ${outbound.sender}`
+          `🍞 Toast: "${value.message}" from ${
+            outbound.sender
+          } to ${JSON.stringify(value.target || "all")}`
         );
         console.log(
           `📋 Available clients: ${Array.from(clients)
