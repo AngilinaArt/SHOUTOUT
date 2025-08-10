@@ -149,25 +149,42 @@ wss.on("connection", (ws, request) => {
 
 // Global helper function for message delivery logic
 function shouldDeliver(client, evt) {
+  const clientName = client.user?.name || "";
+  const clientId = client.user?.id || clientName;
+
+  // Debug-Logging für alle Nachrichten
+  if (evt.type === "toast") {
+    console.log(
+      `🔍 Checking delivery for client "${clientName}" (${clientId}): target="${JSON.stringify(
+        evt.target || "all"
+      )}" -> `
+    );
+  }
+
   // Kein Target = an alle senden
   if (!evt.target || (Array.isArray(evt.target) && evt.target.length === 0)) {
+    if (evt.type === "toast") console.log(`✅ DELIVER (no target)`);
     return true;
   }
 
   // Target "all" = an alle senden
   if (evt.target === "all") {
+    if (evt.type === "toast") console.log(`✅ DELIVER (target: all)`);
     return true;
   }
 
   // Target "me" = nur an den Sender
   if (evt.target === "me" && evt.sender) {
-    return client.user?.name === evt.sender;
+    const matches = clientName === evt.sender;
+    if (evt.type === "toast")
+      console.log(
+        `✅ DELIVER (target: me) -> ${matches ? "MATCH" : "NO MATCH"}`
+      );
+    return matches;
   }
 
   // Spezifische User(s) als Target
   const targets = Array.isArray(evt.target) ? evt.target : [evt.target];
-  const clientName = client.user?.name || "";
-  const clientId = client.user?.id || clientName;
 
   const result = targets.some((target) => {
     const targetStr = String(target || "").toLowerCase();
@@ -175,10 +192,9 @@ function shouldDeliver(client, evt) {
       targetStr === clientName.toLowerCase() ||
       targetStr === clientId.toLowerCase();
 
-    // Debug-Logging für targeted messages
-    if (evt.type === "toast" && evt.target && evt.target !== "all") {
+    if (evt.type === "toast") {
       console.log(
-        `🔍 Checking delivery: target="${targetStr}" vs client="${clientName}" (${clientId}) -> ${
+        `🔍 Target "${targetStr}" vs client "${clientName}" -> ${
           matches ? "✅ MATCH" : "❌ NO MATCH"
         }`
       );
@@ -186,6 +202,12 @@ function shouldDeliver(client, evt) {
 
     return matches;
   });
+
+  if (evt.type === "toast") {
+    console.log(
+      `📤 Final result for "${clientName}": ${result ? "SEND" : "BLOCK"}`
+    );
+  }
 
   return result;
 }
