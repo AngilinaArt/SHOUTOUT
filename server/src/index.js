@@ -115,10 +115,22 @@ wss.on("connection", (ws, request) => {
         stripUnknown: true,
       });
       if (error) return;
+
+      // Verwende die gleiche shouldDeliver Logik wie beim HTTP-Broadcast
       const outbound = { ...value, sender: ws.user?.name || "Anonymous" };
       const payload = JSON.stringify(outbound);
+
+      // Log für targeted messages
+      if (value.target && value.target !== "all") {
+        console.log(
+          `🎯 WS Targeted message: ${value.type} to ${JSON.stringify(
+            value.target
+          )} from ${outbound.sender}`
+        );
+      }
+
       for (const c of clients) {
-        if (c.readyState === c.OPEN) {
+        if (c.readyState === c.OPEN && shouldDeliver(c, outbound)) {
           try {
             c.send(payload);
           } catch (_) {}
