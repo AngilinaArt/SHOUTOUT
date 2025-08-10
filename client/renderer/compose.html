@@ -5,13 +5,22 @@
     <meta
       http-equiv="Content-Security-Policy"
       content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline';" />
+    <meta
+      http-equiv="Cache-Control"
+      content="no-cache, no-store, must-revalidate" />
+    <meta
+      http-equiv="Pragma"
+      content="no-cache" />
+    <meta
+      http-equiv="Expires"
+      content="0" />
     <title>Send Toast</title>
     <style>
       :root {
-        --bg: #0f172a;
-        --panel: #111827;
-        --muted: #94a3b8;
-        --ring: #3b82f6;
+        --bg: #1f2937;
+        --panel: #374151;
+        --muted: #9ca3af;
+        --ring: #6b7280;
         --ok: #10b981;
         --warn: #f59e0b;
         --crit: #ef4444;
@@ -28,7 +37,7 @@
         margin: 0;
         font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto,
           Arial, sans-serif;
-        background: linear-gradient(180deg, #0b1020, #0f172a);
+        background: linear-gradient(180deg, #111827, #1f2937);
         color: #e5e7eb;
         display: flex;
         align-items: stretch;
@@ -36,19 +45,23 @@
       .wrap {
         display: flex;
         flex-direction: column;
-        gap: 12px;
-        padding: 16px;
+        gap: 24px;
+        padding: 28px;
         width: 100%;
+        height: 100%;
+        justify-content: flex-start;
       }
       .header {
         font-weight: 700;
         letter-spacing: 0.2px;
+        color: #fbbf24;
+        text-shadow: 0 0 10px rgba(251, 191, 36, 0.3);
       }
       .field {
-        background: rgba(255, 255, 255, 0.04);
-        border: 1px solid rgba(148, 163, 184, 0.2);
+        background: rgba(255, 255, 255, 0.06);
+        border: 1px solid rgba(156, 163, 175, 0.3);
         border-radius: var(--radius);
-        padding: 10px;
+        padding: 16px;
         position: relative;
       }
       .toolbar {
@@ -71,8 +84,8 @@
         top: 36px;
         right: 8px;
         width: 240px;
-        background: #0b1020;
-        border: 1px solid rgba(148, 163, 184, 0.25);
+        background: #111827;
+        border: 1px solid rgba(156, 163, 175, 0.3);
         border-radius: 10px;
         padding: 6px;
         display: grid;
@@ -104,7 +117,7 @@
         border: none;
         outline: none;
         resize: vertical;
-        min-height: 92px;
+        min-height: 140px;
         font-size: 14px;
         background: transparent;
         color: #e5e7eb;
@@ -124,10 +137,10 @@
       input[type="number"],
       select {
         width: 100%;
-        background: rgba(255, 255, 255, 0.04);
-        border: 1px solid rgba(148, 163, 184, 0.2);
+        background: rgba(255, 255, 255, 0.08);
+        border: 1px solid rgba(156, 163, 175, 0.3);
         border-radius: 10px;
-        padding: 8px 10px;
+        padding: 10px 12px;
         color: #e5e7eb;
       }
       .pills {
@@ -145,8 +158,8 @@
         opacity: 0.8;
       }
       .pill.active {
-        border-color: #60a5fa;
-        background: rgba(96, 165, 250, 0.15);
+        border-color: #9ca3af;
+        background: rgba(156, 163, 175, 0.2);
         opacity: 1;
       }
       .pill.warn.active {
@@ -181,8 +194,13 @@
         color: #e5e7eb;
       }
       .btn-primary {
-        background: #2563eb;
+        background: #4b5563;
         color: #fff;
+        transition: background-color 0.2s;
+      }
+
+      .btn-primary:hover {
+        background: #6b7280;
       }
       .btn-primary:disabled {
         opacity: 0.5;
@@ -192,10 +210,10 @@
       /* User-Auswahl Styles */
       .target-select {
         width: 100%;
-        background: rgba(255, 255, 255, 0.04);
-        border: 1px solid rgba(148, 163, 184, 0.2);
+        background: rgba(255, 255, 255, 0.08);
+        border: 1px solid rgba(156, 163, 175, 0.3);
         border-radius: 10px;
-        padding: 8px 10px;
+        padding: 10px 12px;
         color: #e5e7eb;
         font-size: 14px;
       }
