@@ -89,7 +89,7 @@ function showHamster(variant, durationMs, sender) {
   });
 }
 
-function showToast(message, severity, durationMs, sender) {
+function showToast(message, severity, durationMs, sender, recipientInfo) {
   if (!overlayWindow || overlayWindow.isDestroyed()) return;
   positionOverlayTopRight();
   overlayWindow.webContents.send("show-toast", {
@@ -97,6 +97,7 @@ function showToast(message, severity, durationMs, sender) {
     severity,
     durationMs,
     sender,
+    recipientInfo,
   });
 }
 
@@ -149,7 +150,8 @@ function connectWebSocket() {
             event.message || "",
             event.severity || "info",
             event.duration || 4000,
-            event.sender
+            event.sender,
+            event.recipientInfo
           );
         }
       } catch (e) {

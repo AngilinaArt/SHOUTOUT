@@ -85,38 +85,49 @@ function escapeHtml(str) {
     .replace(/'/g, "&#39;");
 }
 
-window.shoutout.onToast(({ message, severity, durationMs, sender }) => {
-  const sev = [
-    "blue",
-    "green",
-    "pink",
-    "red",
-    "info",
-    "success",
-    "warn",
-    "critical",
-  ].includes(severity)
-    ? severity
-    : "blue";
-  const safeMsg = escapeHtml(message || "");
-  const safeSender = sender ? escapeHtml(sender) : "";
-  const senderHtml = safeSender
-    ? `<div class="sender">${safeSender}</div>`
-    : "";
-  const wrapper = document.createElement("div");
-  wrapper.className = `toast-item severity-${sev}`;
-  wrapper.innerHTML = `<div class="bubble">${senderHtml}<div class="text">${safeMsg}</div></div>`;
-  toastsContainer.appendChild(wrapper);
-  toastEl.classList.remove("hidden");
+window.shoutout.onToast(
+  ({ message, severity, durationMs, sender, recipientInfo }) => {
+    const sev = [
+      "blue",
+      "green",
+      "pink",
+      "red",
+      "info",
+      "success",
+      "warn",
+      "critical",
+    ].includes(severity)
+      ? severity
+      : "blue";
+    const safeMsg = escapeHtml(message || "");
+    const safeSender = sender ? escapeHtml(sender) : "";
+    const safeRecipientInfo = recipientInfo ? escapeHtml(recipientInfo) : "";
 
-  // Enforce max stack
-  while (toastsContainer.children.length > MAX_STACK) {
-    toastsContainer.removeChild(toastsContainer.firstElementChild);
+    // Sender mit Empfänger-Info kombinieren
+    let senderHtml = "";
+    if (safeSender) {
+      if (safeRecipientInfo) {
+        senderHtml = `<div class="sender">${safeSender} <span class="recipient-info">(${safeRecipientInfo})</span></div>`;
+      } else {
+        senderHtml = `<div class="sender">${safeSender}</div>`;
+      }
+    }
+
+    const wrapper = document.createElement("div");
+    wrapper.className = `toast-item severity-${sev}`;
+    wrapper.innerHTML = `<div class="bubble">${senderHtml}<div class="text">${safeMsg}</div></div>`;
+    toastsContainer.appendChild(wrapper);
+    toastEl.classList.remove("hidden");
+
+    // Enforce max stack
+    while (toastsContainer.children.length > MAX_STACK) {
+      toastsContainer.removeChild(toastsContainer.firstElementChild);
+    }
+
+    const ttl = Math.max(500, Math.min(10000, durationMs || 4000));
+    setTimeout(() => {
+      if (wrapper.parentElement) wrapper.remove();
+      hideToast();
+    }, ttl);
   }
-
-  const ttl = Math.max(500, Math.min(10000, durationMs || 4000));
-  setTimeout(() => {
-    if (wrapper.parentElement) wrapper.remove();
-    hideToast();
-  }, ttl);
-});
+);

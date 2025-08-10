@@ -122,6 +122,12 @@ wss.on("connection", (ws, request) => {
 
       // Verwende die gleiche shouldDeliver Logik wie beim HTTP-Broadcast
       const outbound = { ...value, sender: ws.user?.name || "Anonymous" };
+      
+      // Empfänger-Info für Toast-Nachrichten hinzufügen
+      if (value.type === "toast") {
+        outbound.recipientInfo = getRecipientInfo(value.target, outbound.sender);
+      }
+      
       const payload = JSON.stringify(outbound);
 
       // Log für alle Toast-Nachrichten
@@ -157,6 +163,29 @@ wss.on("connection", (ws, request) => {
     clients.delete(ws);
   });
 });
+
+// Helper function to generate recipient info for toast messages
+function getRecipientInfo(target, sender) {
+  if (!target || (Array.isArray(target) && target.length === 0)) {
+    return "an alle";
+  }
+  
+  if (target === "all") {
+    return "an alle";
+  }
+  
+  if (target === "me") {
+    return "persönlich an dich";
+  }
+  
+  // Spezifische User(s) als Target
+  const targets = Array.isArray(target) ? target : [target];
+  if (targets.length === 1) {
+    return `an ${targets[0]}`;
+  } else {
+    return `an ${targets.slice(0, -1).join(", ")} und ${targets[targets.length - 1]}`;
+  }
+}
 
 // Global helper function for message delivery logic
 function shouldDeliver(client, evt) {
@@ -357,7 +386,14 @@ app.post("/broadcast", broadcastLimiter, async (req, res) => {
   // Broadcast with optional target filtering
 
   let sent = 0;
-  const payload = JSON.stringify(value);
+  
+  // Empfänger-Info für Toast-Nachrichten hinzufügen
+  const outbound = { ...value };
+  if (value.type === "toast") {
+    outbound.recipientInfo = getRecipientInfo(value.target, value.sender);
+  }
+  
+  const payload = JSON.stringify(outbound);
 
   // Log für targeted messages
   if (value.target && value.target !== "all") {
