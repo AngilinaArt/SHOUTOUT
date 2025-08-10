@@ -253,6 +253,8 @@ function createTray() {
 function updateTrayIcon() {
   if (!tray) return;
 
+  console.log(`[DEBUG] === updateTrayIcon START ===`);
+
   try {
     const fs = require("fs");
     const iconDir = path.join(__dirname, "assets", "icon");
@@ -408,6 +410,7 @@ function updateTrayIcon() {
 }
 
 function updateDNDStatus(newStatus) {
+  console.log(`[DEBUG] updateDNDStatus called with: ${newStatus}`);
   doNotDisturb = newStatus;
   updateSettings({ doNotDisturb: newStatus });
 
@@ -659,6 +662,9 @@ function buildTrayMenu() {
       type: "checkbox",
       checked: doNotDisturb,
       click: (item) => {
+        console.log(
+          `[DEBUG] DND checkbox clicked! New status: ${item.checked}`
+        );
         updateDNDStatus(item.checked);
       },
     },
