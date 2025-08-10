@@ -159,30 +159,70 @@ function createTray() {
   // Try to load a platform icon; fallback to empty
   let trayImage = null;
   try {
+    const fs = require("fs");
     const iconDir = path.join(__dirname, "assets", "icon");
-    // Prefer user-provided hamster icons; fall back to default ones
+    // User-provided icons
     const winPrimary = path.join(iconDir, "hamster.ico");
     const winFallback = path.join(iconDir, "icon.ico");
     const macPrimary = path.join(iconDir, "hamster.png");
-    const macTemplate = path.join(iconDir, "iconTemplate.png");
+    const macTemplate = path.join(iconDir, "iconTemplate.png"); // monochrome template (optional)
     const pngFallback = path.join(iconDir, "icon.png");
 
-    let candidate;
+    // Choose best candidate per platform
+    let chosenPath;
     if (process.platform === "win32") {
-      candidate = winPrimary;
+      chosenPath = fs.existsSync(winPrimary) ? winPrimary : winFallback;
     } else if (process.platform === "darwin") {
-      candidate = macPrimary;
+      chosenPath = fs.existsSync(macPrimary)
+        ? macPrimary
+        : fs.existsSync(macTemplate)
+        ? macTemplate
+        : pngFallback;
     } else {
-      candidate = macPrimary;
+      chosenPath = fs.existsSync(macPrimary) ? macPrimary : pngFallback;
     }
-    trayImage = nativeImage.createFromPath(candidate);
-    if (!trayImage || trayImage.isEmpty()) {
-      const fallback =
-        process.platform === "win32" ? winFallback : process.platform === "darwin" ? macTemplate : pngFallback;
-      trayImage = nativeImage.createFromPath(fallback);
+
+    let baseImage = nativeImage.createFromPath(chosenPath);
+    if (!baseImage || baseImage.isEmpty()) {
+      // Try additional fallbacks
+      const nextFallback =
+        process.platform === "win32" ? winFallback : pngFallback;
+      baseImage = nativeImage.createFromPath(nextFallback);
     }
-    if (!trayImage || trayImage.isEmpty()) {
-      trayImage = nativeImage.createFromPath(pngFallback);
+    if (!baseImage || baseImage.isEmpty()) {
+      baseImage = nativeImage.createEmpty();
+    }
+
+    // On macOS, provide correctly sized representations for the menu bar (1x/2x)
+    if (process.platform === "darwin") {
+      try {
+        const img1x = baseImage.resize({ width: 18, height: 18 });
+        const img2x = baseImage.resize({ width: 36, height: 36 });
+        const multi = nativeImage.createEmpty();
+        multi.addRepresentation({
+          scaleFactor: 1.0,
+          width: 18,
+          height: 18,
+          buffer: img1x.toPNG(),
+        });
+        multi.addRepresentation({
+          scaleFactor: 2.0,
+          width: 36,
+          height: 36,
+          buffer: img2x.toPNG(),
+        });
+        trayImage = multi;
+        // If a template icon is available/used, mark it so macOS adapts to light/dark
+        if (chosenPath.endsWith("iconTemplate.png")) {
+          try {
+            trayImage.setTemplateImage(true);
+          } catch (_) {}
+        }
+      } catch (_) {
+        trayImage = baseImage; // graceful fallback
+      }
+    } else {
+      trayImage = baseImage;
     }
   } catch (_) {
     trayImage = nativeImage.createEmpty();
@@ -420,16 +460,7 @@ function openNamePrompt() {
       .slice(0, 24);
     if (next.length >= 2) {
       try {
-        const fs = require("fs");
-        const storePath = path.join(
-          app.getPath("userData"),
-          "shoutout-user.json"
-        );
-        fs.writeFileSync(
-          storePath,
-          JSON.stringify({ displayName: next }),
-          "utf-8"
-        );
+        updateSettings({ displayName: next });
       } catch (_) {}
       displayName = next;
       reconnectWebSocket();

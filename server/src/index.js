@@ -98,7 +98,9 @@ const hamsterSchema = Joi.object({
   type: Joi.string().valid("hamster").required(),
   variant: Joi.string().min(1).max(64).default("default"),
   duration: Joi.number().integer().min(300).max(30000).default(3000),
-  target: Joi.string().optional(),
+  target: Joi.alternatives()
+    .try(Joi.string(), Joi.array().items(Joi.string()))
+    .optional(),
   sender: Joi.string().min(1).max(64).optional(),
 }).required();
 
@@ -107,11 +109,22 @@ const toastSchema = Joi.object({
   message: Joi.string().min(1).max(280).required(),
   // entertainment palette + legacy values for compatibility
   severity: Joi.string()
-    .valid("red", "pink", "green", "blue", "info", "success", "warn", "critical")
+    .valid(
+      "red",
+      "pink",
+      "green",
+      "blue",
+      "info",
+      "success",
+      "warn",
+      "critical"
+    )
     .default("blue"),
   // Cap toast duration to 10s
   duration: Joi.number().integer().min(500).max(10000).default(4000),
-  target: Joi.string().optional(),
+  target: Joi.alternatives()
+    .try(Joi.string(), Joi.array().items(Joi.string()))
+    .optional(),
   sender: Joi.string().min(1).max(64).optional(),
 }).required();
 
@@ -151,11 +164,18 @@ app.post("/broadcast", broadcastLimiter, async (req, res) => {
   }
 
   // If sender provided in HTTP payload, keep it; else clients will attach their own sender on WS path
-  const payload = JSON.stringify(value);
-  // Broadcast to all clients
+  // Broadcast with optional target filtering
+  const shouldDeliver = (client, evt) => {
+    if (!evt.target || (Array.isArray(evt.target) && evt.target.length === 0))
+      return true;
+    const clientName = (client.user?.name || "").toLowerCase();
+    const targets = Array.isArray(evt.target) ? evt.target : [evt.target];
+    return targets.some((t) => String(t || "").toLowerCase() === clientName);
+  };
   let sent = 0;
+  const payload = JSON.stringify(value);
   for (const ws of clients) {
-    if (ws.readyState === ws.OPEN) {
+    if (ws.readyState === ws.OPEN && shouldDeliver(ws, value)) {
       try {
         ws.send(payload);
         sent += 1;

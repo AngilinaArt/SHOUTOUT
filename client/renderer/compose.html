@@ -317,12 +317,14 @@
       // Prefill last severity from query
       try {
         const u = new URL(window.location.href);
-        const sev = u.searchParams.get('sev');
+        const sev = u.searchParams.get("sev");
         if (sev) {
           const target = pills.querySelector(`[data-sev="${sev}"]`);
           if (target) {
-            pills.querySelectorAll('.pill').forEach(x => x.classList.remove('active'));
-            target.classList.add('active');
+            pills
+              .querySelectorAll(".pill")
+              .forEach((x) => x.classList.remove("active"));
+            target.classList.add("active");
           }
         }
       } catch (_) {}

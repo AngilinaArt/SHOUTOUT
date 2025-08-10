@@ -107,7 +107,7 @@
       // Prefill with current name from query (if provided)
       try {
         const u = new URL(window.location.href);
-        const current = (u.searchParams.get('current') || '').trim();
+        const current = (u.searchParams.get("current") || "").trim();
         if (current) nameEl.value = current;
       } catch (_) {}
       validate();
