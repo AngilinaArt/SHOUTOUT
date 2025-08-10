@@ -142,6 +142,37 @@ wss.on("connection", (ws, request) => {
   ws.on("close", () => clients.delete(ws));
 });
 
+// Global helper function for message delivery logic
+function shouldDeliver(client, evt) {
+  // Kein Target = an alle senden
+  if (!evt.target || (Array.isArray(evt.target) && evt.target.length === 0)) {
+    return true;
+  }
+
+  // Target "all" = an alle senden
+  if (evt.target === "all") {
+    return true;
+  }
+
+  // Target "me" = nur an den Sender
+  if (evt.target === "me" && evt.sender) {
+    return client.user?.name === evt.sender;
+  }
+
+  // Spezifische User(s) als Target
+  const targets = Array.isArray(evt.target) ? evt.target : [evt.target];
+  const clientName = client.user?.name || "";
+  const clientId = client.user?.id || clientName;
+
+  return targets.some((target) => {
+    const targetStr = String(target || "").toLowerCase();
+    return (
+      targetStr === clientName.toLowerCase() ||
+      targetStr === clientId.toLowerCase()
+    );
+  });
+}
+
 // Validation schemas
 const hamsterSchema = Joi.object({
   type: Joi.string().valid("hamster").required(),
@@ -274,35 +305,6 @@ app.post("/broadcast", broadcastLimiter, async (req, res) => {
 
   // If sender provided in HTTP payload, keep it; else clients will attach their own sender on WS path
   // Broadcast with optional target filtering
-  const shouldDeliver = (client, evt) => {
-    // Kein Target = an alle senden
-    if (!evt.target || (Array.isArray(evt.target) && evt.target.length === 0)) {
-      return true;
-    }
-
-    // Target "all" = an alle senden
-    if (evt.target === "all") {
-      return true;
-    }
-
-    // Target "me" = nur an den Sender
-    if (evt.target === "me" && evt.sender) {
-      return client.user?.name === evt.sender;
-    }
-
-    // Spezifische User(s) als Target
-    const targets = Array.isArray(evt.target) ? evt.target : [evt.target];
-    const clientName = client.user?.name || "";
-    const clientId = client.user?.id || clientName;
-
-    return targets.some((target) => {
-      const targetStr = String(target || "").toLowerCase();
-      return (
-        targetStr === clientName.toLowerCase() ||
-        targetStr === clientId.toLowerCase()
-      );
-    });
-  };
 
   let sent = 0;
   const payload = JSON.stringify(value);
