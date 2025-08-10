@@ -591,8 +591,19 @@ function openToastPrompt() {
       500,
       Math.min(10000, Number(payload?.duration || 3000))
     );
+    const target = payload?.target || "all";
+
     if (ws && ws.readyState === ws.OPEN && message) {
-      ws.send(JSON.stringify({ type: "toast", message, severity, duration }));
+      ws.send(
+        JSON.stringify({
+          type: "toast",
+          message,
+          severity,
+          duration,
+          target,
+          sender: displayName || "unknown",
+        })
+      );
     }
     try {
       updateSettings({ lastSeverity: severity });

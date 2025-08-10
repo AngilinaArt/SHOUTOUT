@@ -17,6 +17,14 @@ const PORT = Number(process.env.PORT || 3001);
 const BROADCAST_SECRET = process.env.BROADCAST_SECRET || "change-me";
 const ALLOW_NO_AUTH = String(process.env.ALLOW_NO_AUTH || "false") === "true";
 
+// Warnung ausgeben wenn unsichere Standardeinstellungen verwendet werden
+if (BROADCAST_SECRET === "change-me" || ALLOW_NO_AUTH) {
+  console.warn("⚠️  WARNUNG: Unsichere Standardeinstellungen!");
+  console.warn("   - BROADCAST_SECRET sollte geändert werden");
+  console.warn("   - ALLOW_NO_AUTH sollte false sein für Produktion");
+  console.warn("   - Erstelle eine .env Datei mit sicheren Werten");
+}
+
 // Middleware
 app.use(helmet());
 app.use(cors());
@@ -133,10 +141,29 @@ const eventSchema = Joi.alternatives().try(hamsterSchema, toastSchema);
 // Helpers
 function isAuthorized(req) {
   const auth = req.header("authorization") || "";
-  if (ALLOW_NO_AUTH) return true;
-  if (!auth.startsWith("Bearer ")) return false;
+
+  // Wenn ALLOW_NO_AUTH aktiviert ist, immer erlauben (nur für Entwicklung!)
+  if (ALLOW_NO_AUTH) {
+    console.warn(
+      "⚠️  ALLOW_NO_AUTH ist aktiviert - Broadcast ohne Token erlaubt!"
+    );
+    return true;
+  }
+
+  // Prüfe Bearer Token
+  if (!auth.startsWith("Bearer ")) {
+    console.log("❌ Unauthorized: Kein Bearer Token");
+    return false;
+  }
+
   const token = auth.slice("Bearer ".length);
-  return token === BROADCAST_SECRET;
+  const isValid = token === BROADCAST_SECRET;
+
+  if (!isValid) {
+    console.log("❌ Unauthorized: Ungültiger Token");
+  }
+
+  return isValid;
 }
 
 function logBroadcast(req, eventType) {
@@ -150,6 +177,44 @@ function logBroadcast(req, eventType) {
 // Routes
 app.get("/health", (req, res) => {
   res.json({ ok: true });
+});
+
+// Neue Endpoints für User-Management
+app.get("/users", (req, res) => {
+  const activeUsers = Array.from(clients)
+    .filter((ws) => ws.readyState === ws.OPEN && ws.user?.name)
+    .map((ws) => ({
+      id: ws.user?.id || ws.user?.name,
+      name: ws.user?.name,
+      status: ws.user?.status || "online",
+      lastSeen: ws.user?.lastSeen || new Date().toISOString(),
+    }));
+
+  res.json({
+    users: activeUsers,
+    count: activeUsers.length,
+    timestamp: new Date().toISOString(),
+  });
+});
+
+app.get("/users/:userId", (req, res) => {
+  const userId = req.params.userId;
+  const user = Array.from(clients).find(
+    (ws) =>
+      ws.readyState === ws.OPEN &&
+      (ws.user?.id === userId || ws.user?.name === userId)
+  );
+
+  if (!user) {
+    return res.status(404).json({ error: "User not found" });
+  }
+
+  res.json({
+    id: user.user?.id || user.user?.name,
+    name: user.user?.name,
+    status: user.user?.status || "online",
+    lastSeen: user.user?.lastSeen || new Date().toISOString(),
+  });
 });
 
 app.post("/broadcast", broadcastLimiter, async (req, res) => {
@@ -166,14 +231,47 @@ app.post("/broadcast", broadcastLimiter, async (req, res) => {
   // If sender provided in HTTP payload, keep it; else clients will attach their own sender on WS path
   // Broadcast with optional target filtering
   const shouldDeliver = (client, evt) => {
-    if (!evt.target || (Array.isArray(evt.target) && evt.target.length === 0))
+    // Kein Target = an alle senden
+    if (!evt.target || (Array.isArray(evt.target) && evt.target.length === 0)) {
       return true;
-    const clientName = (client.user?.name || "").toLowerCase();
+    }
+
+    // Target "all" = an alle senden
+    if (evt.target === "all") {
+      return true;
+    }
+
+    // Target "me" = nur an den Sender
+    if (evt.target === "me" && evt.sender) {
+      return client.user?.name === evt.sender;
+    }
+
+    // Spezifische User(s) als Target
     const targets = Array.isArray(evt.target) ? evt.target : [evt.target];
-    return targets.some((t) => String(t || "").toLowerCase() === clientName);
+    const clientName = client.user?.name || "";
+    const clientId = client.user?.id || clientName;
+
+    return targets.some((target) => {
+      const targetStr = String(target || "").toLowerCase();
+      return (
+        targetStr === clientName.toLowerCase() ||
+        targetStr === clientId.toLowerCase()
+      );
+    });
   };
+
   let sent = 0;
   const payload = JSON.stringify(value);
+
+  // Log für targeted messages
+  if (value.target && value.target !== "all") {
+    console.log(
+      `🎯 Targeted message: ${value.type} to ${JSON.stringify(
+        value.target
+      )} from ${value.sender || "unknown"}`
+    );
+  }
+
   for (const ws of clients) {
     if (ws.readyState === ws.OPEN && shouldDeliver(ws, value)) {
       try {

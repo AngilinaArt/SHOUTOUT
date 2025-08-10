@@ -188,6 +188,45 @@
         opacity: 0.5;
         cursor: not-allowed;
       }
+
+      /* User-Auswahl Styles */
+      .target-select {
+        width: 100%;
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid rgba(148, 163, 184, 0.2);
+        border-radius: 10px;
+        padding: 8px 10px;
+        color: #e5e7eb;
+        font-size: 14px;
+      }
+
+      .refresh-link {
+        cursor: pointer;
+        opacity: 0.7;
+        transition: opacity 0.2s;
+      }
+
+      .refresh-link:hover {
+        opacity: 1;
+        text-decoration: underline;
+      }
+
+      .user-option {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .user-status {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: #10b981;
+      }
+
+      .user-status.offline {
+        background: #6b7280;
+      }
     </style>
   </head>
   <body>
@@ -214,6 +253,30 @@
         <div class="meta">
           <span id="counter">0 / 280</span>
           <span>Max. 10s</span>
+        </div>
+      </div>
+
+      <!-- Neue User-Auswahl -->
+      <div class="field">
+        <div class="label">Empfänger</div>
+        <select
+          id="target"
+          class="target-select">
+          <option value="all">👥 Alle User</option>
+          <option value="me">👤 Nur ich</option>
+          <option
+            value="loading"
+            disabled>
+            🔄 Lade User...
+          </option>
+        </select>
+        <div class="meta">
+          <span id="userCount">0 User online</span>
+          <span
+            id="refreshUsers"
+            class="refresh-link"
+            >🔄 Aktualisieren</span
+          >
         </div>
       </div>
 
@@ -280,6 +343,76 @@
       const pills = document.getElementById("sev-pills");
       const emojiBtn = document.getElementById("emojiBtn");
       const emojiPanel = document.getElementById("emojiPanel");
+      const targetEl = $("target");
+      const userCountEl = $("userCount");
+      const refreshUsersEl = $("refreshUsers");
+
+      // User-Management
+      let users = [];
+
+      async function loadUsers() {
+        try {
+          // Versuche User vom Server zu laden
+          const response = await fetch("http://localhost:3001/users");
+          if (response.ok) {
+            const data = await response.json();
+            users = data.users || [];
+            updateUserDropdown();
+          } else {
+            console.warn("Failed to load users:", response.status);
+            setDefaultUsers();
+          }
+        } catch (error) {
+          console.warn("Could not load users:", error);
+          setDefaultUsers();
+        }
+      }
+
+      function setDefaultUsers() {
+        users = [];
+        updateUserDropdown();
+      }
+
+      function updateUserDropdown() {
+        // Entferne alle User-Optionen außer den Standard-Optionen
+        const defaultOptions = targetEl.querySelectorAll(
+          'option[value="all"], option[value="me"]'
+        );
+        targetEl.innerHTML = "";
+
+        // Füge Standard-Optionen wieder hinzu
+        defaultOptions.forEach((option) => targetEl.appendChild(option));
+
+        // Füge User-Optionen hinzu
+        users.forEach((user) => {
+          const option = document.createElement("option");
+          option.value = user.name;
+          option.innerHTML = `
+            <div class="user-option">
+              <span class="user-status ${
+                user.status === "online" ? "" : "offline"
+              }"></span>
+              ${user.name}
+            </div>
+          `;
+          targetEl.appendChild(option);
+        });
+
+        // Update User-Count
+        userCountEl.textContent = `${users.length} User online`;
+
+        // Entferne Loading-Option
+        const loadingOption = targetEl.querySelector('option[value="loading"]');
+        if (loadingOption) {
+          loadingOption.remove();
+        }
+      }
+
+      // User beim Laden der Seite laden
+      loadUsers();
+
+      // Refresh-Button
+      refreshUsersEl.addEventListener("click", loadUsers);
 
       function getSeverity() {
         const active = pills.querySelector(".pill.active");
@@ -335,6 +468,7 @@
           message: messageEl.value,
           severity: getSeverity(),
           duration: Number(durationEl.value || 3000),
+          target: targetEl.value || "all",
         });
       });
       $("cancel").addEventListener("click", () => window.compose.cancel());
