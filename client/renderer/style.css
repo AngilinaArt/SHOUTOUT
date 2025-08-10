@@ -81,11 +81,13 @@ body {
   align-items: flex-end;
   gap: 8px;
   margin-top: 10px;
+  pointer-events: auto;
 }
 #toast #toasts .toast-item {
   min-width: 260px;
   max-width: 420px;
   animation: slideIn 180ms ease-out;
+  pointer-events: auto;
 }
 
 #toast .bubble {
@@ -94,7 +96,8 @@ body {
   /* background set by severity class */
   border-radius: 18px;
   padding: 10px 12px;
-  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.25);
+  box-shadow: 0 8px 28px rgba(0, 8px, 28px rgba(0, 0, 0, 0.25);
+  pointer-events: auto;
 }
 
 #toast .bubble:after {
@@ -130,39 +133,46 @@ body {
   gap: 8px;
   margin-top: 8px;
   justify-content: flex-end;
+  pointer-events: auto;
 }
 
 #toast .toast-btn {
-  padding: 4px 12px;
+  padding: 6px 16px;
   border: none;
-  border-radius: 12px;
+  border-radius: 16px;
   font-size: 11px;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s ease;
+  pointer-events: auto;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 }
 
 #toast .toast-ok {
-  background: #e5e7eb;
+  background: rgba(229, 231, 235, 0.95);
   color: #374151;
+  backdrop-filter: blur(10px);
 }
 
 #toast .toast-ok:hover {
-  background: #d1d5db;
+  background: rgba(209, 213, 219, 0.95);
+  transform: translateY(-1px);
 }
 
 #toast .toast-reply {
-  background: #3b82f6;
+  background: rgba(59, 130, 246, 0.95);
   color: white;
+  backdrop-filter: blur(10px);
 }
 
 #toast .toast-reply:hover {
-  background: #2563eb;
+  background: rgba(37, 99, 235, 0.95);
+  transform: translateY(-1px);
 }
 
 /* Fade-Effekt nach 10 Sekunden */
 #toast .toast-item.faded .bubble {
-  opacity: 0.7;
+  opacity: 0.85;
   transition: opacity 0.5s ease;
 }
 

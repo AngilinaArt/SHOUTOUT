@@ -52,7 +52,8 @@ function createOverlayWindow() {
   overlayWindow.loadFile(path.join(__dirname, "renderer", "overlay.html"));
   overlayWindow.setAlwaysOnTop(true, "screen-saver");
   overlayWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
-  overlayWindow.setIgnoreMouseEvents(true, { forward: true });
+  // Mouse-Events nur ignorieren wenn keine Toasts aktiv sind
+  overlayWindow.setIgnoreMouseEvents(false);
   overlayWindow.showInactive();
 }
 
