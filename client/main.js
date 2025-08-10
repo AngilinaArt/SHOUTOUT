@@ -680,6 +680,7 @@ function openToastPrompt(targetUser = null) {
   });
 
   // IPC-Handler für Toast-Fenster öffnen
+  ipcMain.removeHandler("open-toast-prompt");
   ipcMain.handle("open-toast-prompt", async (event, targetUser) => {
     try {
       openToastPrompt(targetUser);
