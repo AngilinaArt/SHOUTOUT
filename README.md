@@ -35,6 +35,7 @@ Ein Desktop-Notification-System mit Hamster-Overlays und Toast-Nachrichten, das 
 - **Hotkeys**: Cmd+Alt+H (Hamster), Cmd+Alt+T (Toast), Cmd+Alt+1/2 (Spezielle Hamster)
 - **WebSocket**: Auto-Reconnect, Rate-Limiting, Target-Filtering
 - **Einstellungen**: Persistente `displayName` und `lastSeverity` in `shoutout-user.json`
+- **Autostart**: "Beim Login starten" Toggle für macOS und Windows
 
 ### 🎨 UI/UX
 
@@ -93,10 +94,9 @@ _PROJEKT_shoutout/
 
 ### Priorität 2 (Nächste Session)
 
-1. **Auto-Start**: "Beim Login starten" Toggle im Tray-Menü
-2. **App-Icon**: Neues Hamster-Branding als macOS-App-Icon (build.mac.icon)
-3. **Hamster-Animationen**: Mehr Animationen, Sound-Effekte
-4. **Toast-Templates**: Vordefinierte Toast-Nachrichten
+1. **App-Icon**: Neues Hamster-Branding als macOS-App-Icon (build.mac.icon)
+2. **Hamster-Animationen**: Mehr Animationen, Sound-Effekte
+3. **Toast-Templates**: Vordefinierte Toast-Nachrichten
 
 ### Priorität 3 (Langfristig)
 
@@ -156,7 +156,32 @@ multi.addRepresentation({
 ```json
 {
   "displayName": "Benutzername",
-  "lastSeverity": "blue"
+  "lastSeverity": "blue",
+  "doNotDisturb": false,
+  "autostartEnabled": false
+}
+```
+
+### Autostart-Funktionalität
+
+```javascript
+// Plattformübergreifende Autostart-Implementierung
+function updateAutostartStatus(enabled) {
+  if (process.platform === "darwin" || process.platform === "win32") {
+    app.setLoginItemSettings({
+      openAtLogin: enabled,
+      openAsHidden: true, // Startet versteckt (nur Tray)
+      path: app.getPath("exe")
+    });
+  }
+}
+
+// Tray-Menü Toggle
+{
+  label: "Beim Login starten",
+  type: "checkbox",
+  checked: autostartEnabled,
+  click: (item) => updateAutostartStatus(item.checked)
 }
 ```
 

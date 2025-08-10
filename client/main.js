@@ -12,6 +12,7 @@ const {
   screen,
 } = require("electron");
 const WebSocket = require("ws");
+const fs = require("fs");
 
 const WS_URL = process.env.WS_URL || "ws://localhost:3001/ws";
 const WS_TOKEN = process.env.WS_TOKEN || "";
@@ -19,7 +20,9 @@ const WS_TOKEN = process.env.WS_TOKEN || "";
 let tray = null;
 let overlayWindow = null;
 let doNotDisturb = false; // Will be loaded from settings on startup
+let autostartEnabled = false; // Will be loaded from settings on startup
 let ws = null;
+let wsStatus = "disconnected"; // "connected", "connecting", "disconnected"
 let displayName = null;
 let availableHamsters = []; // Dynamically loaded hamster variants
 let wsConnectToken = 0;
@@ -105,10 +108,14 @@ function connectWebSocket() {
 
   function doConnect() {
     if (token !== wsConnectToken) return; // aborted by newer connect
+    wsStatus = "connecting";
+    updateTrayMenu();
     ws = new WebSocket(url.toString());
 
     ws.on("open", () => {
       console.log("WS connected");
+      wsStatus = "connected";
+      updateTrayMenu();
     });
     ws.on("message", (data) => {
       if (doNotDisturb) return;
@@ -134,11 +141,15 @@ function connectWebSocket() {
     });
     ws.on("close", () => {
       console.log("WS disconnected, retrying in 2s");
+      wsStatus = "disconnected";
+      updateTrayMenu();
       setTimeout(() => {
         if (token === wsConnectToken) doConnect();
       }, 2000);
     });
     ws.on("error", () => {
+      wsStatus = "disconnected";
+      updateTrayMenu();
       // handled by 'close' retry
     });
   }
@@ -153,6 +164,8 @@ function reconnectWebSocket() {
   try {
     if (ws) ws.close();
   } catch (_) {}
+  wsStatus = "connecting";
+  updateTrayMenu();
   connectWebSocket();
 }
 
@@ -250,6 +263,11 @@ function createTray() {
   updateTrayIcon();
 }
 
+function updateTrayMenu() {
+  if (!tray) return;
+  buildTrayMenu();
+}
+
 function updateTrayIcon() {
   if (!tray) return;
 
@@ -325,7 +343,6 @@ function updateTrayIcon() {
       try {
         // Strategy 1: Direct update
         tray.setImage(baseImage);
-        
       } catch (error) {
         try {
           // Strategy 2: Force refresh with empty image first
@@ -353,10 +370,27 @@ function updateTrayIcon() {
       }
     }
 
-    // Update tooltip to show DND status
+    // Update tooltip to show DND status and WS status
+    const getStatusText = () => {
+      switch (wsStatus) {
+        case "connected":
+          return "Online";
+        case "connecting":
+          return "Verbinde...";
+        case "disconnected":
+        default:
+          return "Offline";
+      }
+    };
+
+    const statusText = getStatusText();
     const tooltipText = doNotDisturb
-      ? `Hamster & Toast — DND aktiv${displayName ? ` — ${displayName}` : ""}`
-      : `Hamster & Toast${displayName ? ` — ${displayName}` : ""}`;
+      ? `Hamster & Toast — DND aktiv — ${statusText}${
+          displayName ? ` — ${displayName}` : ""
+        }`
+      : `Hamster & Toast — ${statusText}${
+          displayName ? ` — ${displayName}` : ""
+        }`;
     tray.setToolTip(tooltipText);
 
     // Icon update completed successfully
@@ -367,36 +401,50 @@ function updateTrayIcon() {
 
 function updateDNDStatus(newStatus) {
   doNotDisturb = newStatus;
+  updateTrayIcon();
   updateSettings({ doNotDisturb: newStatus });
+}
 
-  // On Windows, sometimes we need to force a complete tray refresh
-  if (process.platform === "win32") {
-    // Try multiple strategies for Windows
-    setTimeout(() => {
-      updateTrayIcon();
-    }, 200);
+function updateAutostartStatus(enabled) {
+  autostartEnabled = enabled;
 
-    // If that doesn't work, try a more aggressive approach
-    setTimeout(() => {
-      if (tray) {
-        try {
-          // Force tooltip update first
-          const tooltipText = doNotDisturb
-            ? `Hamster & Toast — DND aktiv${
-                displayName ? ` — ${displayName}` : ""
-              }`
-            : `Hamster & Toast${displayName ? ` — ${displayName}` : ""}`;
-          tray.setToolTip(tooltipText);
+  try {
+    if (process.platform === "darwin") {
+      // macOS: Use Electron's built-in login item settings
+      app.setLoginItemSettings({
+        openAtLogin: enabled,
+        openAsHidden: true, // Start hidden (tray only)
+        path: app.getPath("exe"),
+      });
+    } else if (process.platform === "win32") {
+      // Windows: Use Electron's built-in login item settings
+      app.setLoginItemSettings({
+        openAtLogin: enabled,
+        openAsHidden: true, // Start hidden (tray only)
+        path: app.getPath("exe"),
+      });
+    }
 
-          // Then try icon update again
-          updateTrayIcon();
-        } catch (error) {
-          // Silent fallback
-        }
-      }
-    }, 500);
-  } else {
-    updateTrayIcon();
+    // Update settings
+    updateSettings({ autostartEnabled: enabled });
+    console.log(`Autostart ${enabled ? "enabled" : "disabled"}`);
+  } catch (error) {
+    console.error("Failed to update autostart settings:", error);
+    // Revert the change if it failed
+    autostartEnabled = !enabled;
+  }
+}
+
+function getAutostartStatus() {
+  try {
+    if (process.platform === "darwin" || process.platform === "win32") {
+      const loginItemSettings = app.getLoginItemSettings();
+      return loginItemSettings.openAtLogin;
+    }
+    return false;
+  } catch (error) {
+    console.error("Failed to get autostart status:", error);
+    return false;
   }
 }
 
@@ -602,8 +650,28 @@ function buildTrayMenu() {
   const isMac = process.platform === "darwin";
   const cmdKey = isMac ? "⌘" : "Ctrl";
 
+  // Get status emoji and text
+  const getStatusInfo = () => {
+    switch (wsStatus) {
+      case "connected":
+        return { emoji: "🟢", text: "Online" };
+      case "connecting":
+        return { emoji: "🟡", text: "Verbinde..." };
+      case "disconnected":
+      default:
+        return { emoji: "🔴", text: "Offline" };
+    }
+  };
+
+  const statusInfo = getStatusInfo();
+
   const template = [
-    { label: `Du bist: ${displayName || "Anonymous"}`, enabled: false },
+    {
+      label: `${statusInfo.emoji} Du bist: ${displayName || "Anonymous"} (${
+        statusInfo.text
+      })`,
+      enabled: false,
+    },
     { type: "separator" },
     {
       label: "Do Not Disturb",
@@ -611,6 +679,14 @@ function buildTrayMenu() {
       checked: doNotDisturb,
       click: (item) => {
         updateDNDStatus(item.checked);
+      },
+    },
+    {
+      label: "Beim Login starten",
+      type: "checkbox",
+      checked: autostartEnabled,
+      click: (item) => {
+        updateAutostartStatus(item.checked);
       },
     },
     { type: "separator" },
@@ -641,6 +717,12 @@ function buildTrayMenu() {
     {
       label: `Send Toast...\t\t${cmdKey}⌥T`,
       click: () => openToastPrompt(),
+    },
+    { type: "separator" },
+    {
+      label: "🔄 Verbindung neu starten",
+      click: () => reconnectWebSocket(),
+      enabled: wsStatus !== "connecting",
     },
     { type: "separator" },
     { role: "quit" },
@@ -711,10 +793,26 @@ async function ensureDisplayName() {
     if (settings.doNotDisturb !== undefined) {
       doNotDisturb = Boolean(settings.doNotDisturb);
     }
+    if (settings.autostartEnabled !== undefined) {
+      autostartEnabled = Boolean(settings.autostartEnabled);
+    }
   }
   if (!displayName) {
     const os = require("os");
     displayName = (os.userInfo().username || "Anonymous").slice(0, 32);
     updateSettings({ displayName });
+  }
+
+  // Synchronize autostart setting with system
+  try {
+    if (autostartEnabled) {
+      const systemStatus = getAutostartStatus();
+      if (systemStatus !== autostartEnabled) {
+        // System setting doesn't match our setting, update it
+        updateAutostartStatus(autostartEnabled);
+      }
+    }
+  } catch (error) {
+    console.error("Failed to sync autostart setting:", error);
   }
 }
