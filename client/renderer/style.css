@@ -81,13 +81,11 @@ body {
   align-items: flex-end;
   gap: 8px;
   margin-top: 10px;
-  pointer-events: auto;
 }
 #toast #toasts .toast-item {
   min-width: 260px;
   max-width: 420px;
   animation: slideIn 180ms ease-out;
-  pointer-events: auto;
 }
 
 #toast .bubble {
@@ -96,8 +94,7 @@ body {
   /* background set by severity class */
   border-radius: 18px;
   padding: 10px 12px;
-  box-shadow: 0 8px 28px rgba(0, 8px, 28px rgba(0, 0, 0, 0.25);
-  pointer-events: auto;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.25);
 }
 
 #toast .bubble:after {
