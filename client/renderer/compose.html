@@ -674,9 +674,28 @@
 
       console.log(`🔧 Setting up setTargetUser listener...`);
 
+      let lastTargetUser = null; // Verhindert doppelte Aufrufe
+
       window.compose.setTargetUser((targetUser) => {
         console.log(`🎯 setTargetUser received: targetUser=${targetUser}`);
         console.log(`🔍 targetEl element:`, targetEl);
+
+        // Verhindere doppelte Aufrufe mit dem gleichen Wert
+        if (targetUser === lastTargetUser) {
+          console.log(`⏭️ Skipping duplicate targetUser: ${targetUser}`);
+          return;
+        }
+
+        // Wenn der aktuelle Wert "alle" ist und der neue auch "alle" oder undefined, überspringe
+        if (
+          pendingTargetUser === "all" &&
+          (!targetUser || targetUser === "all")
+        ) {
+          console.log(`⏭️ Keeping current "all" selection, no need to change`);
+          return;
+        }
+
+        lastTargetUser = targetUser;
 
         // Speichere den targetUser
         if (typeof targetUser === "object" && targetUser !== null) {
