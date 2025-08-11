@@ -638,7 +638,7 @@
 
       window.compose.setTargetUser((targetUser) => {
         console.log(`🎯 setTargetUser received: targetUser=${targetUser}`);
-        console.log(`🔍 targetSelect element:`, targetSelect);
+        console.log(`🔍 targetEl element:`, targetEl);
 
         // Speichere den targetUser
         pendingTargetUser = targetUser;
@@ -661,43 +661,37 @@
         console.log(
           `🔍 trySetTargetUser called with pendingTargetUser: ${pendingTargetUser}`
         );
-        console.log(`🔍 targetSelect element:`, targetSelect);
+        console.log(`🔍 targetEl element:`, targetEl);
 
         if (!pendingTargetUser) {
           console.log(`⏳ No pending target user`);
           return;
         }
 
-        if (!targetSelect) {
-          console.log(
-            `⏳ targetSelect not available yet, retrying in 200ms...`
-          );
+        if (!targetEl) {
+          console.log(`⏳ targetEl not available yet, retrying in 200ms...`);
           setTimeout(trySetTargetUser, 200);
           return;
         }
 
-        console.log(`🔍 targetSelect available: ${!!targetSelect}`);
-        console.log(
-          `📋 targetSelect options count: ${targetSelect.options.length}`
-        );
+        console.log(`🔍 targetEl available: ${!!targetEl}`);
+        console.log(`📋 targetEl options count: ${targetEl.options.length}`);
 
-        if (targetSelect.options.length === 0) {
-          console.log(
-            `⏳ targetSelect has no options yet, retrying in 200ms...`
-          );
+        if (targetEl.options.length === 0) {
+          console.log(`⏳ targetEl has no options yet, retrying in 200ms...`);
           setTimeout(trySetTargetUser, 200);
           return;
         }
 
         console.log(
-          `📋 targetSelect options:`,
-          Array.from(targetSelect.options).map((opt) => opt.value)
+          `📋 targetEl options:`,
+          Array.from(targetEl.options).map((opt) => opt.value)
         );
 
         console.log(`🔍 Looking for user: ${pendingTargetUser}`);
         // Finde den Index des Users in der Liste (nach ID oder displayName)
-        for (let i = 0; i < targetSelect.options.length; i++) {
-          const option = targetSelect.options[i];
+        for (let i = 0; i < targetEl.options.length; i++) {
+          const option = targetEl.options[i];
           const optionValue = option.value;
           const optionDisplayName = option.getAttribute("data-display-name");
 
@@ -715,7 +709,7 @@
                 optionValue === pendingTargetUser ? "ID" : "displayName"
               })`
             );
-            targetSelect.selectedIndex = i;
+            targetEl.selectedIndex = i;
             pendingTargetUser = null; // Erfolgreich gesetzt
             return;
           }
