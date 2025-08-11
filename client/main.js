@@ -21,6 +21,7 @@ let tray = null;
 let overlayWindow = null;
 let statusWindow = null;
 let reactionWindow = null;
+let userListWindow = null;
 let doNotDisturb = false; // Will be loaded from settings on startup
 let autostartEnabled = false; // Will be loaded from settings on startup
 let ws = null;
@@ -33,8 +34,11 @@ let lastSeverity = "blue";
 function createOverlayWindow() {
   console.log(`🏗️ Creating overlay window...`);
 
-  // Erstelle zuerst das Status-Overlay (oben)
+  // Erstelle zuerst das Status-Overlay (oben rechts)
   createStatusWindow();
+
+  // Erstelle das User-List-Overlay (oben links)
+  createUserListWindow();
 
   // Erstelle das Reaction-Overlay (unten)
   createReactionWindow();
@@ -306,6 +310,94 @@ function positionReactionWindow() {
   }
 
   reactionWindow.setPosition(x, y);
+}
+
+function createUserListWindow() {
+  try {
+    console.log(`🏗️ Creating user list window...`);
+
+    userListWindow = new BrowserWindow({
+      width: 280,
+      height: 200,
+      frame: false,
+      transparent: true,
+      resizable: false,
+      movable: false,
+      alwaysOnTop: true,
+      skipTaskbar: true,
+      focusable: false,
+      fullscreenable: false,
+      hasShadow: false,
+      show: false, // Initially hidden
+      backgroundColor: "#00000000",
+      webPreferences: {
+        preload: path.join(__dirname, "preload_userlist.js"),
+        nodeIntegration: false,
+        contextIsolation: true,
+      },
+    });
+
+    console.log(`📁 Loading userlist.html...`);
+    userListWindow.loadFile(path.join(__dirname, "renderer", "userlist.html"));
+
+    userListWindow.setVisibleOnAllWorkspaces(true, {
+      visibleOnFullScreen: true,
+    });
+    userListWindow.setIgnoreMouseEvents(false); // Buttons müssen klickbar sein
+
+    // Positioniere das User-List-Overlay links oben
+    positionUserListWindow();
+
+    console.log(`✅ User list window created`);
+
+    // Event-Listener für das Laden
+    userListWindow.webContents.once("did-finish-load", () => {
+      console.log(`🎯 User list window finished loading`);
+    });
+
+    userListWindow.webContents.on(
+      "did-fail-load",
+      (event, errorCode, errorDescription) => {
+        console.error(
+          `❌ User list window failed to load: ${errorCode} - ${errorDescription}`
+        );
+      }
+    );
+
+    console.log(`✅ User list window created successfully`);
+  } catch (error) {
+    console.error(`❌ Error creating user list window:`, error);
+    userListWindow = null;
+  }
+}
+
+function positionUserListWindow() {
+  if (!userListWindow || userListWindow.isDestroyed()) return;
+  const margin = 20;
+  const currentBounds = userListWindow.getBounds();
+
+  // Verwende den gleichen Monitor wie das Status-Fenster
+  let target = screen.getPrimaryDisplay();
+  if (statusWindow && !statusWindow.isDestroyed()) {
+    const statusBounds = statusWindow.getBounds();
+    const statusCenter = {
+      x: statusBounds.x + statusBounds.width / 2,
+      y: statusBounds.y + statusBounds.height / 2,
+    };
+    target = screen.getDisplayNearestPoint(statusCenter) || target;
+  } else {
+    try {
+      const pt = screen.getCursorScreenPoint();
+      target = screen.getDisplayNearestPoint(pt) || target;
+    } catch (_) {}
+  }
+
+  const work = target.workArea;
+  const x = Math.floor(work.x + margin); // Links positionieren
+  const y = Math.floor(work.y + margin); // Oben positionieren
+
+  console.log(`🔧 User list positioned at top left: x=${x}, y=${y}`);
+  userListWindow.setPosition(x, y);
 }
 
 function positionOverlayTopRight() {
@@ -1271,6 +1363,13 @@ function buildTrayMenu() {
         openToastPrompt();
       },
     },
+    {
+      label: `👥 Show Online Users`,
+      click: () => {
+        console.log(`🖱️ Tray menu clicked for Show Online Users`);
+        showOnlineUsers();
+      },
+    },
     { type: "separator" },
     {
       label: "🔄 Verbindung neu starten",
@@ -1482,5 +1581,54 @@ function showReactionFeedback(fromUser, reaction) {
     console.log(`✅ Reaction feedback sent to overlay`);
   } catch (error) {
     console.error(`❌ Error sending reaction feedback:`, error);
+  }
+}
+
+// Funktion zum Anzeigen der Online-Users
+async function showOnlineUsers() {
+  console.log(`👥 showOnlineUsers called`);
+
+  if (!userListWindow || userListWindow.isDestroyed()) {
+    console.error(`❌ User list window not available`);
+    return;
+  }
+
+  try {
+    // Hole aktuelle User-Liste vom Server
+    const response = await fetch(
+      `${WS_URL.replace("ws://", "http://").replace("/ws", "")}/users`
+    );
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch users: ${response.status}`);
+    }
+
+    const data = await response.json();
+    console.log(`📋 Fetched users:`, data);
+
+    // Konvertiere zu User-Liste mit Status
+    const users = data.users.map((user) => ({
+      name: user.name || user.displayName || "Unknown",
+      status: "online", // Alle sind online, da vom Server geholt
+      id: user.id || user.name,
+    }));
+
+    // Zeige User-Liste an
+    userListWindow.showInactive();
+    userListWindow.webContents.send("show-userlist", {
+      users: users,
+      durationMs: 15000,
+    });
+
+    console.log(`✅ Online users sent to overlay: ${users.length} users`);
+  } catch (error) {
+    console.error(`❌ Error showing online users:`, error);
+
+    // Fallback: Zeige leere Liste
+    userListWindow.showInactive();
+    userListWindow.webContents.send("show-userlist", {
+      users: [],
+      durationMs: 5000,
+    });
   }
 }
