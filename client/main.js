@@ -345,17 +345,13 @@ function createTray() {
   tray.on("click", () => {
     console.log(`🖱️ Tray icon clicked`);
     try {
-      // Menü neu aufbauen, um sicherzustellen, dass es bereit ist
+      // Menü synchron aufbauen und sofort anzeigen
       buildTrayMenu();
-      // Doppelte Verzögerung: erst Menü bauen, dann anzeigen
+      // Kurze Verzögerung, um sicherzustellen, dass das Menü bereit ist
       setTimeout(() => {
-        // Nochmal das Menü bauen, um sicherzustellen, dass es bereit ist
-        buildTrayMenu();
-        setTimeout(() => {
-          tray.popUpContextMenu();
-          console.log(`✅ Context menu popped up`);
-        }, 100);
-      }, 100);
+        tray.popUpContextMenu();
+        console.log(`✅ Context menu popped up`);
+      }, 50);
     } catch (error) {
       console.error(`❌ Failed to pop up context menu:`, error);
     }
