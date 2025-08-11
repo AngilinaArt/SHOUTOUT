@@ -627,7 +627,9 @@ app.whenReady().then(() => {
     console.log(`📝 open-toast-prompt IPC received: targetUser=${targetUser}`);
     try {
       openToastPrompt(targetUser);
-      console.log(`✅ openToastPrompt called successfully`);
+      console.log(
+        `✅ openToastPrompt called successfully with targetUser=${targetUser}`
+      );
     } catch (error) {
       console.error(`❌ Failed to call openToastPrompt:`, error);
     }
@@ -688,6 +690,7 @@ function sendHamsterUpstream(variant, durationMs) {
 
 function openToastPrompt(targetUser = null) {
   console.log(`📝 openToastPrompt called: targetUser=${targetUser}`);
+  console.log(`🔍 targetUser type: ${typeof targetUser}, value: ${targetUser}`);
 
   const composeWin = new BrowserWindow({
     width: 600,
@@ -726,11 +729,17 @@ function openToastPrompt(targetUser = null) {
 
   // Wenn ein Empfänger vorausgewählt ist, sende ihn nach dem Laden
   if (targetUser) {
+    console.log(`🎯 Setting target user: ${targetUser}`);
     composeWin.webContents.once("did-finish-load", () => {
       try {
         composeWin.webContents.send("set-target-user", targetUser);
-      } catch (_) {}
+        console.log(`✅ set-target-user IPC sent: ${targetUser}`);
+      } catch (error) {
+        console.error(`❌ Failed to send set-target-user IPC:`, error);
+      }
     });
+  } else {
+    console.log(`ℹ️ No target user specified`);
   }
   const onSubmit = (_evt, payload) => {
     const message = String(payload?.message || "").slice(0, 280);
