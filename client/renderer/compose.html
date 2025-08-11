@@ -644,15 +644,27 @@
       // Versuche sofort den targetUser aus der URL zu setzen
       if (targetFromUrl) {
         console.log(`🎯 Setting target user from URL: ${targetFromUrl}`);
-        setTimeout(() => trySetTargetUser(), 100);
+        // Warte, bis das DOM vollständig geladen ist
+        setTimeout(() => trySetTargetUser(), 500);
       }
 
       // Funktion zum Setzen des Target Users im Dropdown
       function trySetTargetUser() {
-        if (!pendingTargetUser || !targetSelect) {
+        console.log(
+          `🔍 trySetTargetUser called with pendingTargetUser: ${pendingTargetUser}`
+        );
+        console.log(`🔍 targetSelect element:`, targetSelect);
+
+        if (!pendingTargetUser) {
+          console.log(`⏳ No pending target user`);
+          return;
+        }
+
+        if (!targetSelect) {
           console.log(
-            `⏳ Cannot set target user yet: pendingTargetUser=${pendingTargetUser}, targetSelect=${!!targetSelect}`
+            `⏳ targetSelect not available yet, retrying in 200ms...`
           );
+          setTimeout(trySetTargetUser, 200);
           return;
         }
 
@@ -663,9 +675,9 @@
 
         if (targetSelect.options.length === 0) {
           console.log(
-            `⏳ targetSelect has no options yet, retrying in 100ms...`
+            `⏳ targetSelect has no options yet, retrying in 200ms...`
           );
-          setTimeout(trySetTargetUser, 100);
+          setTimeout(trySetTargetUser, 200);
           return;
         }
 
@@ -688,7 +700,7 @@
         console.log(`❌ User not found in dropdown: ${pendingTargetUser}`);
       }
 
-      // Versuche es alle 100ms, bis es funktioniert
+      // Versuche es alle 200ms, bis es funktioniert
       console.log(`🔧 Setting up targetUser interval...`);
       const targetUserInterval = setInterval(() => {
         if (pendingTargetUser) {
@@ -700,7 +712,7 @@
           console.log(`✅ Target user set, clearing interval`);
           clearInterval(targetUserInterval);
         }
-      }, 100);
+      }, 200);
       console.log(`✅ targetUser interval set up successfully`);
     </script>
   </body>
