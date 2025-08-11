@@ -589,7 +589,7 @@ function registerHotkey() {
   const bindings = [
     {
       acc: "CommandOrControl+Alt+H",
-      run: () => sendHamsterUpstream("default", 3000),
+      run: () => sendHamsterUpstream("default", 1500),
     },
     { acc: "CommandOrControl+Alt+T", run: () => openToastPrompt() },
   ];
@@ -604,7 +604,7 @@ function registerHotkey() {
 
     bindings.push({
       acc: `CommandOrControl+Alt+${key}`,
-      run: () => sendHamsterUpstream(hamster, 3000),
+      run: () => sendHamsterUpstream(hamster, 1500),
     });
 
     console.log(`Registered hotkey ⌘⌥${key} for hamster: ${hamster}`);
@@ -883,7 +883,7 @@ function buildTrayMenu() {
       label: `Self Hamster\t\t${cmdKey}⌥H`,
       click: () => {
         console.log(`🖱️ Tray menu clicked for Self Hamster`);
-        showHamster("default", 3000);
+        showHamster("default", 1500);
       },
     },
     { type: "separator" },
@@ -897,7 +897,7 @@ function buildTrayMenu() {
             label: `  ${hamster}\t\t${cmdKey}⌥${key}`,
             click: () => {
               console.log(`🖱️ Tray menu clicked for hamster: ${hamster}`);
-              sendHamsterUpstream(hamster, 3000);
+              sendHamsterUpstream(hamster, 1500);
             },
           };
         })
