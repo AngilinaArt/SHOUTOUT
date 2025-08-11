@@ -618,8 +618,13 @@
         messageEl.focus();
       });
 
-      // Event-Listener für vorausgewählten Empfänger
-      let pendingTargetUser = null;
+      // URL-Parameter für targetUser lesen
+      const urlParams = new URLSearchParams(window.location.search);
+      const targetFromUrl = urlParams.get("target");
+      console.log(`🔍 Target from URL: ${targetFromUrl}`);
+
+      // Event-Listener für vorausgewählten Empfänger (als Fallback)
+      let pendingTargetUser = targetFromUrl;
 
       console.log(`🔧 Setting up setTargetUser listener...`);
 
@@ -635,6 +640,12 @@
       });
 
       console.log(`✅ setTargetUser listener set up successfully`);
+
+      // Versuche sofort den targetUser aus der URL zu setzen
+      if (targetFromUrl) {
+        console.log(`🎯 Setting target user from URL: ${targetFromUrl}`);
+        setTimeout(() => trySetTargetUser(), 100);
+      }
 
       // Funktion zum Setzen des Target Users im Dropdown
       function trySetTargetUser() {

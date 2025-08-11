@@ -707,8 +707,14 @@ function openToastPrompt(targetUser = null) {
   });
 
   console.log(`📁 Loading compose.html...`);
+  // URL-Parameter für targetUser hinzufügen
+  const queryParams = { sev: String(lastSeverity || "blue") };
+  if (targetUser) {
+    queryParams.target = targetUser;
+  }
+
   composeWin.loadFile(path.join(__dirname, "renderer", "compose.html"), {
-    query: { sev: String(lastSeverity || "blue") },
+    query: queryParams,
   });
 
   // Event-Listener für das Laden
