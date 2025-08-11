@@ -513,8 +513,14 @@ function handleReaction(senderWs, data) {
   let targetClient = null;
   console.log(`🔍 Looking for target client with ID: ${targetUserId}`);
 
+  console.log(`🔍 Total WebSocket clients: ${wss.clients.size}`);
+
   wss.clients.forEach((client) => {
-    if (client.readyState === ws.OPEN && client.user) {
+    console.log(
+      `🔍 Client readyState: ${client.readyState}, hasUser: ${!!client.user}`
+    );
+
+    if (client.readyState === WebSocket.OPEN && client.user) {
       console.log(`🔍 Checking client:`, {
         id: client.user.id,
         name: client.user.name,

@@ -79,6 +79,10 @@ function createOverlayWindow() {
   // Event-Listener für das Laden
   overlayWindow.webContents.once("did-finish-load", () => {
     console.log(`🎯 Overlay window finished loading`);
+    // Repositioniere das Reaction-Window nach dem Toast-Overlay laden
+    setTimeout(() => {
+      positionReactionWindow();
+    }, 100);
   });
 
   overlayWindow.webContents.on(
@@ -207,6 +211,10 @@ function createReactionWindow() {
     // Event-Listener für das Laden
     reactionWindow.webContents.once("did-finish-load", () => {
       console.log(`🎯 Reaction window finished loading`);
+      // Repositioniere das Reaction-Window nach dem Laden
+      setTimeout(() => {
+        positionReactionWindow();
+      }, 100);
     });
 
     reactionWindow.webContents.on(
@@ -292,9 +300,11 @@ function positionReactionWindow() {
   ) {
     const statusBounds = statusWindow.getBounds();
     const overlayBounds = overlayWindow.getBounds();
-    const totalHeight = statusBounds.height + overlayBounds.height + gap;
+    const totalHeight = statusBounds.height + overlayBounds.height + gap * 2;
     y = Math.floor(work.y + margin + totalHeight + gap);
-    console.log(`🔧 Reaction positioned below overlays: y=${y}`);
+    console.log(
+      `🔧 Reaction positioned below overlays: y=${y} (statusHeight=${statusBounds.height}, overlayHeight=${overlayBounds.height})`
+    );
   }
 
   reactionWindow.setPosition(x, y);
