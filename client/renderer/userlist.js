@@ -56,9 +56,16 @@ function showUserList(users, durationMs = 15000) {
 
   // Event-Listener für Message-Buttons hinzufügen
   const messageButtons = wrapper.querySelectorAll(".user-message-btn");
-  messageButtons.forEach((btn) => {
+  console.log(`🔧 Found ${messageButtons.length} message buttons`);
+
+  messageButtons.forEach((btn, index) => {
+    console.log(`🔧 Setting up button ${index}:`, btn);
+
     btn.addEventListener("click", (e) => {
+      console.log(`🖱️ BUTTON CLICKED! Event:`, e);
+      e.preventDefault();
       e.stopPropagation();
+
       const userId = btn.getAttribute("data-user-id");
       const userName = btn.getAttribute("data-user-name");
 
@@ -67,14 +74,25 @@ function showUserList(users, durationMs = 15000) {
       );
 
       // Rufe die openToastPrompt Funktion auf
+      console.log(`🔧 Checking window.userlistAPI:`, window.userlistAPI);
       if (window.userlistAPI && window.userlistAPI.openToastPrompt) {
+        console.log(`✅ Calling openToastPrompt with: ${userId}`);
         window.userlistAPI.openToastPrompt(userId);
       } else {
-        console.error(`❌ openToastPrompt not available`);
+        console.error(`❌ openToastPrompt not available`, window.userlistAPI);
+        console.error(
+          `❌ Available keys:`,
+          Object.keys(window.userlistAPI || {})
+        );
       }
 
       // Schließe die User-Liste nach dem Klick
       hideUserList();
+    });
+
+    // Test: Auch mousedown event hinzufügen
+    btn.addEventListener("mousedown", (e) => {
+      console.log(`🖱️ MOUSEDOWN on button!`, e);
     });
   });
 
@@ -116,24 +134,24 @@ window.addEventListener("userlist-message", (event) => {
   }
 });
 
-// Globale API für das User-List-System
-window.userlistAPI = {
-  showUserList: (users, durationMs) => {
+// Erweitere das bestehende userlistAPI um unsere lokalen Funktionen
+// (Das preload script hat bereits openToastPrompt definiert)
+if (window.userlistAPI) {
+  console.log(
+    `🔧 Extending existing userlistAPI:`,
+    Object.keys(window.userlistAPI)
+  );
+
+  // Füge unsere lokalen Funktionen hinzu, aber überschreibe nicht openToastPrompt
+  window.userlistAPI.showUserList = (users, durationMs) => {
     return showUserList(users, durationMs);
-  },
-  hideUserList: () => {
+  };
+  window.userlistAPI.hideUserList = () => {
     return hideUserList();
-  },
-  openToastPrompt: (targetUserId) => {
-    console.log(`💬 userlistAPI.openToastPrompt called with: ${targetUserId}`);
-    // Diese wird vom preload script gesetzt
-    if (window.userlistAPI._openToastPrompt) {
-      window.userlistAPI._openToastPrompt(targetUserId);
-    } else {
-      console.error(`❌ _openToastPrompt not available`);
-    }
-  },
-};
+  };
+} else {
+  console.error(`❌ window.userlistAPI not available from preload!`);
+}
 
 // User list overlay loaded successfully
 console.log(`🔧 User list overlay loaded successfully`);

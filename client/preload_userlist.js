@@ -7,21 +7,14 @@ contextBridge.exposeInMainWorld("userlistAPI", {
   // Diese werden vom userlist.js überschrieben, aber wir brauchen sie als Fallback
   showUserList: (users, durationMs) =>
     console.log("UserList:", users, durationMs),
-});
 
-// Setze die _openToastPrompt Funktion nach dem Laden
-window.addEventListener("DOMContentLoaded", () => {
-  setTimeout(() => {
-    if (window.userlistAPI) {
-      window.userlistAPI._openToastPrompt = (targetUserId) => {
-        console.log(
-          `💬 preload_userlist.js: _openToastPrompt called with: ${targetUserId}`
-        );
-        ipcRenderer.invoke("open-toast-prompt", targetUserId);
-      };
-      console.log(`✅ preload_userlist.js: _openToastPrompt function set`);
-    }
-  }, 100);
+  // openToastPrompt direkt hier definieren
+  openToastPrompt: (targetUserId) => {
+    console.log(
+      `💬 preload_userlist.js: openToastPrompt called with: ${targetUserId}`
+    );
+    ipcRenderer.invoke("open-toast-prompt", targetUserId);
+  },
 });
 
 // IPC-Handler für User-List-Nachrichten - ruft direkt die userlist.js Funktionen auf

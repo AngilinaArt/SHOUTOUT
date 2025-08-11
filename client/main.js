@@ -353,6 +353,9 @@ function createUserListWindow() {
     // Event-Listener für das Laden
     userListWindow.webContents.once("did-finish-load", () => {
       console.log(`🎯 User list window finished loading`);
+
+      // DevTools als separates Fenster öffnen
+      userListWindow.webContents.openDevTools({ mode: "detach" });
     });
 
     userListWindow.webContents.on(
