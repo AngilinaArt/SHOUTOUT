@@ -179,6 +179,12 @@ window.shoutout.onToast(
           <button class="toast-btn toast-ok">OK</button>
           <button class="toast-btn toast-reply">REPLY</button>
         </div>
+        <div class="toast-reactions">
+          <button class="reaction-btn" data-reaction="love" title="Großartig!">💖</button>
+          <button class="reaction-btn" data-reaction="like" title="Gut!">👍</button>
+          <button class="reaction-btn" data-reaction="dislike" title="Nicht so gut">👎</button>
+          <button class="reaction-btn" data-reaction="party" title="Feiern!">🎉</button>
+        </div>
       </div>
     `;
 
@@ -236,5 +242,25 @@ window.shoutout.onToast(
         hideToast();
       });
     }
+
+    // Event-Listener für Reaction-Buttons
+    const reactionBtns = wrapper.querySelectorAll(".reaction-btn");
+    reactionBtns.forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const reaction = btn.getAttribute("data-reaction");
+        console.log(
+          `💖 Reaction clicked: ${reaction} for senderId: ${senderId}`
+        );
+
+        // Sende Reaction zurück zum Absender
+        if (window.shoutout.sendReaction) {
+          window.shoutout.sendReaction(senderId, reaction);
+        }
+
+        // Toast nach Reaction entfernen
+        if (wrapper.parentElement) wrapper.remove();
+        hideToast();
+      });
+    });
   }
 );

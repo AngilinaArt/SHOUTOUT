@@ -135,6 +135,13 @@ wss.on("connection", (ws, request) => {
         return;
       }
 
+      // Handle reactions separately
+      if (parsed.type === "reaction") {
+        console.log(`💖 Reaction received:`, parsed);
+        handleReaction(ws, parsed);
+        return;
+      }
+
       const { error, value } = eventSchema.validate(parsed, {
         stripUnknown: true,
       });
@@ -488,6 +495,55 @@ app.post("/broadcast", broadcastLimiter, async (req, res) => {
   logBroadcast(req, value.type);
   res.json({ ok: true, sent });
 });
+
+// Funktion für Reaction-Handling
+function handleReaction(senderWs, data) {
+  const { targetUserId, reaction, fromUser } = data;
+
+  if (!targetUserId || !reaction || !fromUser) {
+    console.error(`❌ Invalid reaction data:`, data);
+    return;
+  }
+
+  console.log(
+    `💖 Processing reaction: ${reaction} from ${fromUser} to ${targetUserId}`
+  );
+
+  // Finde den Ziel-Client
+  let targetClient = null;
+  wss.clients.forEach((client) => {
+    if (
+      client.readyState === ws.OPEN &&
+      client.user &&
+      (client.user.id === targetUserId ||
+        client.user.name === targetUserId ||
+        client.user.displayName === targetUserId)
+    ) {
+      targetClient = client;
+    }
+  });
+
+  if (!targetClient) {
+    console.warn(`⚠️ Target user not found for reaction: ${targetUserId}`);
+    return;
+  }
+
+  // Sende Reaction an den Ziel-Client
+  const reactionPayload = {
+    type: "reaction",
+    fromUser: fromUser,
+    reaction: reaction,
+  };
+
+  console.log(`📤 Sending reaction to target:`, reactionPayload);
+
+  try {
+    targetClient.send(JSON.stringify(reactionPayload));
+    console.log(`✅ Reaction sent successfully to ${targetUserId}`);
+  } catch (error) {
+    console.error(`❌ Error sending reaction:`, error);
+  }
+}
 
 server.listen(PORT, () => {
   console.log(`WS Hub listening on http://localhost:${PORT}`);

@@ -47,6 +47,14 @@ contextBridge.exposeInMainWorld("shoutout", {
   },
   openToastPrompt: (targetUser) =>
     ipcRenderer.invoke("open-toast-prompt", targetUser),
+
+  sendReaction: (targetUserId, reaction) => {
+    console.log(`💖 preload.js: sendReaction called:`, {
+      targetUserId,
+      reaction,
+    });
+    return ipcRenderer.invoke("send-reaction", { targetUserId, reaction });
+  },
 });
 
 console.log(`🔧 preload.js: Loaded successfully`);

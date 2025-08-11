@@ -19,6 +19,8 @@ const WS_TOKEN = process.env.WS_TOKEN || "";
 
 let tray = null;
 let overlayWindow = null;
+let statusWindow = null;
+let reactionWindow = null;
 let doNotDisturb = false; // Will be loaded from settings on startup
 let autostartEnabled = false; // Will be loaded from settings on startup
 let ws = null;
@@ -33,6 +35,9 @@ function createOverlayWindow() {
 
   // Erstelle zuerst das Status-Overlay (oben)
   createStatusWindow();
+
+  // Erstelle das Reaction-Overlay (unten)
+  createReactionWindow();
 
   overlayWindow = new BrowserWindow({
     width: 420,
@@ -160,6 +165,66 @@ function createStatusWindow() {
   }
 }
 
+function createReactionWindow() {
+  try {
+    console.log(`🏗️ Creating reaction window...`);
+
+    reactionWindow = new BrowserWindow({
+      width: 400,
+      height: 150,
+      frame: false,
+      transparent: true,
+      resizable: false,
+      movable: false,
+      alwaysOnTop: true,
+      skipTaskbar: true,
+      focusable: false,
+      fullscreenable: false,
+      hasShadow: false,
+      show: true,
+      backgroundColor: "#00000000",
+      webPreferences: {
+        preload: path.join(__dirname, "preload_reaction.js"),
+        nodeIntegration: false,
+        contextIsolation: true,
+      },
+    });
+
+    console.log(`📁 Loading reaction.html...`);
+    reactionWindow.loadFile(path.join(__dirname, "renderer", "reaction.html"));
+
+    reactionWindow.setVisibleOnAllWorkspaces(true, {
+      visibleOnFullScreen: true,
+    });
+    reactionWindow.setIgnoreMouseEvents(true);
+    reactionWindow.showInactive();
+
+    // Positioniere das Reaction-Overlay unten rechts
+    positionReactionWindow();
+
+    console.log(`✅ Reaction window created and shown`);
+
+    // Event-Listener für das Laden
+    reactionWindow.webContents.once("did-finish-load", () => {
+      console.log(`🎯 Reaction window finished loading`);
+    });
+
+    reactionWindow.webContents.on(
+      "did-fail-load",
+      (event, errorCode, errorDescription) => {
+        console.error(
+          `❌ Reaction window failed to load: ${errorCode} - ${errorDescription}`
+        );
+      }
+    );
+
+    console.log(`✅ Reaction window created successfully`);
+  } catch (error) {
+    console.error(`❌ Error creating reaction window:`, error);
+    reactionWindow = null;
+  }
+}
+
 function positionStatusWindow() {
   if (!statusWindow || statusWindow.isDestroyed()) return;
   const margin = 20;
@@ -188,6 +253,51 @@ function positionStatusWindow() {
 
   console.log(`🔧 Status window positioned at top: x=${x}, y=${y}`);
   statusWindow.setPosition(x, y);
+}
+
+function positionReactionWindow() {
+  if (!reactionWindow || reactionWindow.isDestroyed()) return;
+  const margin = 20;
+  const gap = 10;
+  const currentBounds = reactionWindow.getBounds();
+
+  // Verwende den gleichen Monitor wie das Overlay-Fenster
+  let target = screen.getPrimaryDisplay();
+  if (overlayWindow && !overlayWindow.isDestroyed()) {
+    const overlayBounds = overlayWindow.getBounds();
+    const overlayCenter = {
+      x: overlayBounds.x + overlayBounds.width / 2,
+      y: overlayBounds.y + overlayBounds.height / 2,
+    };
+    target = screen.getDisplayNearestPoint(overlayCenter) || target;
+  } else {
+    try {
+      const pt = screen.getCursorScreenPoint();
+      target = screen.getDisplayNearestPoint(pt) || target;
+    } catch (_) {}
+  }
+
+  const work = target.workArea;
+  const x = Math.floor(work.x + work.width - currentBounds.width - margin);
+
+  // Reaction-Overlay ganz unten positionieren (unter Toast-Overlay)
+  let y = Math.floor(work.y + margin);
+
+  // Wenn Status-Overlay und Toast-Overlay existieren, positioniere Reaction darunter
+  if (
+    statusWindow &&
+    !statusWindow.isDestroyed() &&
+    overlayWindow &&
+    !overlayWindow.isDestroyed()
+  ) {
+    const statusBounds = statusWindow.getBounds();
+    const overlayBounds = overlayWindow.getBounds();
+    const totalHeight = statusBounds.height + overlayBounds.height + gap;
+    y = Math.floor(work.y + margin + totalHeight + gap);
+    console.log(`🔧 Reaction positioned below overlays: y=${y}`);
+  }
+
+  reactionWindow.setPosition(x, y);
 }
 
 function positionOverlayTopRight() {
@@ -410,6 +520,11 @@ function connectWebSocket() {
         } else if (event.type === "user-status") {
           console.log(`👤 User status: ${event.user} is ${event.status}`);
           showUserStatusMessage(event.user, event.status, event.message);
+        } else if (event.type === "reaction") {
+          console.log(
+            `💖 Reaction received: ${event.reaction} from ${event.fromUser}`
+          );
+          showReactionFeedback(event.fromUser, event.reaction);
         }
       } catch (e) {
         console.error("Invalid WS message", e);
@@ -1311,3 +1426,53 @@ ipcMain.handle("refresh-users", async () => {
 ipcMain.handle("get-current-user", () => {
   return displayName || "Anonymous";
 });
+
+// IPC Handler für send-reaction
+ipcMain.handle("send-reaction", async (event, { targetUserId, reaction }) => {
+  console.log(`💖 send-reaction IPC received:`, { targetUserId, reaction });
+  try {
+    sendReactionToServer(targetUserId, reaction);
+    console.log(`✅ Reaction sent successfully`);
+  } catch (error) {
+    console.error(`❌ Error sending reaction:`, error);
+  }
+});
+
+// Funktion zum Senden von Reactions an den Server
+function sendReactionToServer(targetUserId, reaction) {
+  console.log(`💖 sendReactionToServer:`, { targetUserId, reaction });
+
+  if (ws && ws.readyState === ws.OPEN) {
+    const payload = {
+      type: "reaction",
+      targetUserId: targetUserId,
+      reaction: reaction,
+      fromUser: displayName || "Anonymous",
+    };
+    console.log(`📤 Sending reaction to server:`, payload);
+    ws.send(JSON.stringify(payload));
+  } else {
+    console.error(`❌ WebSocket not ready for reaction`);
+  }
+}
+
+// Funktion zum Anzeigen von Reactions
+function showReactionFeedback(fromUser, reaction) {
+  console.log(`💖 showReactionFeedback:`, { fromUser, reaction });
+
+  if (!reactionWindow || reactionWindow.isDestroyed()) {
+    console.error(`❌ Reaction window not available`);
+    return;
+  }
+
+  try {
+    reactionWindow.webContents.send("show-reaction", {
+      fromUser: fromUser,
+      reaction: reaction,
+      durationMs: 5000,
+    });
+    console.log(`✅ Reaction feedback sent to overlay`);
+  } catch (error) {
+    console.error(`❌ Error sending reaction feedback:`, error);
+  }
+}

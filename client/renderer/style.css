@@ -197,6 +197,40 @@ body {
   box-shadow: 0 4px 12px rgba(175, 198, 243, 0.2); /* Cursor accent shadow */
 }
 
+/* Reaction Buttons */
+#toast .toast-reactions {
+  display: flex;
+  gap: 4px;
+  margin-top: 8px;
+  justify-content: center;
+  pointer-events: auto;
+}
+
+#toast .reaction-btn {
+  background: rgba(29, 33, 40, 0.7); /* Cursor dark background */
+  backdrop-filter: blur(8px); /* Glaseffekt */
+  border: 1px solid rgba(175, 198, 243, 0.2); /* Cursor accent border */
+  border-radius: 8px;
+  padding: 6px 8px;
+  font-size: 16px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: #afc6f3; /* Cursor text color */
+  min-width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#toast .reaction-btn:hover {
+  background: rgba(175, 198, 243, 0.2); /* Cursor accent hover */
+  backdrop-filter: blur(12px); /* Stärkerer Glaseffekt */
+  transform: translateY(-1px) scale(1.1);
+  box-shadow: 0 4px 12px rgba(175, 198, 243, 0.3); /* Cursor accent shadow */
+  border-color: rgba(175, 198, 243, 0.4);
+}
+
 /* Fade-Effekt nach 10 Sekunden */
 #toast .toast-item.faded .bubble {
   opacity: 0.4;
