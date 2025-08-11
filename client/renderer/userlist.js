@@ -122,6 +122,69 @@ function hideUserList() {
   }
 }
 
+// TODO: Funktion zum Updaten der User-Liste (auskommentiert - für Auto-Update, war überflüssig)
+/*
+function updateUserList(users) {
+  if (!userListOverlay) {
+    console.log(`🔄 No overlay to update - skipping`);
+    return;
+  }
+
+  console.log(`🔄 Updating user list with ${users.length} users`);
+  
+  const userListContent = userListOverlay.querySelector(".userlist-content");
+  if (!userListContent) {
+    console.error(`❌ Could not find userlist-content to update`);
+    return;
+  }
+
+  const onlineUsers = users.filter((user) => user.status === "online");
+  const userCount = onlineUsers.length;
+
+  // Update nur den Content, nicht das ganze Overlay
+  userListContent.innerHTML =
+    userCount === 0
+      ? '<div class="empty-state">Keine User online</div>'
+      : onlineUsers
+          .map(
+            (user) => `
+          <div class="user-item">
+            <span class="user-status ${user.status}"></span>
+            <span class="user-name">${user.name}</span>
+            <button class="user-message-btn" data-user-id="${user.id}" data-user-name="${user.name}" title="Send Message to ${user.name}">💬</button>
+          </div>
+        `
+          )
+          .join("");
+
+  // Event-Listener für neue Message-Buttons hinzufügen
+  const messageButtons = userListContent.querySelectorAll(".user-message-btn");
+  messageButtons.forEach((btn) => {
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const userId = btn.getAttribute("data-user-id");
+      const userName = btn.getAttribute("data-user-name");
+
+      console.log(
+        `💬 Message button clicked for user: ${userName} (${userId})`
+      );
+
+      // Rufe die openToastPrompt Funktion auf
+      if (window.userlistAPI && window.userlistAPI.openToastPrompt) {
+        window.userlistAPI.openToastPrompt(userId);
+      } else {
+        console.error(`❌ openToastPrompt not available`);
+      }
+
+      // Schließe die User-Liste nach dem Klick
+      hideUserList();
+    });
+  });
+
+  console.log(`✅ User list updated with ${userCount} online users`);
+}
+*/
+
 // Höre auf Custom Events vom preload script
 window.addEventListener("userlist-message", (event) => {
   const payload = event.detail;
@@ -133,6 +196,20 @@ window.addEventListener("userlist-message", (event) => {
     console.error(`❌ userlist.js: Invalid payload:`, payload);
   }
 });
+
+// TODO: Update Events für Auto-Update (auskommentiert - war überflüssig)
+/*
+window.addEventListener("userlist-update", (event) => {
+  const payload = event.detail;
+  console.log(`🔄 userlist.js: Update event received:`, payload);
+
+  if (payload && payload.users) {
+    updateUserList(payload.users);
+  } else {
+    console.error(`❌ userlist.js: Invalid update payload:`, payload);
+  }
+});
+*/
 
 // Erweitere das bestehende userlistAPI um unsere lokalen Funktionen
 // (Das preload script hat bereits openToastPrompt definiert)

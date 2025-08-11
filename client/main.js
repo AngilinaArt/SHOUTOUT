@@ -30,6 +30,7 @@ let displayName = null;
 let availableHamsters = []; // Dynamically loaded hamster variants
 let wsConnectToken = 0;
 let lastSeverity = "blue";
+let userListUpdateTimer = null; // Timer für Auto-Update der User-Liste
 
 function createOverlayWindow() {
   console.log(`🏗️ Creating overlay window...`);
@@ -1607,12 +1608,9 @@ function showReactionFeedback(fromUser, reaction) {
 }
 
 // Funktion zum Anzeigen der Online-Users
-async function showOnlineUsers() {
-  console.log(`👥 showOnlineUsers called`);
-
+async function fetchOnlineUsers() {
   if (!userListWindow || userListWindow.isDestroyed()) {
-    console.error(`❌ User list window not available`);
-    return;
+    return null;
   }
 
   try {
@@ -1626,7 +1624,6 @@ async function showOnlineUsers() {
     }
 
     const data = await response.json();
-    console.log(`📋 Fetched users:`, data);
 
     // Konvertiere zu User-Liste mit Status
     const users = data.users.map((user) => ({
@@ -1635,22 +1632,79 @@ async function showOnlineUsers() {
       id: user.id || user.name,
     }));
 
-    // Zeige User-Liste an
-    userListWindow.showInactive();
-    userListWindow.webContents.send("show-userlist", {
-      users: users,
-      durationMs: 15000,
-    });
-
-    console.log(`✅ Online users sent to overlay: ${users.length} users`);
+    return users;
   } catch (error) {
-    console.error(`❌ Error showing online users:`, error);
-
-    // Fallback: Zeige leere Liste
-    userListWindow.showInactive();
-    userListWindow.webContents.send("show-userlist", {
-      users: [],
-      durationMs: 5000,
-    });
+    console.error(`❌ Error fetching online users:`, error);
+    return [];
   }
 }
+
+async function showOnlineUsers() {
+  console.log(`👥 showOnlineUsers called`);
+
+  if (!userListWindow || userListWindow.isDestroyed()) {
+    console.error(`❌ User list window not available`);
+    return;
+  }
+
+  const users = await fetchOnlineUsers();
+  if (users === null) return;
+
+  console.log(`📋 Fetched users:`, users);
+
+  // Zeige User-Liste an
+  userListWindow.showInactive();
+  userListWindow.webContents.send("show-userlist", {
+    users: users,
+    durationMs: 15000,
+  });
+
+  console.log(`✅ Online users sent to overlay: ${users.length} users`);
+
+  // TODO: Auto-Update Timer (auskommentiert - war wahrscheinlich überflüssig da Liste nur 15s sichtbar)
+  // startUserListAutoUpdate();
+}
+
+// TODO: Auto-Update Funktionen (auskommentiert - für später falls benötigt)
+/*
+function startUserListAutoUpdate() {
+  // Stoppe vorherigen Timer falls vorhanden
+  if (userListUpdateTimer) {
+    clearInterval(userListUpdateTimer);
+  }
+
+  console.log(`⏰ Starting user list auto-update (every 30 seconds)`);
+
+  userListUpdateTimer = setInterval(async () => {
+    // Prüfe ob User-Liste noch sichtbar ist
+    if (
+      !userListWindow ||
+      userListWindow.isDestroyed() ||
+      !userListWindow.isVisible()
+    ) {
+      console.log(`⏰ User list not visible - stopping auto-update`);
+      stopUserListAutoUpdate();
+      return;
+    }
+
+    console.log(`🔄 Auto-updating user list...`);
+    const users = await fetchOnlineUsers();
+
+    if (users !== null && userListWindow && !userListWindow.isDestroyed()) {
+      // Update die Liste ohne sie neu zu zeigen
+      userListWindow.webContents.send("update-userlist", {
+        users: users,
+      });
+      console.log(`✅ User list auto-updated: ${users.length} users`);
+    }
+  }, 30000); // 30 Sekunden
+}
+
+function stopUserListAutoUpdate() {
+  if (userListUpdateTimer) {
+    console.log(`⏰ Stopping user list auto-update`);
+    clearInterval(userListUpdateTimer);
+    userListUpdateTimer = null;
+  }
+}
+*/

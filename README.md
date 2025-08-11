@@ -1,185 +1,315 @@
-# Shoutout - Hamster & Toast System
+# 🐹 Shoutout - Desktop Notification System
 
-## 🎯 Projektübersicht
+> **Ein zauberhaftes Desktop-Notification-System mit Hamster-Overlays, Toast-Nachrichten und Emoji-Reactions!** ✨
 
-Ein Desktop-Notification-System mit Hamster-Overlays und Toast-Nachrichten, das über WebSocket-Hub, Discord-Bot und lokale Hotkeys gesteuert werden kann.
+[![Status](https://img.shields.io/badge/Status-Produktionsreif-brightgreen.svg)](https://github.com/yourusername/shoutout)
+[![Platform](https://img.shields.io/badge/Platform-macOS%20%7C%20Windows%20%7C%20Linux-blue.svg)](https://github.com/yourusername/shoutout)
+[![License](https://img.shields.io/badge/License-MIT-green.svg)](https://github.com/yourusername/shoutout)
 
-## 📊 Entwicklungsstand
+## 🎯 Was ist Shoutout?
 
-**Status**: 🟢 **Produktionsreif** - Alle Kernfunktionen implementiert  
-**Letzte Aktualisierung**: August 2025  
-**Nächste Meilensteine**: App-Icon & Animationen
+**Shoutout** ist ein einzigartiges Desktop-Notification-System, das deine Arbeitsumgebung mit süßen Hamster-Animationen und intelligenten Toast-Nachrichten bereichert. Perfekt für Teams, Remote-Arbeit oder einfach nur, um deinen Tag mit etwas Niedlichkeit zu versüßen! 🎉
 
-### 🎉 Was bereits funktioniert:
+### ✨ Features
 
-- **Desktop-App**: ✅ Vollständig funktional (macOS & Windows)
-- **WebSocket-Hub**: ✅ Stabiler Server mit Rate-Limiting
-- **Discord-Bot**: ✅ Slash-Commands für Hamster & Toast
-- **Autostart**: ✅ Systemintegration für automatischen Start
-- **Tray-System**: ✅ Vollständiges Menü mit allen Features
-- **Overlays**: ✅ Hamster-Animationen & Toast-Benachrichtigungen
+- 🐹 **Hamster-Overlays** - Süße Animationen mit verschiedenen Varianten
+- 💬 **Toast-Nachrichten** - Intelligente Benachrichtigungen mit Reply-Funktion
+- 💖 **Emoji-Reactions** - Schnelle Reaktionen mit visuellen Effekten
+- 👥 **Online User List** - Sieh wer gerade online ist
+- 🔔 **Status-Overlay** - System-Nachrichten und Bestätigungen
+- ⌨️ **Global Hotkeys** - Schneller Zugriff von überall
+- 🎯 **Targeted Messages** - Persönliche oder Broadcast-Nachrichten
+- 🌙 **Do Not Disturb** - Störungsfreie Arbeitszeiten
+- 🚀 **Autostart** - Startet automatisch beim Systemstart
+- 🎨 **Cursor Theme + Glass Effects** - Moderne, elegante UI
 
-### 🚀 Bereit für:
+---
 
-- **Produktive Nutzung**: ✅ Alle Features getestet und stabil
-- **Team-Deployment**: ✅ Einfache Installation und Konfiguration
-- **Weiterentwicklung**: ✅ Saubere Architektur für neue Features
+## 🚀 Quick Start
+
+### 📥 Download (Coming Soon!)
+
+- **macOS**: `Shoutout.dmg` (Intel + Apple Silicon)
+- **Windows**: `Shoutout-Setup.exe`
+- **Linux**: `shoutout.AppImage`
+
+### 🔧 Für Entwickler
+
+```bash
+# Repository klonen
+git clone https://github.com/yourusername/shoutout.git
+cd shoutout
+
+# Dependencies installieren
+npm install
+cd server && npm install
+cd ../bot && npm install
+cd ../client && npm install
+
+# Alle Services starten
+npm run dev
+```
+
+---
 
 ## 🏗️ Architektur
 
-### Client (Electron App)
-
-- **Hauptprozess**: `client/main.js` - Tray, Overlay-Fenster, WebSocket-Client
-- **Renderer**: `client/renderer/` - HTML/CSS/JS für Overlays
-- **Preloads**: Sichere IPC-Bridge zwischen Main und Renderer
-- **Assets**: Icons, Hamster-Bilder, Tray-Symbole
-
-### Server (WebSocket Hub)
-
-- **Port**: 3001 (konfigurierbar via `PORT`)
-- **Endpoints**: `/broadcast` (HTTP), `/ws` (WebSocket)
-- **Features**: Rate-Limiting, Joi-Validierung, Target-Filtering
-
-### Discord Bot
-
-- **Commands**: `/hamster`, `/toast` mit Slash-Command-API
-- **Integration**: Sendet Events an den WebSocket-Hub
-
-## 🔧 Aktueller Stand (August 2025)
-
-### ✅ Funktional & Implementiert
-
-- **Tray-Icon**: ✅ macOS-kompatibel mit 1x/2x-Skalierung (18px/36px)
-- **Overlay-System**: ✅ Transparente Fenster, immer im Vordergrund, maus-durchlässig
-- **Hamster-Queue**: ✅ Verhindert Überflutung, SVG-Fallback bei fehlenden Bildern
-- **Toast-System**: ✅ Verschiedene Severity-Level, Auto-Expire, Max-Stack
-- **Hotkeys**: ✅ Cmd+Alt+H (Hamster), Cmd+Alt+T (Toast), Cmd+Alt+1/2 (Spezielle Hamster)
-- **WebSocket**: ✅ Auto-Reconnect, Rate-Limiting, Target-Filtering
-- **Einstellungen**: ✅ Persistente `displayName`, `lastSeverity`, `doNotDisturb` in `shoutout-user.json`
-- **Autostart**: ✅ "Beim Login starten" Toggle für macOS und Windows
-- **DND-Modus**: ✅ "Do Not Disturb" mit Icon-Wechsel
-- **WebSocket-Status**: ✅ Online/Offline-Status im Tray-Menü und Tooltip
-- **Reconnect-Funktion**: ✅ Manueller WebSocket-Neustart über Tray-Menü
-- **Dynamische Hamster-Liste**: ✅ Automatisches Scannen von `assets/hamsters/`
-
-### 🎨 UI/UX Features
-
-- **Design**: ✅ Dark Mode, moderne Buttons, Emoji-Picker
-- **Responsive**: ✅ Overlay positioniert sich automatisch (oben-rechts)
-- **Accessibility**: ✅ CSP-konform, ARIA-Labels, Keyboard-Navigation
-- **Tray-Menü**: ✅ Vollständig funktionales Dropdown mit allen Features
-- **Status-Anzeige**: ✅ Visuelle Indikatoren für alle Systemzustände
-
-### 🔒 Sicherheit & Stabilität
-
-- **Context Isolation**: ✅ Aktiv in allen Electron-Fenstern
-- **CSP**: 🔄 Content Security Policy (geplant, noch nicht implementiert)
-- **Rate-Limiting**: ✅ 10 Events/10s für Broadcast, 5 Events/10s pro WS-Connection
-- **Auth**: ✅ Bearer-Token für Broadcast-Endpoint (implementiert, Konfiguration erforderlich)
-- **Error Handling**: 🔄 Robuste Fehlerbehandlung mit Fallbacks (teilweise implementiert)
-- **Auto-Reconnect**: 🔄 Automatische WebSocket-Wiederherstellung (grundlegend implementiert, kann robuster werden)
-
-## �� Dateistruktur
-
 ```
-_PROJEKT_shoutout/
-├── client/                    # Electron Desktop App
-│   ├── main.js               # ✅ Hauptprozess (Tray, Overlay, WS-Client, Autostart)
-│   ├── preload.js            # ✅ IPC-Bridge für Overlay
-│   ├── preload_compose.js    # ✅ IPC-Bridge für Toast-Compose
-│   ├── preload_name.js       # ✅ IPC-Bridge für Name-Änderung
-│   ├── renderer/             # ✅ UI-Komponenten
-│   │   ├── overlay.html      # ✅ Haupt-Overlay (Hamster + Toast)
-│   │   ├── overlay.js        # ✅ Overlay-Logic (Queue, Animation)
-│   │   ├── compose.html      # ✅ Toast-Erstellung
-│   │   ├── name.html         # ✅ Name-Änderung
-│   │   └── style.css         # ✅ Styling für Overlays
-│   └── assets/               # ✅ Bilder und Icons
-│       ├── icon/             # ✅ Tray-Icons (1x/2x für macOS)
-│       │   ├── hamster.png   # ✅ Haupt-Tray-Icon (1024x1024)
-│       │   ├── hamster.ico   # ✅ Windows-Tray-Icon
-│       │   ├── hamster-sleep.png # ✅ DND-Icon für macOS
-│       │   ├── hamster-sleep.ico # ✅ DND-Icon für Windows
-│       │   ├── icon.png      # ✅ Fallback-Icon
-│       │   └── icon.ico      # ✅ Windows-Fallback
-│       └── hamsters/         # ✅ Hamster-Varianten
-│           ├── caprisun.png  # ✅ Spezielle Hamster-Variante
-│           └── lol.png       # ✅ Spezielle Hamster-Variante
-├── server/                    # ✅ WebSocket Hub
-│   ├── src/index.js          # ✅ Express + WS Server
-│   └── package.json          # ✅ Dependencies
-├── bot/                       # ✅ Discord Bot
-│   ├── src/index.js          # ✅ Bot-Logic + Commands
-│   ├── src/registerCommands.js # ✅ Command-Registration
-│   └── package.json          # ✅ Dependencies
-└── package.json               # ✅ Root-Package (Workspace-Management)
+┌─────────────────┐    WebSocket    ┌─────────────────┐
+│   Desktop App   │◄──────────────►│  WebSocket Hub  │
+│   (Electron)    │                 │   (Node.js)     │
+└─────────────────┘                 └─────────────────┘
+         │                                   ▲
+         │                                   │
+         │ IPC                               │ HTTP
+         ▼                                   │
+┌─────────────────┐                         │
+│   Discord Bot   │─────────────────────────┘
+│   (Node.js)     │
+└─────────────────┘
 ```
 
-## 🚀 Nächste Schritte & Verbesserungen
+### 🎯 Komponenten
 
-### ✅ Bereits implementiert (August 2025)
+- **`client/`** - Electron Desktop App mit Overlays
+- **`server/`** - WebSocket Hub für Real-Time Kommunikation
+- **`bot/`** - Discord Bot für Remote-Triggering
 
-- **DND-Icon-Switching**: ✅ Beim Umschalten "Do Not Disturb" das Tray-Icon auf gedimmte Version ändern
-- **Dynamische Hamster-Liste**: ✅ `assets/hamsters/` scannen und automatisch ins Tray-Menü übernehmen
-- **WS-Status im Tooltip**: ✅ Online/Offline-Status anzeigen, Reconnect-Button im Tray
-- **Autostart-Funktionalität**: ✅ "Beim Login starten" Toggle für macOS und Windows
+---
 
-### 🎯 Priorität 1 (Nächste Session)
+## 🔧 Developer Setup
 
-1. **App-Icon**: Neues Hamster-Branding als macOS-App-Icon (build.mac.icon)
-2. **Hamster-Animationen**: Mehr Animationen, Sound-Effekte
-3. **Toast-Templates**: Vordefinierte Toast-Nachrichten
-4. **Multi-Monitor Support**: Overlay-Position auf allen Monitoren
-5. **🔒 CSP implementieren**: Content Security Policy für bessere Sicherheit
-6. **🛡️ Error Handling**: Robuste Fehlerbehandlung und Fallbacks
+### 📋 Voraussetzungen
 
-### 🎯 Priorität 2 (Mittelfristig)
+- **Node.js** 18+ ([Download](https://nodejs.org/))
+- **npm** 9+ (kommt mit Node.js)
+- **Git** ([Download](https://git-scm.com/))
+- **macOS**: Xcode Command Line Tools
+- **Windows**: Visual Studio Build Tools
 
-1. **Custom Themes**: Benutzerdefinierte Farbschemata
-2. **Plugin-System**: Erweiterbare Hamster/Toast-Typen
-3. **Mobile Companion**: Companion-App für iOS/Android
-4. **Advanced Hotkeys**: Mehr Kombinationen, Custom-Bindings
+### 🚀 Lokale Entwicklung
 
-### 🎯 Priorität 3 (Langfristig)
+#### 1. Repository Setup
 
-1. **Cloud-Sync**: Einstellungen über Geräte hinweg synchronisieren
-2. **Analytics**: Nutzungsstatistiken und Insights
-3. **Team-Features**: Kollaborative Hamster/Toast-Systeme
-4. **API-Erweiterungen**: Mehr Endpoints, Webhook-Integration
+```bash
+# Repository klonen
+git clone https://github.com/yourusername/shoutout.git
+cd shoutout
+
+# Dependencies installieren (alle Packages)
+npm install
+```
+
+#### 2. Server starten
+
+```bash
+cd server
+
+# Dependencies installieren
+npm install
+
+# .env Datei erstellen
+cp .env.example .env
+
+# Server starten
+npm start
+```
+
+**Server läuft auf:** `http://localhost:3001`
+
+#### 3. Discord Bot (Optional)
+
+```bash
+cd bot
+
+# Dependencies installieren
+npm install
+
+# .env Datei erstellen
+cp .env.example .env
+
+# Bot starten
+npm start
+```
+
+#### 4. Desktop App starten
+
+```bash
+cd client
+
+# Dependencies installieren
+npm install
+
+# App starten
+npm start
+```
+
+#### 5. Alle Services gleichzeitig starten
+
+```bash
+# Im Root-Verzeichnis
+npm run dev
+```
+
+### 🔐 Environment Variables
+
+#### Server (.env)
+
+```bash
+PORT=3001
+BROADCAST_SECRET=your-super-secret-token-123
+ALLOW_NO_AUTH=false
+```
+
+#### Bot (.env)
+
+```bash
+DISCORD_TOKEN=your-discord-bot-token
+GUILD_ID=optional-guild-id
+HUB_URL=http://localhost:3001
+HUB_SECRET=your-super-secret-token-123
+```
+
+#### Client (.env)
+
+```bash
+WS_URL=ws://localhost:3001/ws
+```
+
+### 🏗️ Build & Distribution
+
+#### macOS Build
+
+```bash
+cd client
+npm run build:mac
+# Erstellt: dist/Shoutout.dmg
+```
+
+#### Windows Build
+
+```bash
+cd client
+npm run build:win
+# Erstellt: dist/Shoutout Setup.exe
+```
+
+#### Linux Build
+
+```bash
+cd client
+npm run build:linux
+# Erstellt: dist/shoutout.AppImage
+```
+
+---
+
+## 📱 Screenshots
+
+### 🐹 Hamster Overlay
+
+![Hamster Overlay](docs/screenshots/hamster-overlay.png)
+
+### 💬 Toast Messages
+
+![Toast Messages](docs/screenshots/toast-messages.png)
+
+### 👥 Online User List
+
+![User List](docs/screenshots/user-list.png)
+
+### 🎨 Send Toast Window
+
+![Send Toast](docs/screenshots/send-toast.png)
+
+---
+
+## 🎮 Verwendung
+
+### ⌨️ Global Hotkeys
+
+- **`Cmd+Alt+H`** (macOS) / **`Ctrl+Alt+H`** (Windows) - Hamster anzeigen
+- **`Cmd+Alt+T`** (macOS) / **`Ctrl+Alt+T`** (Windows) - Toast senden
+- **`Cmd+Alt+1`** / **`Ctrl+Alt+1`** - Caprisun Hamster
+- **`Cmd+Alt+2`** / **`Ctrl+Alt+2`** - LOL Hamster
+
+### 🎯 Tray Menu
+
+- **🟢 Your name** - Aktueller Status und Name
+- **✏️ Change Name** - Namen ändern
+- **🔄 Reconnect** - WebSocket neu verbinden
+- **🔕 Do Not Disturb** - Störungen blockieren
+- **🚀 Autostart** - Beim Login starten
+- **🐹 Send hamster** - Hamster-Varianten
+- **💬 Send Toast** - Nachricht senden
+- **👥 Show Online Users** - Online-User anzeigen
+- **❌ Quit** - App beenden
+
+### 💬 Toast System
+
+- **Persönlich** - Nur für einen User
+- **Broadcast** - Für alle User
+- **Reply** - Direkte Antwort auf Nachricht
+- **Emoji Reactions** - 💖 👍 👎 🎉
+
+---
 
 ## 🔧 Technische Details
 
-### Tray-Icon-Handling (macOS)
+### 🏗️ Tech Stack
 
-```javascript
-// Korrekte 1x/2x-Skalierung für macOS
-const img1x = baseImage.resize({ width: 18, height: 18 });
-const img2x = baseImage.resize({ width: 36, height: 36 });
-const multi = nativeImage.createEmpty();
-multi.addRepresentation({
-  scaleFactor: 1.0,
-  width: 18,
-  height: 18,
-  buffer: img1x.toPNG(),
-});
-multi.addRepresentation({
-  scaleFactor: 2.0,
-  width: 36,
-  height: 36,
-  buffer: img2x.toPNG(),
-});
+- **Frontend**: Electron, HTML5, CSS3, Vanilla JavaScript
+- **Backend**: Node.js, Express, WebSocket (ws)
+- **Bot**: Discord.js, Slash Commands
+- **Build**: electron-builder, npm scripts
+- **Styling**: CSS Grid, Flexbox, Glass Effects, Animations
+
+### 📁 Projektstruktur
+
+```
+shoutout/
+├── client/                    # Electron Desktop App
+│   ├── main.js              # Hauptprozess (Tray, Overlays, WS)
+│   ├── preload.js           # IPC Bridge für Overlay
+│   ├── preload_compose.js   # IPC Bridge für Toast-Compose
+│   ├── preload_name.js      # IPC Bridge für Name-Änderung
+│   ├── preload_status.js    # IPC Bridge für Status-Overlay
+│   ├── preload_reaction.js  # IPC Bridge für Reaction-Overlay
+│   ├── preload_userlist.js  # IPC Bridge für User-List
+│   ├── renderer/            # UI-Komponenten
+│   │   ├── overlay.html     # Haupt-Overlay
+│   │   ├── overlay.js       # Overlay-Logic
+│   │   ├── compose.html     # Toast-Erstellung
+│   │   ├── name.html        # Name-Änderung
+│   │   ├── status.html      # Status-Overlay
+│   │   ├── reaction.html    # Reaction-Overlay
+│   │   ├── userlist.html    # Online User List
+│   │   ├── userlist.js      # User List Logic
+│   │   ├── status.js        # Status Logic
+│   │   ├── reaction.js      # Reaction Logic
+│   │   └── style.css        # Styling
+│   └── assets/              # Bilder und Icons
+│       ├── icon/            # App Icons
+│       └── hamsters/        # Hamster-Varianten
+├── server/                   # WebSocket Hub
+│   └── src/index.js         # Express + WS Server
+├── bot/                      # Discord Bot
+│   └── src/index.js         # Bot Logic + Commands
+└── package.json              # Workspace Management
 ```
 
-### WebSocket-Event-Struktur
+### 🔌 API Endpoints
+
+#### WebSocket Events
 
 ```javascript
 // Hamster Event
 {
   type: "hamster",
   variant: "default" | "caprisun" | "lol",
-  duration: 3000, // ms
+  duration: 3000,
   target: "username", // optional
-  sender: "username" // wird vom Hub hinzugefügt
+  sender: "username"
 }
 
 // Toast Event
@@ -187,217 +317,151 @@ multi.addRepresentation({
   type: "toast",
   message: "Nachricht (max 280 Zeichen)",
   severity: "blue" | "green" | "pink" | "red" | "info" | "success" | "warn" | "critical",
-  duration: 4000, // ms
   target: "username", // optional
-  sender: "username" // wird vom Hub hinzugefügt
+  sender: "username"
 }
-```
 
-### Einstellungen (shoutout-user.json)
-
-```json
+// Reaction Event
 {
-  "displayName": "Benutzername",
-  "lastSeverity": "blue",
-  "doNotDisturb": false,
-  "autostartEnabled": false
+  type: "reaction",
+  reaction: "💖" | "👍" | "👎" | "🎉",
+  targetUserId: "uuid",
+  fromUser: "username"
 }
 ```
 
-### Autostart-Funktionalität
-
-```javascript
-// Plattformübergreifende Autostart-Implementierung
-function updateAutostartStatus(enabled) {
-  if (process.platform === "darwin" || process.platform === "win32") {
-    app.setLoginItemSettings({
-      openAtLogin: enabled,
-      openAsHidden: true, // Startet versteckt (nur Tray)
-      path: app.getPath("exe")
-    });
-  }
-}
-
-// Tray-Menü Toggle
-{
-  label: "Beim Login starten",
-  type: "checkbox",
-  checked: autostartEnabled,
-  click: (item) => updateAutostartStatus(item.checked)
-}
-```
-
-### 🔒 Sicherheits-Features (Geplant)
-
-#### Content Security Policy (CSP)
-
-```javascript
-// CSP verhindert XSS-Angriffe durch Einschränkung der ausführbaren Quellen
-// Beispiel für eine strikte CSP:
-Content-Security-Policy:
-  default-src 'self';
-  script-src 'self' 'unsafe-inline';
-  style-src 'self' 'unsafe-inline';
-```
-
-#### Bearer Token Authentication
-
-```javascript
-// Broadcast-Endpoint mit Token-Auth absichern
-app.post("/broadcast", authMiddleware, (req, res) => {
-  // Nur authentifizierte Requests erlaubt
-  const token = req.headers.authorization?.replace("Bearer ", "");
-  if (!isValidToken(token)) {
-    return res.status(401).json({ error: "Unauthorized" });
-  }
-  // ... Broadcast-Logic
-});
-```
-
-## 🚨 Bekannte Probleme & Lösungen
-
-### Tray-Icon wird nicht angezeigt (macOS)
-
-- **Ursache**: Große PNGs (1024x1024) werden nicht automatisch skaliert
-- **Lösung**: ✅ Bereits implementiert - explizite 1x/2x-Skalierung
-- **Fallback**: Verwendet `icon.png` falls `hamster.png` fehlt
-
-### WebSocket-Verbindung bricht ab
-
-- **Ursache**: Netzwerk-Instabilität, Server-Neustart
-- **Lösung**: ✅ Auto-Reconnect alle 2 Sekunden
-- **Verbesserung**: Status im Tray anzeigen
-
-### Overlay wird nicht angezeigt
-
-- **Ursache**: Fenster ist hinter anderen Apps
-- **Lösung**: ✅ `alwaysOnTop: true`, `setAlwaysOnTop(true, "screen-saver")`
-- **Zusätzlich**: `setVisibleOnAllWorkspaces(true)`
-
-## 📋 Environment Variables
-
-### Server (.env)
+#### HTTP Endpoints
 
 ```bash
-PORT=3001
-# WICHTIG: Ändere diesen Wert zu einem sicheren, zufälligen Token!
-BROADCAST_SECRET=dein-super-geheimer-token-123
-# Sicherheit: Auth aktivieren (false = Token erforderlich, true = Keine Auth)
-ALLOW_NO_AUTH=false
+# Broadcast Event (mit Auth)
+POST /broadcast
+Authorization: Bearer your-secret-token
+Content-Type: application/json
+
+# Online Users List
+GET /users
 ```
-
-### Bot (.env)
-
-```bash
-DISCORD_TOKEN=your-bot-token
-GUILD_ID=optional-guild-id
-HUB_URL=http://localhost:3001
-# WICHTIG: Muss mit dem BROADCAST_SECRET vom Server übereinstimmen!
-HUB_SECRET=dein-super-geheimer-token-123
-```
-
-### Client (.env)
-
-```bash
-WS_URL=ws://localhost:3001/ws
-WS_TOKEN=optional-auth-token
-```
-
-## 🔐 Sicherheit einrichten
-
-### 1. Sicheren Token generieren
-
-```bash
-# Terminal: Zufälligen Token generieren
-openssl rand -base64 32
-# Oder: https://generate-secret.vercel.app/32
-```
-
-### 2. .env Dateien erstellen
-
-```bash
-# Server
-cp server/env.example server/.env
-# Bearer Token in server/.env setzen
-
-# Bot
-cp bot/env.example bot/.env
-# Gleichen Token in bot/.env setzen
-```
-
-### 3. ALLOW_NO_AUTH=false setzen
-
-```bash
-# In server/.env
-ALLOW_NO_AUTH=false
-```
-
-## 🎮 Verwendung
-
-### Lokale Hotkeys
-
-- `Cmd+Alt+H`: Zeigt Hamster-Overlay
-- `Cmd+Alt+T`: Öffnet Toast-Compose
-- `Cmd+Alt+1`: Sendet "caprisun" Hamster
-- `Cmd+Alt+2`: Sendet "lol" Hamster
-
-### Discord Commands
-
-- `/hamster [variant] [duration] [target]`
-- `/toast [message] [severity] [duration] [target]`
-
-### HTTP API
-
-```bash
-curl -X POST http://localhost:3001/broadcast \
-  -H "Authorization: Bearer your-secret" \
-  -H "Content-Type: application/json" \
-  -d '{"type":"hamster","variant":"default","duration":3000}'
-```
-
-## 🔄 Entwicklung
-
-### Start der Komponenten
-
-```bash
-# Terminal 1: WebSocket Hub
-cd server && npm start
-
-# Terminal 2: Discord Bot
-cd bot && npm start
-
-# Terminal 3: Desktop Client
-cd client && npm start
-```
-
-### Build
-
-```bash
-cd client && npm run build
-```
-
-## 💡 Architektur-Entscheidungen
-
-### Warum Electron?
-
-- **Cross-Platform**: Windows, macOS, Linux
-- **Native Integration**: Tray, Hotkeys, Always-on-Top
-- **Web Technologies**: Bekannte HTML/CSS/JS-Stack
-
-### Warum WebSocket Hub?
-
-- **Decoupling**: Client, Bot und andere Tools können unabhängig kommunizieren
-- **Scalability**: Mehrere Clients können gleichzeitig verbunden sein
-- **Reliability**: Auto-Reconnect, Rate-Limiting, Target-Filtering
-
-### Warum Joi-Validierung?
-
-- **Security**: Verhindert malformed Events
-- **Consistency**: Einheitliche Event-Struktur
-- **Debugging**: Klare Fehlermeldungen bei ungültigen Daten
 
 ---
 
+## 🚨 Troubleshooting
+
+### ❌ Häufige Probleme
+
+#### App startet nicht
+
+```bash
+# Alle Electron-Prozesse beenden
+pkill -f "electron"
+
+# Dependencies neu installieren
+rm -rf node_modules package-lock.json
+npm install
+```
+
+#### WebSocket-Verbindung fehlschlägt
+
+```bash
+# Server-Status prüfen
+curl http://localhost:3001/health
+
+# Port prüfen
+lsof -i :3001
+```
+
+#### Build-Fehler
+
+```bash
+# Dependencies prüfen
+npm ls electron
+
+# electron-builder neu installieren
+npm install --save-dev electron-builder
+```
+
+### 🔍 Debug-Modus
+
+```bash
+# DevTools aktivieren
+# In client/main.js: overlayWindow.openDevTools()
+
+# Logs anzeigen
+tail -f /tmp/server.log
+```
+
+---
+
+## 🤝 Contributing
+
+**Wir freuen uns über deine Beiträge!** 🎉
+
+### 📋 Contributing Guidelines
+
+1. **Fork** das Repository
+2. **Feature Branch** erstellen (`git checkout -b feature/amazing-feature`)
+3. **Changes** committen (`git commit -m 'Add amazing feature'`)
+4. **Branch** pushen (`git push origin feature/amazing-feature`)
+5. **Pull Request** erstellen
+
+### 🎯 Entwicklungsworkflow
+
+```bash
+# Feature Branch erstellen
+git checkout -b feature/new-feature
+
+# Änderungen machen
+# ... code ...
+
+# Tests laufen lassen
+npm test
+
+# Committen
+git add .
+git commit -m "feat: add new feature"
+
+# Pushen
+git push origin feature/new-feature
+```
+
+### 🧪 Testing
+
+```bash
+# Alle Tests laufen lassen
+npm test
+
+# Spezifische Tests
+npm run test:client
+npm run test:server
+npm run test:bot
+```
+
+---
+
+## 📄 License
+
+**MIT License** - Siehe [LICENSE](LICENSE) für Details.◊
+
+---
+
+## 🙏 Danksagungen
+
+- **Electron Team** - Für das fantastische Framework
+- **Node.js Community** - Für die großartigen Packages
+- **CSS Glass Effects** - Für die wunderschöne UI
+- **Hamster-Community** - Für die Inspiration 🐹
+
+---
+
+## 📞 Support
+
+- **Issues**: [GitHub Issues](https://github.com/yourusername/shoutout/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/yourusername/shoutout/discussions)
+- **Wiki**: [GitHub Wiki](https://github.com/yourusername/shoutout/wiki)
+
+---
+
+**Made with ❤️ and 🐹 by the Shoutout Team Angilina und Cursor AI Claude und GPT**
+
 **Letzte Aktualisierung**: August 2025
-**Status**: Funktional, bereit für Verbesserungen  
-**Nächste Session**: DND-Icon-Switching + dynamische Hamster-Liste implementieren
+**Version**: 1.0.0  
+**Status**: 🟢 Produktionsreif

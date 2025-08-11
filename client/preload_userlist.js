@@ -29,4 +29,18 @@ ipcRenderer.on("show-userlist", (_, payload) => {
   );
 });
 
+// TODO: IPC-Handler für User-List-Updates (auskommentiert - Auto-Update war überflüssig)
+/*
+ipcRenderer.on("update-userlist", (_, payload) => {
+  console.log(`🔄 preload_userlist.js: update-userlist IPC received:`, payload);
+
+  // Dispatch ein Custom Event ans DOM für Updates
+  window.dispatchEvent(
+    new CustomEvent("userlist-update", {
+      detail: payload,
+    })
+  );
+});
+*/
+
 console.log(`🔧 preload_userlist.js: Loaded successfully`);
