@@ -86,7 +86,7 @@ function escapeHtml(str) {
 }
 
 window.shoutout.onToast(
-  ({ message, severity, durationMs, sender, recipientInfo }) => {
+  ({ message, severity, durationMs, sender, recipientInfo, senderId }) => {
     const sev = [
       "blue",
       "green",
@@ -153,11 +153,18 @@ window.shoutout.onToast(
 
     if (replyBtn) {
       replyBtn.addEventListener("click", () => {
-        console.log(`🖱️ REPLY button clicked for sender: ${safeSender}`);
-        // Toast-Fenster öffnen mit vorausgewähltem Empfänger
-        if (safeSender) {
+        console.log(
+          `🖱️ REPLY button clicked for sender: ${safeSender}, senderId: ${senderId}`
+        );
+        // Toast-Fenster öffnen mit vorausgewähltem Empfänger (verwende senderId statt safeSender)
+        if (senderId) {
           console.log(
-            `📤 Calling openToastPrompt with targetUser: ${safeSender}`
+            `📤 Calling openToastPrompt with targetUser: ${senderId}`
+          );
+          window.shoutout.openToastPrompt(senderId);
+        } else if (safeSender) {
+          console.log(
+            `📤 Fallback: Calling openToastPrompt with targetUser: ${safeSender}`
           );
           window.shoutout.openToastPrompt(safeSender);
         } else {

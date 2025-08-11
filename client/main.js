@@ -143,7 +143,14 @@ function showHamster(variant, durationMs, sender) {
   }
 }
 
-function showToast(message, severity, durationMs, sender, recipientInfo) {
+function showToast(
+  message,
+  severity,
+  durationMs,
+  sender,
+  recipientInfo,
+  senderId
+) {
   if (!overlayWindow || overlayWindow.isDestroyed()) return;
   positionOverlayTopRight();
   overlayWindow.webContents.send("show-toast", {
@@ -152,6 +159,7 @@ function showToast(message, severity, durationMs, sender, recipientInfo) {
     durationMs,
     sender,
     recipientInfo,
+    senderId,
   });
 }
 
@@ -206,7 +214,8 @@ function connectWebSocket() {
             event.severity || "info",
             event.duration || 4000,
             event.sender,
-            event.recipientInfo
+            event.recipientInfo,
+            event.senderId
           );
         }
       } catch (e) {

@@ -428,7 +428,11 @@
           }
 
           const option = document.createElement("option");
-          option.value = user.displayName || user.name; // Verwende displayName als value!
+          option.value = user.id; // Verwende user.id als eindeutige ID!
+          option.setAttribute(
+            "data-display-name",
+            user.displayName || user.name
+          );
           option.innerHTML = `
             <div class="user-option">
               <span class="user-status ${
@@ -691,11 +695,26 @@
         );
 
         console.log(`🔍 Looking for user: ${pendingTargetUser}`);
-        // Finde den Index des Users in der Liste
+        // Finde den Index des Users in der Liste (nach ID oder displayName)
         for (let i = 0; i < targetSelect.options.length; i++) {
-          console.log(`🔍 Option ${i}: ${targetSelect.options[i].value}`);
-          if (targetSelect.options[i].value === pendingTargetUser) {
-            console.log(`✅ Found match at index ${i}`);
+          const option = targetSelect.options[i];
+          const optionValue = option.value;
+          const optionDisplayName = option.getAttribute("data-display-name");
+
+          console.log(
+            `🔍 Option ${i}: value="${optionValue}", displayName="${optionDisplayName}"`
+          );
+
+          // Vergleiche sowohl mit user.id als auch mit displayName (für Rückwärtskompatibilität)
+          if (
+            optionValue === pendingTargetUser ||
+            optionDisplayName === pendingTargetUser
+          ) {
+            console.log(
+              `✅ Found match at index ${i} (matched: ${
+                optionValue === pendingTargetUser ? "ID" : "displayName"
+              })`
+            );
             targetSelect.selectedIndex = i;
             pendingTargetUser = null; // Erfolgreich gesetzt
             return;

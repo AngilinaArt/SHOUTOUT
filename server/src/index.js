@@ -121,7 +121,11 @@ wss.on("connection", (ws, request) => {
       if (error) return;
 
       // Verwende die gleiche shouldDeliver Logik wie beim HTTP-Broadcast
-      const outbound = { ...value, sender: ws.user?.name || "Anonymous" };
+      const outbound = {
+        ...value,
+        sender: ws.user?.name || "Anonymous",
+        senderId: ws.user?.id || ws.user?.name || "Anonymous",
+      };
 
       // Empfänger-Info für Toast-Nachrichten hinzufügen
       if (value.type === "toast") {
@@ -233,13 +237,16 @@ function shouldDeliver(client, evt) {
 
   const result = targets.some((target) => {
     const targetStr = String(target || "").toLowerCase();
+    const clientDisplayName = `${clientName} (${client.user?.ip || "unknown"})`;
+
     const matches =
       targetStr === clientName.toLowerCase() ||
-      targetStr === clientId.toLowerCase();
+      targetStr === clientId.toLowerCase() ||
+      targetStr === clientDisplayName.toLowerCase();
 
     if (evt.type === "toast") {
       console.log(
-        `🔍 Target "${targetStr}" vs client "${clientName}" -> ${
+        `🔍 Target "${targetStr}" vs client "${clientName}" (displayName: "${clientDisplayName}") -> ${
           matches ? "✅ MATCH" : "❌ NO MATCH"
         }`
       );
