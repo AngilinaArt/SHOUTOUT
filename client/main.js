@@ -703,7 +703,7 @@ function openToastPrompt(targetUser = null) {
 
   const composeWin = new BrowserWindow({
     width: 600,
-    height: 600,
+    height: 700, // Höher für Windows
     resizable: true,
     modal: true,
     frame: true,

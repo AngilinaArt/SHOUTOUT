@@ -81,6 +81,28 @@ body {
   align-items: flex-end;
   gap: 8px;
   margin-top: 10px;
+  max-height: 400px;
+  overflow-y: auto;
+  padding-right: 10px;
+}
+
+/* Schöner Scrollbar für Toasts */
+#toast #toasts::-webkit-scrollbar {
+  width: 6px;
+}
+
+#toast #toasts::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 3px;
+}
+
+#toast #toasts::-webkit-scrollbar-thumb {
+  background: rgba(139, 92, 246, 0.3);
+  border-radius: 3px;
+}
+
+#toast #toasts::-webkit-scrollbar-thumb:hover {
+  background: rgba(139, 92, 246, 0.5);
 }
 #toast #toasts .toast-item {
   min-width: 260px;
@@ -146,35 +168,45 @@ body {
 }
 
 #toast .toast-ok {
-  background: rgba(229, 231, 235, 0.95);
-  color: #374151;
+  background: rgba(255, 255, 255, 0.1);
+  color: #afc6f3;
+  border: 1px solid rgba(255, 255, 255, 0.2);
   backdrop-filter: blur(10px);
+  transition: all 0.2s ease;
 }
 
 #toast .toast-ok:hover {
-  background: rgba(209, 213, 219, 0.95);
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.3);
   transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
 
 #toast .toast-reply {
-  background: rgba(59, 130, 246, 0.95);
-  color: white;
+  background: rgba(139, 92, 246, 0.2);
+  color: #ffffff;
+  border: 1px solid rgba(139, 92, 246, 0.3);
   backdrop-filter: blur(10px);
+  transition: all 0.2s ease;
 }
 
 #toast .toast-reply:hover {
-  background: rgba(37, 99, 235, 0.95);
+  background: rgba(139, 92, 246, 0.3);
+  border-color: rgba(139, 92, 246, 0.4);
   transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(139, 92, 246, 0.2);
 }
 
 /* Fade-Effekt nach 10 Sekunden */
 #toast .toast-item.faded .bubble {
-  opacity: 0.85;
+  opacity: 0.4;
   transition: opacity 0.5s ease;
+  filter: grayscale(0.2);
 }
 
 #toast .toast-item.faded .bubble:hover {
   opacity: 1;
+  filter: grayscale(0);
 }
 
 #toast .text {
