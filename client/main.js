@@ -69,8 +69,8 @@ function createOverlayWindow() {
 
   overlayWindow.setAlwaysOnTop(true, "screen-saver");
   overlayWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
-  // Mouse-Events nur ignorieren wenn keine Toasts aktiv sind
-  overlayWindow.setIgnoreMouseEvents(false);
+  // Mouse-Events standardmäßig ignorieren (click-through), nur bei aktiven Toasts aktivieren
+  overlayWindow.setIgnoreMouseEvents(true);
   overlayWindow.showInactive();
 
   console.log(`✅ Overlay window created and shown`);
@@ -491,6 +491,10 @@ function showToast(
 ) {
   if (!overlayWindow || overlayWindow.isDestroyed()) return;
   positionOverlayTopRight();
+
+  // Mouse-Events aktivieren wenn Toast angezeigt wird (für Buttons)
+  overlayWindow.setIgnoreMouseEvents(false);
+
   overlayWindow.webContents.send("show-toast", {
     message,
     severity,
@@ -499,6 +503,13 @@ function showToast(
     recipientInfo,
     senderId,
   });
+}
+
+// Funktion um Mouse-Events wieder zu deaktivieren wenn keine Toasts mehr da sind
+function disableOverlayMouseEvents() {
+  if (!overlayWindow || overlayWindow.isDestroyed()) return;
+  console.log(`🖱️ Disabling overlay mouse events (click-through enabled)`);
+  overlayWindow.setIgnoreMouseEvents(true);
 }
 
 function showSuccessMessage(target) {
@@ -1050,6 +1061,11 @@ app.whenReady().then(() => {
     } catch (error) {
       console.error(`❌ Failed to call openToastPrompt:`, error);
     }
+  });
+
+  // IPC-Handler um Mouse-Events zu deaktivieren wenn keine Toasts mehr da sind
+  ipcMain.handle("disable-overlay-mouse-events", async () => {
+    disableOverlayMouseEvents();
   });
 
   createOverlayWindow();

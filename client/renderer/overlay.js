@@ -15,6 +15,19 @@ function hideToast() {
   // If no more items, hide wrapper
   if (!toastsContainer.children.length) {
     toastEl.classList.add("hidden");
+
+    // Deaktiviere Mouse-Events wenn keine Toasts mehr da sind
+    checkAndDisableMouseEvents();
+  }
+}
+
+function checkAndDisableMouseEvents() {
+  // Prüfe ob noch Toasts da sind
+  if (toastsContainer.children.length === 0) {
+    console.log(`🖱️ No more toasts - disabling mouse events`);
+    if (window.shoutout && window.shoutout.disableMouseEvents) {
+      window.shoutout.disableMouseEvents();
+    }
   }
 }
 
@@ -214,6 +227,7 @@ window.shoutout.onToast(
       okBtn.addEventListener("click", () => {
         if (wrapper.parentElement) wrapper.remove();
         hideToast();
+        checkAndDisableMouseEvents();
       });
     }
 
@@ -260,6 +274,7 @@ window.shoutout.onToast(
         // Toast nach Reaction entfernen
         if (wrapper.parentElement) wrapper.remove();
         hideToast();
+        checkAndDisableMouseEvents();
       });
     });
   }

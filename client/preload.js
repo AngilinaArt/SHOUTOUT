@@ -55,6 +55,11 @@ contextBridge.exposeInMainWorld("shoutout", {
     });
     return ipcRenderer.invoke("send-reaction", { targetUserId, reaction });
   },
+
+  disableMouseEvents: () => {
+    console.log(`🖱️ preload.js: disableMouseEvents called`);
+    return ipcRenderer.invoke("disable-overlay-mouse-events");
+  },
 });
 
 console.log(`🔧 preload.js: Loaded successfully`);
