@@ -620,14 +620,28 @@
 
       // Event-Listener für vorausgewählten Empfänger
       window.compose.setTargetUser((targetUser) => {
+        console.log(`🎯 setTargetUser received: targetUser=${targetUser}`);
+        console.log(`🔍 targetSelect available: ${!!targetSelect}`);
+        if (targetSelect) {
+          console.log(
+            `📋 targetSelect options:`,
+            Array.from(targetSelect.options).map((opt) => opt.value)
+          );
+        }
+
         if (targetUser && targetSelect) {
+          console.log(`🔍 Looking for user: ${targetUser}`);
           // Finde den Index des Users in der Liste
           for (let i = 0; i < targetSelect.options.length; i++) {
+            console.log(`🔍 Option ${i}: ${targetSelect.options[i].value}`);
             if (targetSelect.options[i].value === targetUser) {
+              console.log(`✅ Found match at index ${i}`);
               targetSelect.selectedIndex = i;
               break;
             }
           }
+        } else {
+          console.log(`❌ No targetUser or targetSelect not available`);
         }
       });
     </script>

@@ -158,10 +158,15 @@ window.shoutout.onToast(
 
     if (replyBtn) {
       replyBtn.addEventListener("click", () => {
+        console.log(`🖱️ REPLY button clicked for sender: ${safeSender}`);
         // Toast-Fenster öffnen mit vorausgewähltem Empfänger
         if (safeSender) {
+          console.log(
+            `📤 Calling openToastPrompt with targetUser: ${safeSender}`
+          );
           window.shoutout.openToastPrompt(safeSender);
         } else {
+          console.log(`📤 Calling openToastPrompt without targetUser`);
           window.shoutout.openToastPrompt();
         }
         // Toast ausblenden
