@@ -930,13 +930,7 @@ function buildTrayMenu() {
       label: `Send Toast...\t\t${cmdKey}⌥T`,
       click: () => {
         console.log(`🖱️ Tray menu clicked for Send Toast`);
-        try {
-          console.log(`🔍 About to call openToastPrompt()...`);
-          openToastPrompt();
-          console.log(`✅ openToastPrompt() called successfully`);
-        } catch (error) {
-          console.error(`❌ Error calling openToastPrompt():`, error);
-        }
+        openToastPrompt();
       },
     },
     { type: "separator" },
