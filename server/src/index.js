@@ -123,7 +123,7 @@ wss.on("connection", (ws, request) => {
       // Verwende die gleiche shouldDeliver Logik wie beim HTTP-Broadcast
       const outbound = {
         ...value,
-        sender: ws.user?.name || "Anonymous",
+        sender: ws.user?.name || "Anonymous", // Nur der "schöne" Name ohne IP
         senderId: ws.user?.id || ws.user?.name || "Anonymous",
       };
 
@@ -171,6 +171,23 @@ wss.on("connection", (ws, request) => {
   });
 });
 
+// Helper function to extract clean display name from target (removes IP addresses)
+function getCleanDisplayName(target) {
+  if (!target || typeof target !== "string") return target;
+
+  // Falls es eine UUID ist (Name-IP-Timestamp), extrahiere nur den Namen
+  if (target.includes("-::ffff:")) {
+    return target.split("-::ffff:")[0];
+  }
+
+  // Falls es ein displayName mit IP ist, extrahiere nur den Namen
+  if (target.includes(" (::ffff:")) {
+    return target.split(" (::ffff:")[0];
+  }
+
+  return target;
+}
+
 // Helper function to generate recipient info for toast messages
 function getRecipientInfo(target, sender) {
   if (!target || (Array.isArray(target) && target.length === 0)) {
@@ -182,16 +199,18 @@ function getRecipientInfo(target, sender) {
   }
 
   if (target === "me") {
-    return "Persönliche Nachricht";
+    return "an alle";
   }
 
   // Spezifische User(s) als Target
   const targets = Array.isArray(target) ? target : [target];
   if (targets.length === 1) {
-    return `an ${targets[0]}`;
+    const cleanName = getCleanDisplayName(targets[0]);
+    return `an ${cleanName}`;
   } else {
-    return `an ${targets.slice(0, -1).join(", ")} und ${
-      targets[targets.length - 1]
+    const cleanNames = targets.map(getCleanDisplayName);
+    return `an ${cleanNames.slice(0, -1).join(", ")} und ${
+      cleanNames[cleanNames.length - 1]
     }`;
   }
 }
