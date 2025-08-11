@@ -302,9 +302,7 @@ function positionReactionWindow() {
     const overlayBounds = overlayWindow.getBounds();
     const totalHeight = statusBounds.height + overlayBounds.height + gap * 2;
     y = Math.floor(work.y + margin + totalHeight + gap);
-    console.log(
-      `🔧 Reaction positioned below overlays: y=${y} (statusHeight=${statusBounds.height}, overlayHeight=${overlayBounds.height})`
-    );
+    console.log(`🔧 Reaction positioned below overlays: y=${y}`);
   }
 
   reactionWindow.setPosition(x, y);

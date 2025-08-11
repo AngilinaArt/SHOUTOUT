@@ -135,6 +135,4 @@ window.addEventListener("reaction-message", (event) => {
 //   showReactionFeedback("DEBUG USER", "love", 5000);
 // }, 3000);
 
-// Debug: Teste ob die Reaction-API funktioniert
-console.log(`🔧 Reaction overlay loaded successfully`);
-console.log(`🔧 Reaction API available:`, typeof window.reactionAPI);
+// Reaction overlay loaded successfully

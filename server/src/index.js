@@ -511,29 +511,15 @@ function handleReaction(senderWs, data) {
 
   // Finde den Ziel-Client
   let targetClient = null;
-  console.log(`🔍 Looking for target client with ID: ${targetUserId}`);
-
-  console.log(`🔍 Total WebSocket clients: ${wss.clients.size}`);
 
   wss.clients.forEach((client) => {
-    console.log(
-      `🔍 Client readyState: ${client.readyState}, hasUser: ${!!client.user}`
-    );
-
     if (client.readyState === WebSocket.OPEN && client.user) {
-      console.log(`🔍 Checking client:`, {
-        id: client.user.id,
-        name: client.user.name,
-        displayName: client.user.displayName,
-      });
-
       if (
         client.user.id === targetUserId ||
         client.user.name === targetUserId ||
         client.user.displayName === targetUserId
       ) {
         targetClient = client;
-        console.log(`✅ Found target client!`);
       }
     }
   });
