@@ -428,7 +428,7 @@
           }
 
           const option = document.createElement("option");
-          option.value = user.name;
+          option.value = user.displayName || user.name; // Verwende displayName als value!
           option.innerHTML = `
             <div class="user-option">
               <span class="user-status ${
@@ -451,6 +451,10 @@
         if (loadingOption) {
           loadingOption.remove();
         }
+
+        // WICHTIG: Nach dem User-Loading versuchen, den Target User zu setzen
+        console.log(`🎯 Dropdown updated, trying to set target user again...`);
+        setTimeout(() => trySetTargetUser(), 100);
       }
 
       // User beim Laden der Seite laden
