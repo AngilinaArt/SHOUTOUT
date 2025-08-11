@@ -796,12 +796,12 @@ function openToastPrompt(targetUser = null) {
       lastSeverity = severity;
     } catch (_) {}
 
-    // Fenster bleibt offen für weitere Toasts
-    // try {
-    //   composeWin.close();
-    // } catch (_) {}
+    // Fenster schließen nach dem Senden
+    try {
+      composeWin.close();
+    } catch (_) {}
 
-    // Eingabefeld leeren
+    // Eingabefeld leeren (falls das Fenster doch offen bleibt)
     try {
       composeWin.webContents.send("clear-input");
     } catch (_) {}
