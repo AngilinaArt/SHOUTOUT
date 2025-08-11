@@ -621,8 +621,11 @@
       // Event-Listener für vorausgewählten Empfänger
       let pendingTargetUser = null;
 
+      console.log(`🔧 Setting up setTargetUser listener...`);
+
       window.compose.setTargetUser((targetUser) => {
         console.log(`🎯 setTargetUser received: targetUser=${targetUser}`);
+        console.log(`🔍 targetSelect element:`, targetSelect);
 
         // Speichere den targetUser
         pendingTargetUser = targetUser;
@@ -630,6 +633,8 @@
         // Versuche sofort zu setzen
         trySetTargetUser();
       });
+
+      console.log(`✅ setTargetUser listener set up successfully`);
 
       // Funktion zum Setzen des Target Users im Dropdown
       function trySetTargetUser() {
@@ -673,13 +678,19 @@
       }
 
       // Versuche es alle 100ms, bis es funktioniert
+      console.log(`🔧 Setting up targetUser interval...`);
       const targetUserInterval = setInterval(() => {
         if (pendingTargetUser) {
+          console.log(
+            `⏰ Interval tick - trying to set target user: ${pendingTargetUser}`
+          );
           trySetTargetUser();
         } else {
+          console.log(`✅ Target user set, clearing interval`);
           clearInterval(targetUserInterval);
         }
       }, 100);
+      console.log(`✅ targetUser interval set up successfully`);
     </script>
   </body>
 </html>

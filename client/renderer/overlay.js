@@ -136,14 +136,9 @@ window.shoutout.onToast(
       toastsContainer.removeChild(toastsContainer.firstElementChild);
     }
 
-    // Nach 10 Sekunden Buttons anzeigen und Transparenz reduzieren
-    setTimeout(() => {
-      if (wrapper.parentElement) {
-        wrapper.classList.add("faded");
-        const actionsEl = wrapper.querySelector(".toast-actions");
-        if (actionsEl) actionsEl.classList.remove("hidden");
-      }
-    }, 10000);
+    // Buttons sofort anzeigen (kein 10-Sekunden-Warten mehr)
+    const actionsEl = wrapper.querySelector(".toast-actions");
+    if (actionsEl) actionsEl.classList.remove("hidden");
 
     // Event-Listener für Buttons
     const okBtn = wrapper.querySelector(".toast-ok");
