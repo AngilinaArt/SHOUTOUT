@@ -29,6 +29,8 @@ let wsConnectToken = 0;
 let lastSeverity = "blue";
 
 function createOverlayWindow() {
+  console.log(`🏗️ Creating overlay window...`);
+
   overlayWindow = new BrowserWindow({
     width: 420,
     height: 240,
@@ -49,12 +51,33 @@ function createOverlayWindow() {
       nodeIntegration: false,
     },
   });
+
+  console.log(`📁 Loading overlay.html...`);
   overlayWindow.loadFile(path.join(__dirname, "renderer", "overlay.html"));
+
   overlayWindow.setAlwaysOnTop(true, "screen-saver");
   overlayWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
   // Mouse-Events nur ignorieren wenn keine Toasts aktiv sind
   overlayWindow.setIgnoreMouseEvents(false);
   overlayWindow.showInactive();
+
+  console.log(`✅ Overlay window created and shown`);
+
+  // Event-Listener für das Laden
+  overlayWindow.webContents.once("did-finish-load", () => {
+    console.log(`🎯 Overlay window finished loading`);
+  });
+
+  overlayWindow.webContents.on(
+    "did-fail-load",
+    (event, errorCode, errorDescription) => {
+      console.error(
+        `❌ Overlay window failed to load:`,
+        errorCode,
+        errorDescription
+      );
+    }
+  );
 }
 
 function positionOverlayTopRight() {
@@ -73,21 +96,51 @@ function positionOverlayTopRight() {
 }
 
 function showHamster(variant, durationMs, sender) {
-  if (!overlayWindow || overlayWindow.isDestroyed()) return;
-  positionOverlayTopRight();
-  const imgFsPath = path.join(
-    __dirname,
-    "assets",
-    "hamsters",
-    `${variant}.png`
+  console.log(
+    `🐹 showHamster: variant=${variant}, durationMs=${durationMs}, sender=${sender}`
   );
-  const fileUrl = pathToFileURL(imgFsPath).href;
-  overlayWindow.webContents.send("show-hamster", {
-    variant,
-    durationMs,
-    url: fileUrl,
-    sender,
-  });
+
+  if (!overlayWindow || overlayWindow.isDestroyed()) {
+    console.log(`❌ Overlay window not available or destroyed`);
+    return;
+  }
+
+  // Prüfen, ob das Overlay-Window bereit ist
+  if (
+    !overlayWindow.webContents.isLoading() &&
+    overlayWindow.webContents.getTitle() !== ""
+  ) {
+    console.log(`📍 Positioning overlay`);
+    positionOverlayTopRight();
+
+    const imgFsPath = path.join(
+      __dirname,
+      "assets",
+      "hamsters",
+      `${variant}.png`
+    );
+    const fileUrl = pathToFileURL(imgFsPath).href;
+    console.log(`🖼️ Image path: ${imgFsPath}`);
+    console.log(`🔗 File URL: ${fileUrl}`);
+
+    const payload = {
+      variant,
+      durationMs,
+      url: fileUrl,
+      sender,
+    };
+    console.log(`📤 Sending show-hamster IPC:`, payload);
+
+    try {
+      overlayWindow.webContents.send("show-hamster", payload);
+      console.log(`✅ show-hamster IPC sent successfully`);
+    } catch (error) {
+      console.error(`❌ Failed to send show-hamster IPC:`, error);
+    }
+  } else {
+    console.log(`⏳ Overlay window not ready yet, retrying in 100ms...`);
+    setTimeout(() => showHamster(variant, durationMs, sender), 100);
+  }
 }
 
 function showToast(message, severity, durationMs, sender, recipientInfo) {
@@ -115,9 +168,10 @@ function connectWebSocket() {
     ws = new WebSocket(url.toString());
 
     ws.on("open", () => {
-      console.log("WS connected");
+      console.log("🔌 WS connected successfully");
       wsStatus = "connected";
       updateTrayMenu();
+      console.log("📝 Calling updateServerName...");
       updateServerName(); // Sende aktuellen Namen beim Verbinden
     });
     ws.on("message", (data) => {
@@ -159,15 +213,16 @@ function connectWebSocket() {
         console.error("Invalid WS message", e);
       }
     });
-    ws.on("close", () => {
-      console.log("WS disconnected, retrying in 2s");
+    ws.on("close", (code, reason) => {
+      console.log(`🔌 WS disconnected: code=${code}, reason=${reason}`);
       wsStatus = "disconnected";
       updateTrayMenu();
       setTimeout(() => {
         if (token === wsConnectToken) doConnect();
       }, 2000);
     });
-    ws.on("error", () => {
+    ws.on("error", (error) => {
+      console.error(`❌ WS error:`, error);
       wsStatus = "disconnected";
       updateTrayMenu();
       // handled by 'close' retry
@@ -288,14 +343,32 @@ function createTray() {
     } catch (_) {}
   }
   tray.on("click", () => {
+    console.log(`🖱️ Tray icon clicked`);
     try {
-      tray.popUpContextMenu();
-    } catch (_) {}
+      // Menü neu aufbauen, um sicherzustellen, dass es bereit ist
+      buildTrayMenu();
+      // Doppelte Verzögerung: erst Menü bauen, dann anzeigen
+      setTimeout(() => {
+        // Nochmal das Menü bauen, um sicherzustellen, dass es bereit ist
+        buildTrayMenu();
+        setTimeout(() => {
+          tray.popUpContextMenu();
+          console.log(`✅ Context menu popped up`);
+        }, 100);
+      }, 100);
+    } catch (error) {
+      console.error(`❌ Failed to pop up context menu:`, error);
+    }
   });
+
+  console.log(`🏗️ Building initial tray menu...`);
   buildTrayMenu();
 
   // Set initial tooltip and icon state
+  console.log(`🎨 Updating tray icon...`);
   updateTrayIcon();
+
+  console.log(`✅ Tray created successfully`);
 }
 
 function updateTrayMenu() {
@@ -520,7 +593,7 @@ function registerHotkey() {
   const bindings = [
     {
       acc: "CommandOrControl+Alt+H",
-      run: () => showHamster("default", 3000, displayName),
+      run: () => sendHamsterUpstream("default", 3000),
     },
     { acc: "CommandOrControl+Alt+T", run: () => openToastPrompt() },
   ];
@@ -552,6 +625,18 @@ function registerHotkey() {
 }
 
 app.whenReady().then(() => {
+  // IPC-Handler für Toast-Fenster öffnen - SOFORT registrieren
+  ipcMain.removeHandler("open-toast-prompt");
+  ipcMain.handle("open-toast-prompt", async (event, targetUser) => {
+    console.log(`📝 open-toast-prompt IPC received: targetUser=${targetUser}`);
+    try {
+      openToastPrompt(targetUser);
+      console.log(`✅ openToastPrompt called successfully`);
+    } catch (error) {
+      console.error(`❌ Failed to call openToastPrompt:`, error);
+    }
+  });
+
   createOverlayWindow();
   createTray();
   scanAvailableHamsters(); // Scan for available hamsters first
@@ -581,14 +666,33 @@ app.on("before-quit", () => {
 
 // Simple sender helpers
 function sendHamsterUpstream(variant, durationMs) {
+  console.log(
+    `🐹 sendHamsterUpstream: variant=${variant}, durationMs=${durationMs}`
+  );
+
   if (ws && ws.readyState === ws.OPEN) {
-    ws.send(JSON.stringify({ type: "hamster", variant, duration: durationMs }));
+    const payload = {
+      type: "hamster",
+      variant,
+      duration: durationMs,
+      sender: displayName || "unknown",
+    };
+    console.log(`📤 Sending hamster to server:`, payload);
+    ws.send(JSON.stringify(payload));
+  } else {
+    console.log(
+      `❌ WebSocket not ready: status=${wsStatus}, readyState=${ws?.readyState}`
+    );
   }
+
   // Local echo for the sender
+  console.log(`👁️ Showing local hamster echo`);
   showHamster(variant, durationMs, displayName);
 }
 
 function openToastPrompt(targetUser = null) {
+  console.log(`📝 openToastPrompt called: targetUser=${targetUser}`);
+
   const composeWin = new BrowserWindow({
     width: 600,
     height: 600,
@@ -602,9 +706,27 @@ function openToastPrompt(targetUser = null) {
       nodeIntegration: false,
     },
   });
+
+  console.log(`📁 Loading compose.html...`);
   composeWin.loadFile(path.join(__dirname, "renderer", "compose.html"), {
     query: { sev: String(lastSeverity || "blue") },
   });
+
+  // Event-Listener für das Laden
+  composeWin.webContents.once("did-finish-load", () => {
+    console.log(`🎯 Compose window finished loading`);
+  });
+
+  composeWin.webContents.on(
+    "did-fail-load",
+    (event, errorCode, errorDescription) => {
+      console.error(
+        `❌ Compose window failed to load:`,
+        errorCode,
+        errorDescription
+      );
+    }
+  );
 
   // Wenn ein Empfänger vorausgewählt ist, sende ihn nach dem Laden
   if (targetUser) {
@@ -678,14 +800,6 @@ function openToastPrompt(targetUser = null) {
       ipcMain.removeListener("compose-toast-cancel", onCancel);
     } catch (_) {}
   });
-
-  // IPC-Handler für Toast-Fenster öffnen
-  ipcMain.removeHandler("open-toast-prompt");
-  ipcMain.handle("open-toast-prompt", async (event, targetUser) => {
-    try {
-      openToastPrompt(targetUser);
-    } catch (_) {}
-  });
 }
 
 function getSettingsPath() {
@@ -718,7 +832,11 @@ function updateSettings(patch) {
 }
 
 function buildTrayMenu() {
-  if (!tray) return;
+  console.log(`🏗️ buildTrayMenu called`);
+  if (!tray) {
+    console.log(`❌ No tray available`);
+    return;
+  }
 
   // Platform-specific shortcut display
   const isMac = process.platform === "darwin";
@@ -767,30 +885,39 @@ function buildTrayMenu() {
     { type: "separator" },
     {
       label: `Self Hamster\t\t${cmdKey}⌥H`,
-      click: () => showHamster("default", 3000),
+      click: () => {
+        console.log(`🖱️ Tray menu clicked for Self Hamster`);
+        showHamster("default", 3000);
+      },
     },
-    {
-      label: "Send Hamster...",
-      submenu:
-        availableHamsters.length > 0
-          ? availableHamsters.map((hamster, index) => {
-              const keyNumber = (index + 1) % 10; // 1,2,3,4,5,6,7,8,9,0
-              const key = keyNumber === 0 ? "0" : String(keyNumber);
-              return {
-                label: `${hamster}\t\t${cmdKey}⌥${key}`,
-                click: () => sendHamsterUpstream(hamster, 3000),
-              };
-            })
-          : [
-              {
-                label: "Keine Hamster gefunden",
-                enabled: false,
-              },
-            ],
-    },
+    { type: "separator" },
+    { label: "🐹 Hamster senden:", enabled: false },
+    // Hamster direkt als Hauptmenü-Items statt als Submenü
+    ...(availableHamsters.length > 0
+      ? availableHamsters.map((hamster, index) => {
+          const keyNumber = (index + 1) % 10; // 1,2,3,4,5,6,7,8,9,0
+          const key = keyNumber === 0 ? "0" : String(keyNumber);
+          return {
+            label: `  ${hamster}\t\t${cmdKey}⌥${key}`,
+            click: () => {
+              console.log(`🖱️ Tray menu clicked for hamster: ${hamster}`);
+              sendHamsterUpstream(hamster, 3000);
+            },
+          };
+        })
+      : [
+          {
+            label: "  Keine Hamster gefunden",
+            enabled: false,
+          },
+        ]),
+    { type: "separator" },
     {
       label: `Send Toast...\t\t${cmdKey}⌥T`,
-      click: () => openToastPrompt(),
+      click: () => {
+        console.log(`🖱️ Tray menu clicked for Send Toast`);
+        openToastPrompt();
+      },
     },
     { type: "separator" },
     {
@@ -802,9 +929,14 @@ function buildTrayMenu() {
     { role: "quit" },
   ];
   try {
-    tray.setContextMenu(Menu.buildFromTemplate(template));
+    console.log(`📋 Building menu template with ${template.length} items`);
+    const menu = Menu.buildFromTemplate(template);
+    tray.setContextMenu(menu);
+    console.log(`✅ Tray context menu set successfully`);
     // Tooltip is now managed by updateTrayIcon()
-  } catch (_) {}
+  } catch (error) {
+    console.error(`❌ Failed to set tray context menu:`, error);
+  }
 }
 
 function openNamePrompt() {
@@ -894,13 +1026,22 @@ async function ensureDisplayName() {
 
 // Funktion um den aktuellen Namen an den Server zu senden
 function updateServerName() {
+  console.log(
+    `📝 updateServerName called: ws=${!!ws}, readyState=${
+      ws?.readyState
+    }, displayName=${displayName}`
+  );
+
   if (ws && ws.readyState === ws.OPEN && displayName) {
-    ws.send(
-      JSON.stringify({
-        type: "update-name",
-        name: displayName,
-      })
-    );
+    const payload = {
+      type: "update-name",
+      name: displayName,
+    };
+    console.log(`📤 Sending update-name:`, payload);
+    ws.send(JSON.stringify(payload));
+    console.log(`✅ update-name sent successfully`);
+  } else {
+    console.log(`❌ Cannot send update-name: ws not ready or no displayName`);
   }
 }
 
