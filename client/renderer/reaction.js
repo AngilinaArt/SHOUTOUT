@@ -118,6 +118,7 @@ window.addEventListener("reaction-message", (event) => {
   console.log(`📨 reaction.js: Custom event received:`, payload);
 
   if (payload && payload.fromUser && payload.reaction) {
+    console.log(`✅ reaction.js: Valid payload, showing reaction!`);
     showReactionFeedback(
       payload.fromUser,
       payload.reaction,
@@ -127,6 +128,12 @@ window.addEventListener("reaction-message", (event) => {
     console.error(`❌ reaction.js: Invalid payload:`, payload);
   }
 });
+
+// Debug: Teste die Reaction-Funktionalität sofort (disabled)
+// setTimeout(() => {
+//   console.log(`🔧 DEBUG: Testing reaction display...`);
+//   showReactionFeedback("DEBUG USER", "love", 5000);
+// }, 3000);
 
 // Debug: Teste ob die Reaction-API funktioniert
 console.log(`🔧 Reaction overlay loaded successfully`);

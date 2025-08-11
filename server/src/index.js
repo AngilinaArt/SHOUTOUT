@@ -511,15 +511,24 @@ function handleReaction(senderWs, data) {
 
   // Finde den Ziel-Client
   let targetClient = null;
+  console.log(`🔍 Looking for target client with ID: ${targetUserId}`);
+
   wss.clients.forEach((client) => {
-    if (
-      client.readyState === ws.OPEN &&
-      client.user &&
-      (client.user.id === targetUserId ||
+    if (client.readyState === ws.OPEN && client.user) {
+      console.log(`🔍 Checking client:`, {
+        id: client.user.id,
+        name: client.user.name,
+        displayName: client.user.displayName,
+      });
+
+      if (
+        client.user.id === targetUserId ||
         client.user.name === targetUserId ||
-        client.user.displayName === targetUserId)
-    ) {
-      targetClient = client;
+        client.user.displayName === targetUserId
+      ) {
+        targetClient = client;
+        console.log(`✅ Found target client!`);
+      }
     }
   });
 
