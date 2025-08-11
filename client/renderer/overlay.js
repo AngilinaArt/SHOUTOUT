@@ -85,6 +85,33 @@ function escapeHtml(str) {
     .replace(/'/g, "&#39;");
 }
 
+// Erfolgsmeldung Handler
+window.shoutout.onSuccess = ({ message, durationMs }) => {
+  console.log(`🎯 onSuccess handler called with:`, { message, durationMs });
+
+  const wrapper = document.createElement("div");
+  wrapper.className = "success-message";
+
+  wrapper.innerHTML = `
+    <div class="success-bubble">
+      <div class="success-icon">✅</div>
+      <div class="success-text">${message}</div>
+    </div>
+  `;
+
+  console.log(`📝 Adding success message to DOM`);
+  toastsContainer.appendChild(wrapper);
+
+  // Nach der angegebenen Zeit ausblenden
+  setTimeout(() => {
+    if (wrapper.parentElement) {
+      wrapper.remove();
+    }
+  }, durationMs || 4000);
+
+  console.log(`✅ Success message displayed: ${message}`);
+};
+
 window.shoutout.onToast(
   ({ message, severity, durationMs, sender, recipientInfo, senderId }) => {
     const sev = [

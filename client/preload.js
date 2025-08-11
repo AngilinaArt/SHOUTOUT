@@ -5,6 +5,8 @@ contextBridge.exposeInMainWorld("shoutout", {
     ipcRenderer.on("show-hamster", (_, payload) => handler(payload)),
   onToast: (handler) =>
     ipcRenderer.on("show-toast", (_, payload) => handler(payload)),
+  onSuccess: (handler) =>
+    ipcRenderer.on("show-success", (_, payload) => handler(payload)),
   openToastPrompt: (targetUser) =>
     ipcRenderer.invoke("open-toast-prompt", targetUser),
 });

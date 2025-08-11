@@ -163,6 +163,37 @@ function showToast(
   });
 }
 
+function showSuccessMessage(target) {
+  console.log(`🔍 showSuccessMessage called with target: ${target}`);
+
+  if (!overlayWindow || overlayWindow.isDestroyed()) {
+    console.log(`❌ Overlay window not available`);
+    return;
+  }
+
+  positionOverlayTopRight();
+
+  // Empfänger-Text generieren
+  let recipientText = "alle";
+  if (target && target !== "all") {
+    // Falls es eine UUID ist, extrahiere den Namen
+    if (target.includes("-::ffff:")) {
+      recipientText = target.split("-::ffff:")[0];
+    } else {
+      recipientText = target;
+    }
+  }
+
+  console.log(`📤 Sending show-success IPC message: ${recipientText}`);
+
+  overlayWindow.webContents.send("show-success", {
+    message: `Nachricht erfolgreich gesendet an "${recipientText}"`,
+    durationMs: 4000,
+  });
+
+  console.log(`✅ Success message shown: sent to ${recipientText}`);
+}
+
 function connectWebSocket() {
   const token = ++wsConnectToken;
   const url = new URL(WS_URL);
@@ -790,6 +821,11 @@ function openToastPrompt(targetUser = null) {
           sender: displayName || "unknown",
         })
       );
+
+      // Bestätigung anzeigen - mit kurzer Verzögerung damit das Overlay bereit ist
+      setTimeout(() => {
+        showSuccessMessage(target);
+      }, 100);
     }
     try {
       updateSettings({ lastSeverity: severity });

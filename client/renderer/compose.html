@@ -679,7 +679,15 @@
         console.log(`🔍 targetEl element:`, targetEl);
 
         // Speichere den targetUser
-        pendingTargetUser = targetUser;
+        if (typeof targetUser === "object" && targetUser !== null) {
+          console.log(
+            `⚠️ targetUser is object, converting to string:`,
+            targetUser
+          );
+          pendingTargetUser = String(targetUser);
+        } else {
+          pendingTargetUser = targetUser;
+        }
 
         // Versuche sofort zu setzen
         trySetTargetUser();
