@@ -623,64 +623,63 @@
 
       window.compose.setTargetUser((targetUser) => {
         console.log(`🎯 setTargetUser received: targetUser=${targetUser}`);
-        console.log(`🔍 targetSelect available: ${!!targetSelect}`);
 
-        if (targetSelect) {
-          console.log(
-            `📋 targetSelect options:`,
-            Array.from(targetSelect.options).map((opt) => opt.value)
-          );
+        // Speichere den targetUser
+        pendingTargetUser = targetUser;
 
-          // targetSelect ist verfügbar, setze den User sofort
-          setTargetUserInDropdown(targetUser);
-        } else {
-          // targetSelect ist noch nicht verfügbar, speichere den User
-          console.log(
-            `⏳ targetSelect not ready, storing targetUser: ${targetUser}`
-          );
-          pendingTargetUser = targetUser;
-        }
+        // Versuche sofort zu setzen
+        trySetTargetUser();
       });
 
       // Funktion zum Setzen des Target Users im Dropdown
-      function setTargetUserInDropdown(targetUser) {
-        if (!targetUser || !targetSelect) return;
+      function trySetTargetUser() {
+        if (!pendingTargetUser || !targetSelect) {
+          console.log(
+            `⏳ Cannot set target user yet: pendingTargetUser=${pendingTargetUser}, targetSelect=${!!targetSelect}`
+          );
+          return;
+        }
 
-        console.log(`🔍 Looking for user: ${targetUser}`);
+        console.log(`🔍 targetSelect available: ${!!targetSelect}`);
+        console.log(
+          `📋 targetSelect options count: ${targetSelect.options.length}`
+        );
+
+        if (targetSelect.options.length === 0) {
+          console.log(
+            `⏳ targetSelect has no options yet, retrying in 100ms...`
+          );
+          setTimeout(trySetTargetUser, 100);
+          return;
+        }
+
+        console.log(
+          `📋 targetSelect options:`,
+          Array.from(targetSelect.options).map((opt) => opt.value)
+        );
+
+        console.log(`🔍 Looking for user: ${pendingTargetUser}`);
         // Finde den Index des Users in der Liste
         for (let i = 0; i < targetSelect.options.length; i++) {
           console.log(`🔍 Option ${i}: ${targetSelect.options[i].value}`);
-          if (targetSelect.options[i].value === targetUser) {
+          if (targetSelect.options[i].value === pendingTargetUser) {
             console.log(`✅ Found match at index ${i}`);
             targetSelect.selectedIndex = i;
+            pendingTargetUser = null; // Erfolgreich gesetzt
             return;
           }
         }
-        console.log(`❌ User not found in dropdown: ${targetUser}`);
+        console.log(`❌ User not found in dropdown: ${pendingTargetUser}`);
       }
 
-      // Wenn targetSelect verfügbar wird, setze den gespeicherten User
-      const targetSelectObserver = new MutationObserver(() => {
-        if (
-          pendingTargetUser &&
-          targetSelect &&
-          targetSelect.options.length > 0
-        ) {
-          console.log(
-            `🎯 targetSelect ready, setting pending user: ${pendingTargetUser}`
-          );
-          setTargetUserInDropdown(pendingTargetUser);
-          pendingTargetUser = null;
+      // Versuche es alle 100ms, bis es funktioniert
+      const targetUserInterval = setInterval(() => {
+        if (pendingTargetUser) {
+          trySetTargetUser();
+        } else {
+          clearInterval(targetUserInterval);
         }
-      });
-
-      // Beobachte Änderungen am targetSelect
-      if (targetSelect) {
-        targetSelectObserver.observe(targetSelect, {
-          childList: true,
-          subtree: true,
-        });
-      }
+      }, 100);
     </script>
   </body>
 </html>
