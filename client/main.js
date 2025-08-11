@@ -732,8 +732,11 @@ function openToastPrompt(targetUser = null) {
     console.log(`🎯 Setting target user: ${targetUser}`);
     composeWin.webContents.once("did-finish-load", () => {
       try {
-        composeWin.webContents.send("set-target-user", targetUser);
-        console.log(`✅ set-target-user IPC sent: ${targetUser}`);
+        // Kurze Verzögerung, um sicherzustellen, dass das DOM vollständig geladen ist
+        setTimeout(() => {
+          composeWin.webContents.send("set-target-user", targetUser);
+          console.log(`✅ set-target-user IPC sent: ${targetUser}`);
+        }, 200);
       } catch (error) {
         console.error(`❌ Failed to send set-target-user IPC:`, error);
       }
