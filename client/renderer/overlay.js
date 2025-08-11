@@ -112,6 +112,33 @@ window.shoutout.onSuccess = ({ message, durationMs }) => {
   console.log(`✅ Success message displayed: ${message}`);
 };
 
+// Debug: Teste ob der Handler registriert ist
+console.log(
+  `🔧 overlay.js: onSuccess handler registered:`,
+  typeof window.shoutout.onSuccess
+);
+
+// Debug: Teste ob der IPC-Handler funktioniert
+if (window.shoutout.onSuccess) {
+  console.log(`🔧 overlay.js: onSuccess is available`);
+
+  // Teste den Handler direkt
+  try {
+    window.shoutout.onSuccess({ message: "TEST", durationMs: 1000 });
+    console.log(`🔧 overlay.js: onSuccess test call successful`);
+  } catch (error) {
+    console.error(`❌ overlay.js: onSuccess test call failed:`, error);
+  }
+} else {
+  console.error(`❌ overlay.js: onSuccess is NOT available`);
+}
+
+// Debug: Teste ob der Handler registriert ist
+console.log(
+  `🔧 onSuccess handler registered:`,
+  typeof window.shoutout.onSuccess
+);
+
 window.shoutout.onToast(
   ({ message, severity, durationMs, sender, recipientInfo, senderId }) => {
     const sev = [

@@ -37,10 +37,19 @@
         margin: 0;
         font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial,
           sans-serif;
-        background: #1d2128;
+        background: rgba(
+          29,
+          33,
+          40,
+          0.6
+        ); /* Noch transparenter für mehr Glaseffekt */
+        backdrop-filter: blur(25px); /* Noch stärkerer Glaseffekt */
         color: #afc6f3;
         display: flex;
         align-items: stretch;
+        border-radius: 12px; /* Rundungen wie andere Komponenten */
+        overflow: hidden; /* Für saubere Rundungen */
+        border: 1px solid rgba(175, 198, 243, 0.15); /* Subtiler Cursor accent border */
       }
       .wrap {
         display: flex;
@@ -58,12 +67,14 @@
         text-shadow: 0 0 10px rgba(175, 198, 243, 0.3);
       }
       .field {
-        background: rgba(255, 255, 255, 0.05);
-        border: 1px solid rgba(139, 92, 246, 0.2);
-        border-radius: var(--radius);
-        padding: 16px;
+        background: rgba(29, 33, 40, 0.6); /* Cursor dark + mehr Transparenz */
+        backdrop-filter: blur(12px); /* Glaseffekt */
+        border: 1px solid rgba(175, 198, 243, 0.2); /* Cursor accent border */
+        border-radius: 12px; /* Konsistente Rundungen */
+        padding: 18px; /* Etwas mehr Padding */
         position: relative;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3),
+          0 0 0 1px rgba(175, 198, 243, 0.1); /* Glaseffekt shadows */
       }
       .toolbar {
         position: absolute;
@@ -74,17 +85,21 @@
       }
       .btn-emoji {
         border: 0;
-        background: rgba(139, 92, 246, 0.1);
-        color: #a855f7;
+        background: rgba(175, 198, 243, 0.15); /* Cursor accent */
+        backdrop-filter: blur(8px); /* Glaseffekt */
+        color: #afc6f3; /* Cursor accent color */
         border-radius: 8px;
-        padding: 4px 8px;
+        padding: 6px 10px; /* Etwas mehr Padding */
         cursor: pointer;
         transition: all 0.2s ease;
+        border: 1px solid rgba(175, 198, 243, 0.2); /* Subtiler Border */
       }
 
       .btn-emoji:hover {
-        background: rgba(139, 92, 246, 0.2);
+        background: rgba(175, 198, 243, 0.25); /* Cursor accent hover */
+        backdrop-filter: blur(12px); /* Stärkerer Glaseffekt */
         transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(175, 198, 243, 0.2); /* Cursor accent shadow */
       }
       .emoji-panel {
         position: absolute;
@@ -119,9 +134,11 @@
         transform: scale(1.1);
       }
       .field:focus-within {
-        outline: 2px solid #c0b4dc;
+        outline: 2px solid #afc6f3; /* Cursor accent color */
         outline-offset: 0;
-        box-shadow: 0 0 0 4px rgba(139, 92, 246, 0.1);
+        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4),
+          0 0 0 4px rgba(175, 198, 243, 0.2); /* Stärkerer Fokus-Glaseffekt */
+        backdrop-filter: blur(16px); /* Stärkerer Blur bei Fokus */
       }
       textarea {
         width: 100%;
@@ -203,30 +220,43 @@
         cursor: pointer;
       }
       .btn-secondary {
-        background: rgba(139, 92, 246, 0.1);
-        color: #c4b5fd;
-        border: 1px solid rgba(139, 92, 246, 0.2);
+        background: rgba(175, 198, 243, 0.1); /* Cursor accent */
+        backdrop-filter: blur(10px); /* Glaseffekt */
+        color: #afc6f3; /* Cursor text color */
+        border: 1px solid rgba(175, 198, 243, 0.2); /* Cursor border */
         transition: all 0.2s ease;
+        border-radius: 12px; /* Konsistente Rundungen */
       }
 
       .btn-secondary:hover {
-        background: rgba(139, 92, 246, 0.2);
+        background: rgba(175, 198, 243, 0.2); /* Cursor accent hover */
+        backdrop-filter: blur(14px); /* Stärkerer Glaseffekt */
         transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(175, 198, 243, 0.2); /* Cursor shadow */
       }
 
       .btn-primary {
-        background: #8b5cf6;
-        color: #fff;
-        border: 1px solid #8b5cf6;
+        background: rgba(
+          175,
+          198,
+          243,
+          0.8
+        ); /* Cursor accent mit mehr Opacity */
+        backdrop-filter: blur(12px); /* Glaseffekt */
+        color: #1d2128; /* Dunkler Text auf hellem Cursor accent */
+        border: 1px solid rgba(175, 198, 243, 0.9); /* Cursor border */
         transition: all 0.2s ease;
-        box-shadow: 0 2px 4px rgba(139, 92, 246, 0.2);
+        box-shadow: 0 6px 20px rgba(175, 198, 243, 0.3); /* Cursor shadow */
+        border-radius: 12px; /* Konsistente Rundungen */
+        font-weight: 600; /* Stärkerer Text */
       }
 
       .btn-primary:hover {
-        background: #7c3aed;
-        border-color: #7c3aed;
+        background: rgba(175, 198, 243, 0.9); /* Stärkerer Cursor accent */
+        backdrop-filter: blur(16px); /* Stärkerer Glaseffekt */
+        border-color: rgba(175, 198, 243, 1); /* Vollständiger Cursor border */
         transform: translateY(-1px);
-        box-shadow: 0 4px 8px rgba(139, 92, 246, 0.3);
+        box-shadow: 0 8px 24px rgba(175, 198, 243, 0.4); /* Stärkerer Cursor shadow */
       }
       .btn-primary:disabled {
         opacity: 0.5;
@@ -236,13 +266,16 @@
       /* User-Auswahl Styles */
       .target-select {
         width: 100%;
-        background: rgba(255, 255, 255, 0.05);
-        border: 1px solid rgba(139, 92, 246, 0.2);
-        border-radius: 10px;
-        padding: 10px 12px;
-        color: #e2e8f0;
+        background: rgba(29, 33, 40, 0.7); /* Cursor dark background */
+        backdrop-filter: blur(10px); /* Glaseffekt */
+        border: 1px solid rgba(175, 198, 243, 0.2); /* Cursor accent border */
+        border-radius: 12px; /* Konsistente Rundungen */
+        padding: 12px 14px; /* Etwas mehr Padding */
+        color: #afc6f3; /* Cursor text color */
         font-size: 14px;
         font-family: inherit;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2); /* Subtiler Schatten */
+        transition: all 0.2s ease;
       }
 
       /* Windows-spezifische Dropdown-Styles */
@@ -377,15 +410,6 @@
             </div>
           </div>
         </div>
-        <div class="col">
-          <div class="label">Duration (ms)</div>
-          <input
-            id="duration"
-            type="number"
-            min="500"
-            max="10000"
-            value="3000" />
-        </div>
       </div>
 
       <div class="actions">
@@ -406,7 +430,6 @@
     <script>
       const $ = (id) => document.getElementById(id);
       const messageEl = $("message");
-      const durationEl = $("duration");
       const sendBtn = $("send");
       const counter = $("counter");
       const pills = document.getElementById("sev-pills");
@@ -516,15 +539,11 @@
         const active = pills.querySelector(".pill.active");
         return active ? active.getAttribute("data-sev") : "info";
       }
-      function clamp(n, min, max) {
-        return Math.max(min, Math.min(max, n));
-      }
+
       function validate() {
         const text = (messageEl.value || "").trim();
         const len = text.length;
         counter.textContent = `${len} / 280`;
-        const dur = clamp(Number(durationEl.value || 3000), 500, 10000);
-        durationEl.value = String(dur);
         sendBtn.disabled = len === 0 || len > 280;
       }
       pills.addEventListener("click", (e) => {
@@ -537,7 +556,6 @@
         validate();
       });
       messageEl.addEventListener("input", validate);
-      durationEl.addEventListener("input", validate);
       messageEl.addEventListener("keydown", (e) => {
         if (e.key === "Enter" && !e.shiftKey && !sendBtn.disabled) {
           e.preventDefault();
@@ -565,7 +583,6 @@
         window.compose.submit({
           message: messageEl.value,
           severity: getSeverity(),
-          duration: Number(durationEl.value || 3000),
           target: targetEl.value || "all",
         });
       });
@@ -692,6 +709,12 @@
           (!targetUser || targetUser === "all")
         ) {
           console.log(`⏭️ Keeping current "all" selection, no need to change`);
+          return;
+        }
+
+        // Wenn targetUser ein Objekt ist, überspringe es komplett
+        if (typeof targetUser === "object" && targetUser !== null) {
+          console.log(`⏭️ Skipping object targetUser:`, targetUser);
           return;
         }
 

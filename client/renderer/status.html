@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>Status Overlay</title>
+    <style>
+      body {
+        margin: 0;
+        padding: 0;
+        background: transparent;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          sans-serif;
+        overflow: hidden;
+        user-select: none;
+      }
+
+      #status-container {
+        position: relative;
+        width: 100%;
+        height: 100vh;
+        pointer-events: none;
+      }
+
+      .status-message {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        background: rgba(29, 33, 40, 0.85); /* Cursor dark background */
+        color: #afc6f3; /* Cursor text color */
+        border-radius: 12px; /* Konsistent mit Toast-Bubbles */
+        padding: 8px 12px; /* Etwas mehr Padding */
+        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3),
+          0 0 0 1px rgba(175, 198, 243, 0.15); /* Cursor border + shadow */
+        backdrop-filter: blur(12px); /* Stärkerer Glaseffekt */
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        min-width: 220px;
+        max-width: 320px;
+        pointer-events: auto;
+        animation: slideInRight 200ms ease-out;
+        z-index: 1000;
+        font-size: 12px;
+        font-weight: 500;
+        border-left: 3px solid #10b981; /* Success accent wie Toast */
+      }
+
+      .status-message.info {
+        background: rgba(29, 33, 40, 0.85); /* Cursor dark background */
+        border-left-color: #3b82f6; /* Info blue accent */
+      }
+
+      .status-message.warning {
+        background: rgba(29, 33, 40, 0.85); /* Cursor dark background */
+        border-left-color: #f59e0b; /* Warning yellow accent */
+      }
+
+      .status-message.error {
+        background: rgba(29, 33, 40, 0.85); /* Cursor dark background */
+        border-left-color: #ef4444; /* Error red accent */
+      }
+
+      .status-icon {
+        font-size: 14px; /* Kleineres Icon */
+        flex-shrink: 0;
+      }
+
+      .status-text {
+        font-size: 12px; /* Kleinere Schrift */
+        font-weight: 500;
+        line-height: 1.2; /* Kompakter */
+      }
+
+      @keyframes slideInRight {
+        from {
+          transform: translateX(100%);
+          opacity: 0;
+        }
+        to {
+          transform: translateX(0);
+          opacity: 1;
+        }
+      }
+
+      @keyframes fadeOut {
+        from {
+          opacity: 1;
+          transform: translateX(0);
+        }
+        to {
+          opacity: 0;
+          transform: translateX(100%);
+        }
+      }
+
+      .fade-out {
+        animation: fadeOut 300ms ease-in forwards;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="status-container">
+      <!-- Status messages will be added here dynamically -->
+    </div>
+
+    <script src="status.js"></script>
+  </body>
+</html>

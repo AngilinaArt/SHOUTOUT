@@ -100,6 +100,26 @@ wss.on("connection", (ws, request) => {
   }
 
   clients.add(ws);
+
+  // Benachrichtige alle anderen über den neuen User
+  const onlineNotification = {
+    type: "user-status",
+    status: "online",
+    user: ws.user.name,
+    message: `${ws.user.name} ist online`,
+    timestamp: new Date().toISOString(),
+  };
+
+  // Sende an alle anderen Clients (nicht an den User selbst)
+  clients.forEach((client) => {
+    if (client !== ws && client.readyState === client.OPEN) {
+      try {
+        client.send(JSON.stringify(onlineNotification));
+      } catch (e) {
+        console.error("Error sending online notification:", e);
+      }
+    }
+  });
   ws.on("message", (data) => {
     // Allow clients to send hamster/toast events upstream
     try {
@@ -167,6 +187,27 @@ wss.on("connection", (ws, request) => {
         ws.user?.ip || "unknown IP"
       })`
     );
+
+    // Benachrichtige alle anderen über den User der offline geht
+    const offlineNotification = {
+      type: "user-status",
+      status: "offline",
+      user: ws.user?.name || "Unknown",
+      message: `${ws.user?.name || "Unknown"} ist offline`,
+      timestamp: new Date().toISOString(),
+    };
+
+    // Sende an alle verbleibenden Clients
+    clients.forEach((client) => {
+      if (client !== ws && client.readyState === client.OPEN) {
+        try {
+          client.send(JSON.stringify(offlineNotification));
+        } catch (e) {
+          console.error("Error sending offline notification:", e);
+        }
+      }
+    });
+
     clients.delete(ws);
   });
 });

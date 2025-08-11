@@ -105,18 +105,18 @@ body {
   background: rgba(139, 92, 246, 0.5);
 }
 #toast #toasts .toast-item {
-  min-width: 260px;
-  max-width: 420px;
+  width: 380px; /* Fixe Breite für einheitliches Aussehen */
   animation: slideIn 180ms ease-out;
 }
 
 #toast .bubble {
   position: relative;
-  color: #0b141a;
+  color: #afc6f3; /* Cursor text color */
   /* background set by severity class */
-  border-radius: 18px;
-  padding: 10px 12px;
-  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.25);
+  border-radius: 12px; /* Konsistent mit Cursor theme */
+  padding: 14px 16px; /* Etwas mehr Padding */
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(175, 198, 243, 0.15); /* Glaseffekt + Cursor border */
+  backdrop-filter: blur(10px); /* Glaseffekt */
 }
 
 #toast .bubble:after {
@@ -134,16 +134,16 @@ body {
 #toast .sender {
   font-size: 12px;
   font-weight: 600;
-  color: #1a1a1a;
-  opacity: 0.8;
+  color: #afc6f3; /* Cursor text color */
+  opacity: 0.9;
   margin-bottom: 4px;
 }
 
 #toast .recipient-info {
   font-size: 11px;
   font-weight: 500;
-  color: #666;
-  opacity: 0.9;
+  color: #afc6f3; /* Cursor text color */
+  opacity: 0.7; /* Etwas transparenter für Hierarchie */
 }
 
 /* Toast Actions */
@@ -183,18 +183,18 @@ body {
 }
 
 #toast .toast-reply {
-  background: rgba(139, 92, 246, 0.2);
+  background: rgba(175, 198, 243, 0.2); /* Cursor accent color */
   color: #ffffff;
-  border: 1px solid rgba(139, 92, 246, 0.3);
+  border: 1px solid rgba(175, 198, 243, 0.3); /* Cursor accent border */
   backdrop-filter: blur(10px);
   transition: all 0.2s ease;
 }
 
 #toast .toast-reply:hover {
-  background: rgba(139, 92, 246, 0.3);
-  border-color: rgba(139, 92, 246, 0.4);
+  background: rgba(175, 198, 243, 0.3); /* Cursor accent hover */
+  border-color: rgba(175, 198, 243, 0.4); /* Cursor accent border hover */
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(139, 92, 246, 0.2);
+  box-shadow: 0 4px 12px rgba(175, 198, 243, 0.2); /* Cursor accent shadow */
 }
 
 /* Fade-Effekt nach 10 Sekunden */
@@ -226,42 +226,48 @@ body {
 }
 
 #toast .severity-blue .bubble {
-  background: #dbeafe;
+  background: rgba(29, 33, 40, 0.85); /* Cursor dark + transparency */
+  border-left: 3px solid #3b82f6; /* Blue accent */
 }
 #toast .severity-blue .bubble:after {
-  border-left-color: #dbeafe;
+  border-left-color: rgba(29, 33, 40, 0.85);
 }
 #toast .severity-green .bubble {
-  background: #d1fae5;
+  background: rgba(29, 33, 40, 0.85); /* Cursor dark + transparency */
+  border-left: 3px solid #10b981; /* Success green accent */
 }
 #toast .severity-green .bubble:after {
-  border-left-color: #d1fae5;
+  border-left-color: rgba(29, 33, 40, 0.85);
 }
 #toast .severity-pink .bubble {
-  background: #fce7f3;
+  background: rgba(29, 33, 40, 0.85); /* Cursor dark + transparency */
+  border-left: 3px solid #ec4899; /* Pink accent */
 }
 #toast .severity-pink .bubble:after {
-  border-left-color: #fce7f3;
+  border-left-color: rgba(29, 33, 40, 0.85);
 }
 #toast .severity-red .bubble {
-  background: #fee2e2;
+  background: rgba(29, 33, 40, 0.85); /* Cursor dark + transparency */
+  border-left: 3px solid #ef4444; /* Red accent */
 }
 #toast .severity-red .bubble:after {
-  border-left-color: #fee2e2;
+  border-left-color: rgba(29, 33, 40, 0.85);
 }
 
 /* legacy mapping */
 #toast .severity-info .bubble {
-  background: #dbeafe;
+  background: rgba(29, 33, 40, 0.85); /* Cursor dark + transparency */
+  border-left: 3px solid #3b82f6; /* Info blue accent */
 }
 #toast .severity-info .bubble:after {
-  border-left-color: #dbeafe;
+  border-left-color: rgba(29, 33, 40, 0.85);
 }
 #toast .severity-success .bubble {
-  background: #d1fae5;
+  background: rgba(29, 33, 40, 0.85); /* Cursor dark + transparency */
+  border-left: 3px solid #10b981; /* Success green accent */
 }
 #toast .severity-success .bubble:after {
-  border-left-color: #d1fae5;
+  border-left-color: rgba(29, 33, 40, 0.85);
 }
 #toast .severity-warn .bubble {
   background: #ffe9a1;

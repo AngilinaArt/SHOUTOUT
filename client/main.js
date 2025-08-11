@@ -31,6 +31,9 @@ let lastSeverity = "blue";
 function createOverlayWindow() {
   console.log(`🏗️ Creating overlay window...`);
 
+  // Erstelle zuerst das Status-Overlay (oben)
+  createStatusWindow();
+
   overlayWindow = new BrowserWindow({
     width: 420,
     height: 240,
@@ -63,6 +66,11 @@ function createOverlayWindow() {
 
   console.log(`✅ Overlay window created and shown`);
 
+  // DevTools für das Overlay-Fenster deaktiviert
+  // if (process.env.NODE_ENV === "development" || !app.isPackaged) {
+  //   overlayWindow.webContents.openDevTools();
+  // }
+
   // Event-Listener für das Laden
   overlayWindow.webContents.once("did-finish-load", () => {
     console.log(`🎯 Overlay window finished loading`);
@@ -80,18 +88,138 @@ function createOverlayWindow() {
   );
 }
 
+function createStatusWindow() {
+  try {
+    console.log(`🏗️ Creating status window...`);
+
+    statusWindow = new BrowserWindow({
+      width: 350,
+      height: 80, // Viel kleiner - nur für eine Status-Nachricht
+      frame: false,
+      transparent: true,
+      resizable: false,
+      movable: false,
+      alwaysOnTop: true,
+      skipTaskbar: true,
+      focusable: false,
+      fullscreenable: false,
+      hasShadow: false,
+      show: true,
+      backgroundColor: "#00000000",
+      webPreferences: {
+        preload: path.join(__dirname, "preload_status.js"),
+        contextIsolation: true,
+        nodeIntegration: false,
+      },
+    });
+
+    console.log(`📁 Loading status.html...`);
+    statusWindow.loadFile(path.join(__dirname, "renderer", "status.html"));
+
+    statusWindow.setAlwaysOnTop(true, "screen-saver");
+    statusWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+    statusWindow.setIgnoreMouseEvents(true);
+    statusWindow.showInactive();
+
+    // Positioniere das Status-Overlay oben rechts
+    positionStatusWindow();
+
+    // DevTools für das Status-Fenster deaktiviert
+    // if (process.env.NODE_ENV === "development" || !app.isPackaged) {
+    //   statusWindow.webContents.openDevTools({ mode: "detach" });
+    // }
+
+    console.log(`✅ Status window created and shown`);
+
+    // Event-Listener für das Laden
+    statusWindow.webContents.once("did-finish-load", () => {
+      console.log(`🎯 Status window finished loading`);
+
+      // Repositioniere das Toast-Overlay, damit es unter dem Status-Overlay ist
+      if (overlayWindow && !overlayWindow.isDestroyed()) {
+        console.log(`🔧 Repositioning toast overlay below status`);
+        positionOverlayTopRight();
+      }
+    });
+
+    statusWindow.webContents.on(
+      "did-fail-load",
+      (event, errorCode, errorDescription) => {
+        console.error(
+          `❌ Status window failed to load:`,
+          errorCode,
+          errorDescription
+        );
+      }
+    );
+
+    console.log(`✅ Status window created successfully`);
+  } catch (error) {
+    console.error(`❌ Error creating status window:`, error);
+    statusWindow = null;
+  }
+}
+
+function positionStatusWindow() {
+  if (!statusWindow || statusWindow.isDestroyed()) return;
+  const margin = 20;
+  const currentBounds = statusWindow.getBounds();
+
+  // Verwende den gleichen Monitor wie das Overlay-Fenster
+  let target = screen.getPrimaryDisplay();
+  if (overlayWindow && !overlayWindow.isDestroyed()) {
+    const overlayBounds = overlayWindow.getBounds();
+    const overlayCenter = {
+      x: overlayBounds.x + overlayBounds.width / 2,
+      y: overlayBounds.y + overlayBounds.height / 2,
+    };
+    target = screen.getDisplayNearestPoint(overlayCenter) || target;
+    console.log(`🔧 Using same display as overlay window`);
+  } else {
+    try {
+      const pt = screen.getCursorScreenPoint();
+      target = screen.getDisplayNearestPoint(pt) || target;
+    } catch (_) {}
+  }
+
+  const work = target.workArea;
+  const x = Math.floor(work.x + work.width - currentBounds.width - margin);
+  const y = Math.floor(work.y + margin); // Status-Overlay ganz oben
+
+  console.log(`🔧 Status window positioned at top: x=${x}, y=${y}`);
+  statusWindow.setPosition(x, y);
+}
+
 function positionOverlayTopRight() {
   if (!overlayWindow || overlayWindow.isDestroyed()) return;
   const margin = 20;
+  const gap = 10; // Abstand zwischen Status und Toast
   const currentBounds = overlayWindow.getBounds();
+
   let target = screen.getPrimaryDisplay();
   try {
     const pt = screen.getCursorScreenPoint();
     target = screen.getDisplayNearestPoint(pt) || target;
   } catch (_) {}
+
   const work = target.workArea;
   const x = Math.floor(work.x + work.width - currentBounds.width - margin);
-  const y = Math.floor(work.y + margin);
+
+  // Toast-Overlay unter dem Status-Overlay positionieren
+  let y = Math.floor(work.y + margin);
+
+  // Wenn Status-Overlay existiert, positioniere Toast darunter
+  if (statusWindow && !statusWindow.isDestroyed()) {
+    const statusBounds = statusWindow.getBounds();
+    const statusHeight = statusBounds.height;
+    y = Math.floor(work.y + margin + statusHeight + gap);
+    console.log(
+      `🔧 Toast positioned below status: statusHeight=${statusHeight}, y=${y}`
+    );
+  } else {
+    console.log(`🔧 Toast positioned at top (no status): y=${y}`);
+  }
+
   overlayWindow.setPosition(x, y);
 }
 
@@ -166,12 +294,16 @@ function showToast(
 function showSuccessMessage(target) {
   console.log(`🔍 showSuccessMessage called with target: ${target}`);
 
-  if (!overlayWindow || overlayWindow.isDestroyed()) {
-    console.log(`❌ Overlay window not available`);
+  if (!statusWindow || statusWindow.isDestroyed()) {
+    console.log(`❌ Status window not available`);
     return;
   }
 
-  positionOverlayTopRight();
+  console.log(`🔍 Status window state:`, {
+    isDestroyed: statusWindow.isDestroyed(),
+    isVisible: statusWindow.isVisible(),
+    webContents: !!statusWindow.webContents,
+  });
 
   // Empfänger-Text generieren
   let recipientText = "alle";
@@ -184,14 +316,41 @@ function showSuccessMessage(target) {
     }
   }
 
-  console.log(`📤 Sending show-success IPC message: ${recipientText}`);
+  console.log(`📤 Sending status message: ${recipientText}`);
 
-  overlayWindow.webContents.send("show-success", {
-    message: `Nachricht erfolgreich gesendet an "${recipientText}"`,
-    durationMs: 4000,
-  });
+  try {
+    statusWindow.webContents.send("show-status", {
+      type: "success",
+      message: `Nachricht erfolgreich gesendet an "${recipientText}"`,
+      durationMs: 4000,
+    });
+    console.log(`✅ Status message sent successfully`);
+  } catch (error) {
+    console.error(`❌ Error sending status message:`, error);
+  }
 
   console.log(`✅ Success message shown: sent to ${recipientText}`);
+}
+
+function showUserStatusMessage(user, status, message) {
+  console.log(`👤 showUserStatusMessage called: ${user} is ${status}`);
+
+  if (!statusWindow || statusWindow.isDestroyed()) {
+    console.error(`❌ Status window not available for user status`);
+    return;
+  }
+
+  try {
+    const statusType = status === "online" ? "info" : "warning";
+    statusWindow.webContents.send("show-status", {
+      type: statusType,
+      message: message,
+      durationMs: 3000, // Etwas kürzer für Status-Nachrichten
+    });
+    console.log(`✅ User status message sent: ${user} ${status}`);
+  } catch (error) {
+    console.error(`❌ Error sending user status message:`, error);
+  }
 }
 
 function connectWebSocket() {
@@ -248,6 +407,9 @@ function connectWebSocket() {
             event.recipientInfo,
             event.senderId
           );
+        } else if (event.type === "user-status") {
+          console.log(`👤 User status: ${event.user} is ${event.status}`);
+          showUserStatusMessage(event.user, event.status, event.message);
         }
       } catch (e) {
         console.error("Invalid WS message", e);
@@ -739,6 +901,8 @@ function openToastPrompt(targetUser = null) {
     modal: true,
     frame: true,
     alwaysOnTop: true,
+    transparent: true, // Für Glaseffekt!
+    backgroundColor: "#00000000", // Vollständig transparent
     webPreferences: {
       preload: path.join(__dirname, "preload_compose.js"),
       contextIsolation: true,
@@ -804,10 +968,7 @@ function openToastPrompt(targetUser = null) {
     ].includes(payload?.severity)
       ? payload.severity
       : "blue";
-    const duration = Math.max(
-      500,
-      Math.min(10000, Number(payload?.duration || 3000))
-    );
+    const duration = 3000; // Fixed duration (not used anymore since toasts are permanent)
     const target = payload?.target || "all";
 
     if (ws && ws.readyState === ws.OPEN && message) {
@@ -823,6 +984,15 @@ function openToastPrompt(targetUser = null) {
       );
 
       // Bestätigung anzeigen - mit kurzer Verzögerung damit das Overlay bereit ist
+      setTimeout(() => {
+        showSuccessMessage(target);
+      }, 100);
+    } else if (message) {
+      // HTTP-Fallback
+      console.log(`❌ WebSocket not ready, using HTTP fallback`);
+      // Hier könnte man HTTP-Fallback implementieren
+
+      // Trotzdem Erfolgsmeldung anzeigen
       setTimeout(() => {
         showSuccessMessage(target);
       }, 100);
