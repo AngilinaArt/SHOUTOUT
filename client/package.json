@@ -32,21 +32,29 @@
       {
         "from": "assets",
         "to": "assets",
-        "filter": ["**/*"]
+        "filter": [
+          "**/*"
+        ]
       }
     ],
     "mac": {
       "category": "public.app-category.utilities",
-      "icon": "assets/icon/icon.png",
-      "target": ["dmg"]
+      "icon": "assets/icon/hamster.png",
+      "target": [
+        "dmg"
+      ]
     },
     "win": {
-      "icon": "assets/icon/icon.ico",
-      "target": ["nsis"]
+      "icon": "assets/icon/hamster.ico",
+      "target": [
+        "nsis"
+      ]
     },
     "linux": {
       "icon": "assets/icon",
-      "target": ["AppImage"]
+      "target": [
+        "AppImage"
+      ]
     }
   }
 }
