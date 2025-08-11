@@ -1,4 +1,4 @@
-crequire("dotenv").config();
+require("dotenv").config();
 const path = require("path");
 const { pathToFileURL } = require("url");
 const {
