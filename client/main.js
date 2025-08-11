@@ -353,9 +353,6 @@ function createUserListWindow() {
     // Event-Listener für das Laden
     userListWindow.webContents.once("did-finish-load", () => {
       console.log(`🎯 User list window finished loading`);
-
-      // DevTools als separates Fenster öffnen
-      userListWindow.webContents.openDevTools({ mode: "detach" });
     });
 
     userListWindow.webContents.on(
@@ -1305,41 +1302,46 @@ function buildTrayMenu() {
   const statusInfo = getStatusInfo();
 
   const template = [
+    // User Info with Status
     {
-      label: `${statusInfo.emoji} Du bist: ${displayName || "Anonymous"} (${
+      label: `${statusInfo.emoji} Your name: ${displayName || "Anonymous"} (${
         statusInfo.text
       })`,
       enabled: false,
     },
-    { type: "separator" },
+    { label: "✏️ Change Name", click: () => openNamePrompt() },
     {
-      label: "Do Not Disturb",
+      label: "🔄 Reconnect",
+      click: () => reconnectWebSocket(),
+      enabled: wsStatus !== "connecting",
+    },
+    { type: "separator" },
+
+    // Do Not Disturb
+    {
+      label: "🔕 Do Not Disturb",
       type: "checkbox",
       checked: doNotDisturb,
       click: (item) => {
         updateDNDStatus(item.checked);
       },
     },
+    { type: "separator" },
+
+    // Autostart
     {
-      label: "Beim Login starten",
+      label: "🚀 Autostart",
       type: "checkbox",
       checked: autostartEnabled,
       click: (item) => {
         updateAutostartStatus(item.checked);
       },
     },
-    { label: "Name ändern…", click: () => openNamePrompt() },
     { type: "separator" },
-    {
-      label: `Self Hamster\t\t${cmdKey}⌥H`,
-      click: () => {
-        console.log(`🖱️ Tray menu clicked for Self Hamster`);
-        showHamster("default", 1500);
-      },
-    },
-    { type: "separator" },
-    { label: "🐹 Hamster senden:", enabled: false },
-    // Hamster direkt als Hauptmenü-Items statt als Submenü
+
+    // Hamsters (Self Hamster entfernt!)
+    { label: "🐹 Send hamster:", enabled: false },
+    // Hamster direkt als Hauptmenü-Items
     ...(availableHamsters.length > 0
       ? availableHamsters.map((hamster, index) => {
           const keyNumber = (index + 1) % 10; // 1,2,3,4,5,6,7,8,9,0
@@ -1354,18 +1356,23 @@ function buildTrayMenu() {
         })
       : [
           {
-            label: "  Keine Hamster gefunden",
+            label: "  No hamsters found",
             enabled: false,
           },
         ]),
     { type: "separator" },
+
+    // Send Toast
     {
-      label: `Send Toast...\t\t${cmdKey}⌥T`,
+      label: `💬 Send Toast...\t\t${cmdKey}⌥T`,
       click: () => {
         console.log(`🖱️ Tray menu clicked for Send Toast`);
         openToastPrompt();
       },
     },
+    { type: "separator" },
+
+    // Show Online Users
     {
       label: `👥 Show Online Users`,
       click: () => {
@@ -1374,13 +1381,9 @@ function buildTrayMenu() {
       },
     },
     { type: "separator" },
-    {
-      label: "🔄 Verbindung neu starten",
-      click: () => reconnectWebSocket(),
-      enabled: wsStatus !== "connecting",
-    },
-    { type: "separator" },
-    { role: "quit" },
+
+    // Quit
+    { label: "❌ Quit", role: "quit" },
   ];
   try {
     console.log(`📋 Building menu template with ${template.length} items`);
