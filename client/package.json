@@ -10,7 +10,7 @@
     "start": "electron .",
     "build": "electron-builder",
     "build:mac": "electron-builder --mac",
-    "build:win": "electron-builder --win",
+    "build:win": "electron-builder --win --x64",
     "build:linux": "electron-builder --linux"
   },
   "dependencies": {
@@ -58,7 +58,10 @@
       "icon": "assets/icon/hamster.ico",
       "target": [
         "nsis"
-      ]
+      ],
+      "artifactName": "${productName}-${version}-win.${ext}",
+      "sign": false,
+      "verifyUpdateCodeSignature": false
     },
     "linux": {
       "icon": "assets/icon",
