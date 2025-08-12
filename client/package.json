@@ -57,6 +57,14 @@
         "nsis"
       ],
       "artifactName": "${productName}-${version}-win.${ext}"
+    },
+    "mac": {
+      "category": "public.app-category.utilities",
+      "icon": "assets/icon/hamster.png",
+      "target": [
+        "dmg"
+      ],
+      "artifactName": "${productName}-${version}-mac.${ext}"
     }
   }
 }
