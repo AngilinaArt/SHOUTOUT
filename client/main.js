@@ -13,6 +13,8 @@ const {
 } = require("electron");
 const WebSocket = require("ws");
 const fs = require("fs");
+// Use built-in fetch if available (Electron 18+), fallback to node-fetch
+const fetch = globalThis.fetch || require("node-fetch");
 
 const WS_URL = process.env.WS_URL || "ws://localhost:3001/ws";
 const WS_TOKEN = process.env.WS_TOKEN || "";
@@ -76,10 +78,15 @@ function createOverlayWindow() {
 
   console.log(`✅ Overlay window created and shown`);
 
-  // DevTools für das Overlay-Fenster deaktiviert
-  // if (process.env.NODE_ENV === "development" || !app.isPackaged) {
-  //   overlayWindow.webContents.openDevTools();
-  // }
+  // DevTools für das Overlay-Fenster (DEAKTIVIERT für Production)
+  // overlayWindow.webContents.once("did-finish-load", () => {
+  //   try {
+  //     overlayWindow.webContents.openDevTools({ mode: "detach" });
+  //     console.log(`🔧 DevTools opened for overlay after load`);
+  //   } catch (error) {
+  //     console.error(`❌ Failed to open DevTools:`, error);
+  //   }
+  // });
 
   // Event-Listener für das Laden
   overlayWindow.webContents.once("did-finish-load", () => {
@@ -434,7 +441,7 @@ function positionOverlayTopRight() {
   overlayWindow.setPosition(x, y);
 }
 
-function showHamster(variant, durationMs, sender) {
+async function showHamster(variant, durationMs, sender) {
   console.log(
     `🐹 showHamster: variant=${variant}, durationMs=${durationMs}, sender=${sender}`
   );
@@ -452,23 +459,48 @@ function showHamster(variant, durationMs, sender) {
     console.log(`📍 Positioning overlay`);
     positionOverlayTopRight();
 
-    const imgFsPath = path.join(
-      __dirname,
-      "assets",
-      "hamsters",
-      `${variant}.png`
-    );
-    const fileUrl = pathToFileURL(imgFsPath).href;
-    console.log(`🖼️ Image path: ${imgFsPath}`);
-    console.log(`🔗 File URL: ${fileUrl}`);
+    // Fetch image as data URL to completely bypass CORS
+    const serverUrl = process.env.SERVER_URL || "http://localhost:3001";
+    const imageUrl = `${serverUrl}/api/hamsters/${variant}/image`;
+    console.log(`🔗 Fetching image from: ${imageUrl}`);
+    console.log(`🔍 Variant requested: ${variant}`);
+    console.log(`⏰ Duration: ${durationMs}ms`);
+
+    let finalImageUrl = null;
+
+    try {
+      // Import node-fetch
+      const fetch = require("node-fetch");
+      console.log(`📡 Fetching image via node-fetch...`);
+
+      const response = await fetch(imageUrl);
+      if (response.ok) {
+        const buffer = await response.buffer();
+        const base64 = buffer.toString("base64");
+        finalImageUrl = `data:image/png;base64,${base64}`;
+        console.log(`✅ Image converted to data URL (${buffer.length} bytes)`);
+      } else {
+        console.error(
+          `❌ Failed to fetch image: ${response.status} ${response.statusText}`
+        );
+        finalImageUrl = null; // Will use placeholder
+      }
+    } catch (error) {
+      console.error(`❌ Failed to fetch/convert image:`, error.message);
+      finalImageUrl = null; // Will use placeholder
+    }
 
     const payload = {
       variant,
       durationMs,
-      url: fileUrl,
+      url: finalImageUrl, // null = use placeholder
       sender,
     };
-    console.log(`📤 Sending show-hamster IPC:`, payload);
+    console.log(
+      `📤 Sending show-hamster IPC with ${
+        finalImageUrl ? "data URL" : "placeholder"
+      }`
+    );
 
     try {
       overlayWindow.webContents.send("show-hamster", payload);
@@ -538,7 +570,7 @@ function showSuccessMessage(target) {
     }
   }
 
-  console.log(`📤 Sending status message: ${recipientText}`);
+  console.log(`📤 Sending status message to: ${recipientText}`);
 
   try {
     statusWindow.webContents.send("show-status", {
@@ -981,49 +1013,80 @@ function getAutostartStatus() {
   }
 }
 
-function scanAvailableHamsters() {
+async function loadHamstersFromServer() {
   try {
-    const fs = require("fs");
+    const serverUrl = process.env.SERVER_URL || "http://localhost:3001";
+    const response = await fetch(`${serverUrl}/api/hamsters`);
 
-    // Try different paths for development vs production
-    let hamstersDir = path.join(__dirname, "assets", "hamsters");
-
-    // If not found, try resources path (production build)
-    if (!fs.existsSync(hamstersDir)) {
-      hamstersDir = path.join(process.resourcesPath, "assets", "hamsters");
+    if (!response.ok) {
+      throw new Error(
+        `Server responded with ${response.status}: ${response.statusText}`
+      );
     }
 
-    // If still not found, try current working directory
-    if (!fs.existsSync(hamstersDir)) {
-      hamstersDir = path.join(process.cwd(), "assets", "hamsters");
-    }
-
-    if (!fs.existsSync(hamstersDir)) {
-      console.log("❌ Hamsters directory not found in any location");
-      availableHamsters = [];
-      return;
-    }
-
-    console.log(`🔍 Found hamsters directory: ${hamstersDir}`);
-
-    const files = fs.readdirSync(hamstersDir);
-    availableHamsters = files
-      .filter((file) => {
-        const ext = path.extname(file).toLowerCase();
-        return [".png", ".jpg", ".jpeg", ".gif"].includes(ext);
-      })
-      .map((file) => path.parse(file).name) // Remove extension
-      .filter((name) => name.length > 0) // Filter out empty names
-      .sort(); // Alphabetical order
+    const data = await response.json();
+    availableHamsters = data.hamsters.map((hamster) => hamster.id);
 
     console.log(
-      `Found ${availableHamsters.length} hamsters:`,
+      `🐹 Loaded ${availableHamsters.length} hamsters from server:`,
       availableHamsters
     );
+
+    return data.hamsters;
   } catch (error) {
-    console.error("Error scanning hamsters:", error);
-    availableHamsters = [];
+    console.error("❌ Error loading hamsters from server:", error);
+
+    // Fallback: Try local assets as backup
+    try {
+      console.log("🔄 Falling back to local hamster assets...");
+      await scanLocalHamsters();
+    } catch (fallbackError) {
+      console.error("❌ Local fallback also failed:", fallbackError);
+      availableHamsters = [];
+    }
+
+    return [];
   }
+}
+
+async function scanLocalHamsters() {
+  const fs = require("fs");
+
+  // Try different paths for development vs production
+  let hamstersDir = path.join(__dirname, "assets", "hamsters");
+
+  // If not found, try resources path (production build)
+  if (!fs.existsSync(hamstersDir)) {
+    hamstersDir = path.join(process.resourcesPath, "assets", "hamsters");
+  }
+
+  // If still not found, try current working directory
+  if (!fs.existsSync(hamstersDir)) {
+    hamstersDir = path.join(process.cwd(), "assets", "hamsters");
+  }
+
+  if (!fs.existsSync(hamstersDir)) {
+    console.log("❌ Hamsters directory not found in any location");
+    availableHamsters = [];
+    return;
+  }
+
+  console.log(`🔍 Found local hamsters directory: ${hamstersDir}`);
+
+  const files = fs.readdirSync(hamstersDir);
+  availableHamsters = files
+    .filter((file) => {
+      const ext = path.extname(file).toLowerCase();
+      return [".png", ".jpg", ".jpeg", ".gif"].includes(ext);
+    })
+    .map((file) => path.parse(file).name) // Remove extension
+    .filter((name) => name.length > 0) // Filter out empty names
+    .sort(); // Alphabetical order
+
+  console.log(
+    `🔄 Found ${availableHamsters.length} local hamsters:`,
+    availableHamsters
+  );
 }
 
 function registerHotkey() {
@@ -1053,6 +1116,17 @@ function registerHotkey() {
 
     console.log(`Registered hotkey ⌘⌥${key} for hamster: ${hamster}`);
   });
+
+  // DevTools Hotkey für Overlay (DEAKTIVIERT für Production)
+  // bindings.push({
+  //   acc: "CommandOrControl+Shift+I",
+  //   run: () => {
+  //     console.log(`🔧 DevTools hotkey pressed`);
+  //     if (overlayWindow && !overlayWindow.isDestroyed()) {
+  //       overlayWindow.webContents.openDevTools({ mode: "detach" });
+  //     }
+  //   },
+  // });
 
   // Register all bindings
   for (const { acc, run } of bindings) {
@@ -1086,12 +1160,26 @@ app.whenReady().then(() => {
 
   createOverlayWindow();
   createTray();
-  scanAvailableHamsters(); // Scan for available hamsters first
-  registerHotkey(); // Then register hotkeys
-  ensureDisplayName().then(() => {
-    connectWebSocket();
-    buildTrayMenu();
-  });
+
+  // Load hamsters asynchronously, then register hotkeys and build tray
+  loadHamstersFromServer()
+    .then(() => {
+      registerHotkey(); // Register hotkeys after hamsters are loaded
+      return ensureDisplayName();
+    })
+    .then(() => {
+      connectWebSocket();
+      buildTrayMenu();
+    })
+    .catch((error) => {
+      console.error("❌ Failed to initialize hamsters:", error);
+      // Continue with app initialization even if hamsters fail
+      registerHotkey(); // Register with empty hamsters
+      ensureDisplayName().then(() => {
+        connectWebSocket();
+        buildTrayMenu();
+      });
+    });
 
   // Position overlay top-right on primary display
   positionOverlayTopRight();
@@ -1414,6 +1502,16 @@ function buildTrayMenu() {
     },
     { type: "separator" },
 
+    // About/Version
+    {
+      label: "ℹ️ About Shoutout",
+      click: () => {
+        console.log(`🖱️ Tray menu clicked for About`);
+        showAboutWindow();
+      },
+    },
+    { type: "separator" },
+
     // Quit
     { label: "❌ Quit", role: "quit" },
   ];
@@ -1426,6 +1524,31 @@ function buildTrayMenu() {
   } catch (error) {
     console.error(`❌ Failed to set tray context menu:`, error);
   }
+}
+
+function showAboutWindow() {
+  const aboutWin = new BrowserWindow({
+    width: 650,
+    height: 900,
+    resizable: false,
+    modal: true,
+    frame: true,
+    alwaysOnTop: true,
+    transparent: true,
+    backgroundColor: "#00000000",
+    webPreferences: {
+      preload: path.join(__dirname, "preload_about.js"),
+      contextIsolation: true,
+      nodeIntegration: false,
+    },
+  });
+
+  aboutWin.loadFile(path.join(__dirname, "renderer", "about.html"));
+
+  // Handle close
+  aboutWin.on("closed", () => {
+    // Cleanup if needed
+  });
 }
 
 function openNamePrompt() {

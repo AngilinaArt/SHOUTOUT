@@ -9,6 +9,53 @@ const morgan = require("morgan");
 const rateLimit = require("express-rate-limit");
 const Joi = require("joi");
 const { WebSocketServer } = require("ws");
+const winston = require("winston");
+require("winston-daily-rotate-file");
+
+// Winston Logger Configuration
+const logger = winston.createLogger({
+  level: process.env.LOG_LEVEL || "info",
+  format: winston.format.combine(
+    winston.format.timestamp(),
+    winston.format.errors({ stack: true }),
+    winston.format.json()
+  ),
+  transports: [
+    // Console logging (only in development)
+    ...(process.env.NODE_ENV === "development"
+      ? [
+          new winston.transports.Console({
+            format: winston.format.combine(
+              winston.format.colorize(),
+              winston.format.simple()
+            ),
+          }),
+        ]
+      : []),
+    // Daily rotate file for all logs
+    new winston.transports.DailyRotateFile({
+      filename: "logs/shoutout-%DATE%.log",
+      datePattern: "YYYY-MM-DD",
+      maxSize: "20m",
+      maxFiles: "14d", // Keep logs for 14 days
+      zippedArchive: true,
+    }),
+    // Error-only file
+    new winston.transports.DailyRotateFile({
+      filename: "logs/shoutout-error-%DATE%.log",
+      datePattern: "YYYY-MM-DD",
+      level: "error",
+      maxSize: "20m",
+      maxFiles: "30d", // Keep error logs for 30 days
+    }),
+  ],
+});
+
+// Create logs directory if it doesn't exist
+const logsDir = path.join(__dirname, "..", "logs");
+if (!fs.existsSync(logsDir)) {
+  fs.mkdirSync(logsDir, { recursive: true });
+}
 
 const app = express();
 const server = http.createServer(app);
@@ -19,17 +66,42 @@ const ALLOW_NO_AUTH = String(process.env.ALLOW_NO_AUTH || "false") === "true";
 
 // Warnung ausgeben wenn unsichere Standardeinstellungen verwendet werden
 if (BROADCAST_SECRET === "change-me" || ALLOW_NO_AUTH) {
-  console.warn("⚠️  WARNUNG: Unsichere Standardeinstellungen!");
-  console.warn("   - BROADCAST_SECRET sollte geändert werden");
-  console.warn("   - ALLOW_NO_AUTH sollte false sein für Produktion");
-  console.warn("   - Erstelle eine .env Datei mit sicheren Werten");
+  logger.warn("Security Warning", {
+    event: "security_warning",
+    message: "Unsafe default settings detected",
+    broadcastSecret: BROADCAST_SECRET === "change-me" ? "default" : "custom",
+    allowNoAuth: ALLOW_NO_AUTH,
+  });
+
+  // Minimal console warning (no sensitive data)
+  console.warn("⚠️  Security: Check configuration");
 }
 
 // Middleware
 app.use(helmet());
-app.use(cors());
+app.use(
+  cors({
+    origin: true, // Allow all origins (including file:// protocol from Electron)
+    credentials: true,
+  })
+);
 app.use(express.json({ limit: "256kb" }));
-app.use(morgan("combined"));
+// Custom logging middleware
+app.use((req, res, next) => {
+  const start = Date.now();
+  res.on("finish", () => {
+    const duration = Date.now() - start;
+    logger.info("HTTP Request", {
+      method: req.method,
+      path: req.path,
+      statusCode: res.statusCode,
+      duration: `${duration}ms`,
+      userAgent: req.get("User-Agent"),
+      ip: req.ip || req.connection.remoteAddress,
+    });
+  });
+  next();
+});
 
 // Rate limiting for broadcast
 const broadcastLimiter = rateLimit({
@@ -75,9 +147,12 @@ wss.on("connection", (ws, request) => {
       connectedAt: new Date().toISOString(),
     };
 
-    console.log(
-      `🔌 WS connected: ${name} (${ip}) - Total clients: ${clients.size + 1}`
-    );
+    logger.info("WebSocket Connected", {
+      event: "connection",
+      userName: name,
+      totalClients: clients.size + 1,
+      ip: ip,
+    });
   } catch (_) {
     ws.user = {
       name: "Anonymous",
@@ -164,18 +239,18 @@ wss.on("connection", (ws, request) => {
 
       const payload = JSON.stringify(outbound);
 
-      // Log für alle Toast-Nachrichten
+      // Log für alle Toast-Nachrichten (ohne Inhalt)
       if (value.type === "toast") {
-        console.log(
-          `🍞 Toast: "${value.message}" from ${
-            outbound.sender
-          } to ${JSON.stringify(value.target || "all")}`
-        );
-        console.log(
-          `📋 Available clients: ${Array.from(clients)
-            .map((c) => c.user?.name || "Unknown")
-            .join(", ")}`
-        );
+        logger.info("Toast Message", {
+          event: "toast_sent",
+          sender: outbound.sender,
+          target: value.target || "all",
+          hasMessage: !!value.message,
+          messageLength: value.message ? value.message.length : 0,
+          availableClients: Array.from(clients).map(
+            (c) => c.user?.name || "Unknown"
+          ),
+        });
       }
 
       for (const c of clients) {
@@ -279,23 +354,17 @@ function shouldDeliver(client, evt) {
 
   // Kein Target = an alle senden
   if (!evt.target || (Array.isArray(evt.target) && evt.target.length === 0)) {
-    if (evt.type === "toast") console.log(`✅ DELIVER (no target)`);
     return true;
   }
 
   // Target "all" = an alle senden
   if (evt.target === "all") {
-    if (evt.type === "toast") console.log(`✅ DELIVER (target: all)`);
     return true;
   }
 
   // Target "me" = nur an den Sender
   if (evt.target === "me" && evt.sender) {
     const matches = clientName === evt.sender;
-    if (evt.type === "toast")
-      console.log(
-        `✅ DELIVER (target: me) -> ${matches ? "MATCH" : "NO MATCH"}`
-      );
     return matches;
   }
 
@@ -311,22 +380,12 @@ function shouldDeliver(client, evt) {
       targetStr === clientId.toLowerCase() ||
       targetStr === clientDisplayName.toLowerCase();
 
-    if (evt.type === "toast") {
-      console.log(
-        `🔍 Target "${targetStr}" vs client "${clientName}" (displayName: "${clientDisplayName}") -> ${
-          matches ? "✅ MATCH" : "❌ NO MATCH"
-        }`
-      );
-    }
+    // Target matching logic (no logging for privacy)
 
     return matches;
   });
 
-  if (evt.type === "toast") {
-    console.log(
-      `📤 Final result for "${clientName}": ${result ? "SEND" : "BLOCK"}`
-    );
-  }
+  // Final delivery result (no logging for privacy)
 
   return result;
 }
@@ -407,6 +466,118 @@ function logBroadcast(req, eventType) {
 // Routes
 app.get("/health", (req, res) => {
   res.json({ ok: true });
+});
+
+// Hamster Assets API
+app.get("/api/hamsters", (req, res) => {
+  try {
+    const hamstersDir = path.join(__dirname, "..", "assets", "hamsters");
+
+    if (!fs.existsSync(hamstersDir)) {
+      return res.json({ hamsters: [], count: 0 });
+    }
+
+    const files = fs.readdirSync(hamstersDir);
+    const hamsters = files
+      .filter((file) => {
+        const ext = path.extname(file).toLowerCase();
+        return [".png", ".jpg", ".jpeg", ".gif"].includes(ext);
+      })
+      .map((file) => {
+        const name = path.parse(file).name;
+        return {
+          id: name,
+          name: name,
+          filename: file,
+          url: `/api/hamsters/${name}/image`,
+          type: path.extname(file).substring(1).toLowerCase(),
+        };
+      })
+      .sort((a, b) => a.name.localeCompare(b.name));
+
+    console.log(
+      `🐹 Found ${hamsters.length} hamsters:`,
+      hamsters.map((h) => h.name).join(", ")
+    );
+
+    res.json({
+      hamsters: hamsters,
+      count: hamsters.length,
+      timestamp: new Date().toISOString(),
+    });
+  } catch (error) {
+    console.error("Error loading hamsters:", error);
+    res.status(500).json({ error: "Failed to load hamsters" });
+  }
+});
+
+app.get("/api/hamsters/:id", (req, res) => {
+  try {
+    const hamsterId = req.params.id;
+    const hamstersDir = path.join(__dirname, "..", "assets", "hamsters");
+
+    const files = fs.readdirSync(hamstersDir);
+    const hamsterFile = files.find((file) => {
+      const name = path.parse(file).name;
+      return name === hamsterId;
+    });
+
+    if (!hamsterFile) {
+      return res.status(404).json({ error: "Hamster not found" });
+    }
+
+    const name = path.parse(hamsterFile).name;
+    const hamster = {
+      id: name,
+      name: name,
+      filename: hamsterFile,
+      url: `/api/hamsters/${name}/image`,
+      type: path.extname(hamsterFile).substring(1).toLowerCase(),
+    };
+
+    res.json(hamster);
+  } catch (error) {
+    console.error("Error loading hamster:", error);
+    res.status(500).json({ error: "Failed to load hamster" });
+  }
+});
+
+app.get("/api/hamsters/:id/image", (req, res) => {
+  try {
+    const hamsterId = req.params.id;
+    const hamstersDir = path.join(__dirname, "..", "assets", "hamsters");
+
+    const files = fs.readdirSync(hamstersDir);
+    const hamsterFile = files.find((file) => {
+      const name = path.parse(file).name;
+      return name === hamsterId;
+    });
+
+    if (!hamsterFile) {
+      return res.status(404).json({ error: "Hamster image not found" });
+    }
+
+    const imagePath = path.join(hamstersDir, hamsterFile);
+    const ext = path.extname(hamsterFile).toLowerCase();
+
+    // Set appropriate content type
+    const contentType =
+      {
+        ".png": "image/png",
+        ".jpg": "image/jpeg",
+        ".jpeg": "image/jpeg",
+        ".gif": "image/gif",
+      }[ext] || "application/octet-stream";
+
+    res.setHeader("Content-Type", contentType);
+    res.setHeader("Cache-Control", "public, max-age=3600"); // Cache for 1 hour
+
+    const stream = fs.createReadStream(imagePath);
+    stream.pipe(res);
+  } catch (error) {
+    console.error("Error serving hamster image:", error);
+    res.status(500).json({ error: "Failed to serve hamster image" });
+  }
 });
 
 // Neue Endpoints für User-Management
@@ -547,5 +718,16 @@ function handleReaction(senderWs, data) {
 }
 
 server.listen(PORT, () => {
-  console.log(`WS Hub listening on http://localhost:${PORT}`);
+  logger.info("Server Started", {
+    event: "startup",
+    port: PORT,
+    httpUrl: `http://localhost:${PORT}`,
+    wsUrl: `ws://localhost:${PORT}/ws`,
+    cors: "enabled",
+    timestamp: new Date().toISOString(),
+  });
+
+  // Minimal console output (no sensitive data)
+  console.log(`🚀 Server started on port ${PORT}`);
+  console.log(`📝 Logs: ./logs/shoutout-*.log`);
 });

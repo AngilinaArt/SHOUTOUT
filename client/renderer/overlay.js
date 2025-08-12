@@ -56,9 +56,20 @@ function buildPlaceholderHamsterDataUrl() {
 
 function showHamsterQueued({ variant, durationMs, url, sender }) {
   const candidate = url || `../assets/hamsters/${variant}.png`;
-  hamsterImg.onerror = () => {
+
+  // Clear previous event handlers to prevent race conditions
+  hamsterImg.onerror = null;
+  hamsterImg.onload = null;
+
+  hamsterImg.onload = () => {
+    console.log("✅ Image loaded successfully");
+  };
+
+  hamsterImg.onerror = (error) => {
+    console.error("❌ Image load failed, using placeholder:", error);
     hamsterImg.src = buildPlaceholderHamsterDataUrl();
   };
+
   hamsterImg.src = candidate;
   if (sender) {
     hamsterBadge.textContent = sender;
@@ -100,7 +111,11 @@ function escapeHtml(str) {
 
 // Erfolgsmeldung Handler
 window.shoutout.onSuccess = ({ message, durationMs }) => {
-  console.log(`🎯 onSuccess handler called with:`, { message, durationMs });
+  console.log(
+    `🎯 onSuccess handler called with: durationMs=${durationMs}, messageLength=${
+      message ? message.length : 0
+    }`
+  );
 
   const wrapper = document.createElement("div");
   wrapper.className = "success-message";
@@ -122,7 +137,9 @@ window.shoutout.onSuccess = ({ message, durationMs }) => {
     }
   }, durationMs || 4000);
 
-  console.log(`✅ Success message displayed: ${message}`);
+  console.log(
+    `✅ Success message displayed: length=${message ? message.length : 0}`
+  );
 };
 
 // Debug: Teste ob der Handler registriert ist

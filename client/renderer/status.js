@@ -27,7 +27,11 @@ function showStatusMessage(message, type = "success", durationMs = 4000) {
 
   statusContainer.appendChild(wrapper);
 
-  console.log(`📊 Status message displayed: ${message} (${type})`);
+  console.log(
+    `📊 Status message displayed: type=${type}, length=${
+      message ? message.length : 0
+    }`
+  );
 
   // Nach der angegebenen Zeit ausblenden
   setTimeout(() => {

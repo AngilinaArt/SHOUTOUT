@@ -17,6 +17,7 @@
   },
   "dependencies": {
     "dotenv": "^16.4.5",
+    "node-fetch": "^2.7.0",
     "ws": "^8.18.0"
   },
   "devDependencies": {
@@ -41,17 +42,8 @@
       "preload_reaction.js",
       "preload_userlist.js",
       "renderer/**",
-      "assets/**",
+      "assets/icon/**",
       "package.json"
-    ],
-    "extraResources": [
-      {
-        "from": "assets",
-        "to": "assets",
-        "filter": [
-          "**/*"
-        ]
-      }
     ],
     "win": {
       "icon": "assets/icon/hamster.ico",

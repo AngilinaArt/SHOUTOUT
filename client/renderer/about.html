@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0" />
+    <title>About Shoutout</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      html {
+        background: transparent;
+        height: 100%;
+      }
+
+      body {
+        background: rgba(29, 33, 40, 0.85);
+        backdrop-filter: blur(40px);
+        -webkit-backdrop-filter: blur(40px);
+        color: #afc6f3;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          sans-serif;
+        padding: 25px;
+        border-radius: 16px;
+        overflow: hidden;
+        border: 1px solid rgba(175, 198, 243, 0.25);
+        min-height: 100vh;
+        height: 100%;
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4),
+          0 0 0 1px rgba(175, 198, 243, 0.1),
+          inset 0 1px 0 rgba(255, 255, 255, 0.1);
+      }
+
+      .header {
+        text-align: center;
+        margin-bottom: 20px; /* reduced */
+        padding-bottom: 14px; /* reduced */
+        border-bottom: 1px solid rgba(175, 198, 243, 0.2);
+      }
+
+      .app-name {
+        font-size: 26px; /* reduced */
+        font-weight: 700;
+        color: #ffffff;
+        margin-bottom: 6px;
+        text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+      }
+
+      .version {
+        font-size: 15px; /* reduced */
+        color: #afc6f3;
+        opacity: 0.8;
+        font-weight: 500;
+      }
+
+      .description {
+        text-align: center;
+        margin-bottom: 18px; /* reduced */
+        line-height: 1.5; /* slightly tighter */
+        color: #afc6f3;
+        opacity: 0.9;
+        font-size: 14px;
+      }
+
+      .section {
+        margin-bottom: 18px; /* reduced */
+      }
+
+      .section-title {
+        font-size: 15px; /* reduced */
+        font-weight: 600;
+        color: #ffffff;
+        margin-bottom: 10px; /* reduced */
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .section-title::before {
+        content: "";
+        width: 4px;
+        height: 16px; /* reduced */
+        background: linear-gradient(135deg, #afc6f3, #8b9dc3);
+        border-radius: 2px;
+      }
+
+      .list {
+        list-style: none;
+        padding-left: 16px; /* reduced */
+      }
+
+      .list li {
+        margin-bottom: 6px;
+        padding: 8px 12px;
+        background: rgba(175, 198, 243, 0.12);
+        backdrop-filter: blur(15px);
+        -webkit-backdrop-filter: blur(15px);
+        border-radius: 8px;
+        border: 1px solid rgba(175, 198, 243, 0.2);
+        transition: all 0.3s ease;
+        font-size: 13px;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15),
+          inset 0 1px 0 rgba(255, 255, 255, 0.08);
+      }
+
+      .list li:hover {
+        background: rgba(175, 198, 243, 0.15);
+        border-color: rgba(175, 198, 243, 0.25);
+        transform: translateX(4px);
+      }
+
+      .authors {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px; /* reduced */
+        margin-bottom: 16px; /* reduced */
+      }
+
+      .author-card {
+        background: rgba(175, 198, 243, 0.12);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        border: 1px solid rgba(175, 198, 243, 0.25);
+        border-radius: 10px;
+        padding: 10px;
+        text-align: center;
+        transition: all 0.3s ease;
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2),
+          inset 0 1px 0 rgba(255, 255, 255, 0.1);
+      }
+
+      .author-card:hover {
+        background: rgba(175, 198, 243, 0.15);
+        border-color: rgba(175, 198, 243, 0.3);
+        transform: translateY(-2px);
+      }
+
+      .author-name {
+        font-weight: 600;
+        color: #ffffff;
+        margin-bottom: 4px;
+        font-size: 13px; /* reduced */
+      }
+
+      .author-role {
+        font-size: 12px;
+        color: #afc6f3;
+        opacity: 0.8;
+      }
+
+      .footer {
+        text-align: center;
+        margin-top: 18px; /* reduced */
+        padding-top: 14px; /* reduced */
+        border-top: 1px solid rgba(175, 198, 243, 0.2);
+        color: #afc6f3;
+        opacity: 0.7;
+        font-size: 12px; /* reduced */
+      }
+
+      .close-btn {
+        position: absolute;
+        top: 10px; /* reduced */
+        right: 10px; /* reduced */
+        background: rgba(175, 198, 243, 0.2);
+        border: 1px solid rgba(175, 198, 243, 0.3);
+        color: #afc6f3;
+        border-radius: 6px;
+        padding: 6px 10px; /* reduced */
+        cursor: pointer;
+        font-size: 12px; /* reduced */
+        transition: all 0.2s ease;
+      }
+
+      .close-btn:hover {
+        background: rgba(175, 198, 243, 0.3);
+        border-color: rgba(175, 198, 243, 0.4);
+        color: #ffffff;
+      }
+    </style>
+  </head>
+  <body>
+    <button
+      class="close-btn"
+      onclick="window.close()">
+      ✕
+    </button>
+
+    <div class="header">
+      <div class="app-name">Shoutout</div>
+      <div
+        class="version"
+        id="version">
+        Version Loading...
+      </div>
+    </div>
+
+    <div
+      class="description"
+      id="description">
+      A fun and interactive shoutout application for sending hamsters and
+      messages
+    </div>
+
+    <div class="section">
+      <div class="section-title">👨‍💻 Developers</div>
+      <div
+        class="authors"
+        id="authors">
+        <!-- Authors will be populated by JavaScript -->
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">✨ Features</div>
+      <ul
+        class="list"
+        id="features">
+        <!-- Features will be populated by JavaScript -->
+      </ul>
+    </div>
+
+    <div class="section">
+      <div class="section-title">🛠️ Technologies</div>
+      <ul
+        class="list"
+        id="technologies">
+        <!-- Technologies will be populated by JavaScript -->
+      </ul>
+    </div>
+
+    <div class="footer">Made with 💖 and lots of 🐹 hamsters</div>
+
+    <script>
+      // Load app information when page loads
+      document.addEventListener("DOMContentLoaded", async () => {
+        console.log("🚀 About page loaded, trying to get app info...");
+        console.log("🔍 Available window properties:", Object.keys(window));
+
+        try {
+          if (!window.about) {
+            console.error("❌ window.about is not available!");
+            console.log("💡 Loading fallback data...");
+
+            // Fallback data if preload doesn't work
+            const fallbackInfo = {
+              version: "0.1.0",
+              description:
+                "A fun and interactive shoutout application for sending hamsters and messages",
+              authors: [
+                "Angilina Appls - Main Developer & UI/UX Designer",
+                "Claude Sonnet 4 - AI Assistant & Code Contributor",
+              ],
+              features: [
+                "🐹 Interactive Hamster Animations",
+                "💬 Real-time Toast Messages",
+                "👥 Online User Management",
+                "🎨 Beautiful Cursor-style Theme",
+                "🔧 Professional Logging System",
+                "🚀 Cross-platform Desktop App",
+              ],
+              technologies: [
+                "Electron - Desktop Framework",
+                "Node.js - Backend Runtime",
+                "WebSockets - Real-time Communication",
+                "Winston - Professional Logging",
+                "Glassmorphism - Modern UI Design",
+              ],
+            };
+
+            loadContent(fallbackInfo);
+            return;
+          }
+
+          console.log("✅ window.about found:", window.about);
+
+          const appInfo = window.about.getAppInfo();
+          console.log("📋 App info received:", appInfo);
+          loadContent(appInfo);
+        } catch (error) {
+          console.error("❌ Failed to load app info:", error);
+          const versionEl = document.getElementById("version");
+          if (versionEl) versionEl.textContent = "Version Unknown";
+        }
+      });
+
+      function loadContent(appInfo) {
+        const versionEl = document.getElementById("version");
+        if (versionEl) {
+          versionEl.textContent = `Version ${appInfo.version}`;
+          console.log("✅ Version updated to:", appInfo.version);
+        }
+
+        const descEl = document.getElementById("description");
+        if (descEl) {
+          descEl.textContent = appInfo.description;
+          console.log("✅ Description updated");
+        }
+
+        const authorsContainer = document.getElementById("authors");
+        if (authorsContainer && appInfo.authors) {
+          authorsContainer.innerHTML = appInfo.authors
+            .map(
+              (author) => `
+            <div class="author-card">
+              <div class="author-name">${author.split(" - ")[0]}</div>
+              <div class="author-role">${author.split(" - ")[1]}</div>
+            </div>
+          `
+            )
+            .join("");
+          console.log("✅ Authors populated:", appInfo.authors.length);
+        }
+
+        const featuresContainer = document.getElementById("features");
+        if (featuresContainer && appInfo.features) {
+          featuresContainer.innerHTML = appInfo.features
+            .map((feature) => `<li>${feature}</li>`)
+            .join("");
+          console.log("✅ Features populated:", appInfo.features.length);
+        }
+
+        const technologiesContainer = document.getElementById("technologies");
+        if (technologiesContainer && appInfo.technologies) {
+          technologiesContainer.innerHTML = appInfo.technologies
+            .map((tech) => `<li>${tech}</li>`)
+            .join("");
+          console.log(
+            "✅ Technologies populated:",
+            appInfo.technologies.length
+          );
+        }
+
+        console.log("🎉 All content loaded successfully!");
+      }
+    </script>
+  </body>
+</html>
