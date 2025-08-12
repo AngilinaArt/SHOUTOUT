@@ -224,6 +224,40 @@ npm run build:linux
 
 ---
 
+## 📥 Installation
+
+### 🪟 Windows
+
+1. **Download** den Windows Installer (`.exe`)
+2. **Doppelklick** auf die Datei
+3. **Installation bestätigen** und folgen
+4. **App starten** über Start-Menü oder Desktop
+
+### 🍎 macOS
+
+1. **Download** den macOS Installer (`.dmg`)
+2. **DMG öffnen** und App in den Applications-Ordner ziehen
+3. **App starten** über Applications-Ordner
+
+**⚠️ Wichtig:** Bei der ersten Ausführung zeigt macOS "Datei beschädigt" an. Das ist normal für nicht-code-signed Apps!
+
+**Lösung:**
+
+```bash
+# 1. Quarantäne-Flag entfernen
+xattr -dr com.apple.quarantine "/Applications/Hamster & Toast.app"
+
+# 2. Ad-hoc signieren
+codesign --force --deep --sign - "/Applications/Hamster & Toast.app"
+
+# 3. App starten
+open "/Applications/Hamster & Toast.app"
+```
+
+**Alternativ:** Rechtsklick auf die App → "Öffnen" wählen
+
+---
+
 ## 🎮 Verwendung
 
 ### ⌨️ Global Hotkeys

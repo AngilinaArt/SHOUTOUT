@@ -984,12 +984,27 @@ function getAutostartStatus() {
 function scanAvailableHamsters() {
   try {
     const fs = require("fs");
-    const hamstersDir = path.join(__dirname, "assets", "hamsters");
+
+    // Try different paths for development vs production
+    let hamstersDir = path.join(__dirname, "assets", "hamsters");
+
+    // If not found, try resources path (production build)
+    if (!fs.existsSync(hamstersDir)) {
+      hamstersDir = path.join(process.resourcesPath, "assets", "hamsters");
+    }
+
+    // If still not found, try current working directory
+    if (!fs.existsSync(hamstersDir)) {
+      hamstersDir = path.join(process.cwd(), "assets", "hamsters");
+    }
 
     if (!fs.existsSync(hamstersDir)) {
+      console.log("❌ Hamsters directory not found in any location");
       availableHamsters = [];
       return;
     }
+
+    console.log(`🔍 Found hamsters directory: ${hamstersDir}`);
 
     const files = fs.readdirSync(hamstersDir);
     availableHamsters = files
