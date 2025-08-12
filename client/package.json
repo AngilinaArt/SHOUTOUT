@@ -54,9 +54,7 @@
       ],
       "artifactName": "${productName}-${version}-win.${ext}",
       "sign": false,
-      "verifyUpdateCodeSignature": false,
-      "codeSigningMac": false,
-      "codeSigningWin": false
+      "verifyUpdateCodeSignature": false
     }
   }
 }
