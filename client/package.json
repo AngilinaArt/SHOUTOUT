@@ -11,6 +11,8 @@
     "build": "electron-builder",
     "build:win": "electron-builder --win --x64",
     "build:mac": "electron-builder --mac",
+    "build:mac:x64": "electron-builder --mac --x64",
+    "build:mac:arm64": "electron-builder --mac --arm64",
     "build:linux": "electron-builder --linux"
   },
   "dependencies": {
@@ -64,7 +66,9 @@
       "target": [
         "dmg"
       ],
-      "artifactName": "${productName}-${version}-mac.${ext}"
+      "artifactName": "${productName}-${version}-mac.${ext}",
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false
     }
   }
 }

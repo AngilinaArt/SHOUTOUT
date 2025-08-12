@@ -37,4 +37,7 @@ tmp/
 .idea/
 *.swp
 
+# Developer Notes (internal only)
+DEVELOPER_NOTES.md
+
 
