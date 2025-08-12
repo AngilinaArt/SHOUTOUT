@@ -43,7 +43,6 @@ cd shoutout
 # Dependencies installieren
 npm install
 cd server && npm install
-cd ../bot && npm install
 cd ../client && npm install
 
 # Alle Services starten
@@ -58,22 +57,22 @@ npm run dev
 ┌─────────────────┐    WebSocket    ┌─────────────────┐
 │   Desktop App   │◄──────────────►│  WebSocket Hub  │
 │   (Electron)    │                 │   (Node.js)     │
+│                 │                 │   + Winston     │
 └─────────────────┘                 └─────────────────┘
-         │                                   ▲
          │                                   │
-         │ IPC                               │ HTTP
-         ▼                                   │
-┌─────────────────┐                         │
-│   Discord Bot   │─────────────────────────┘
-│   (Node.js)     │
-└─────────────────┘
+         │                                   │
+         │ IPC                               │ HTTP API
+         ▼                                   ▼
+┌─────────────────┐                 ┌─────────────────┐
+│   Tray Menu     │                 │  Hamster Assets │
+│   + Overlays    │                 │  + User API     │
+└─────────────────┘                 └─────────────────┘
 ```
 
 ### 🎯 Komponenten
 
 - **`client/`** - Electron Desktop App mit Overlays
-- **`server/`** - WebSocket Hub für Real-Time Kommunikation
-- **`bot/`** - Discord Bot für Remote-Triggering
+- **`server/`** - WebSocket Hub für Real-Time Kommunikation mit Winston Logging
 
 ---
 
@@ -117,22 +116,7 @@ npm start
 
 **Server läuft auf:** `http://localhost:3001`
 
-#### 3. Discord Bot (Optional)
-
-```bash
-cd bot
-
-# Dependencies installieren
-npm install
-
-# .env Datei erstellen
-cp .env.example .env
-
-# Bot starten
-npm start
-```
-
-#### 4. Desktop App starten
+#### 3. Desktop App starten
 
 ```bash
 cd client
@@ -144,7 +128,7 @@ npm install
 npm start
 ```
 
-#### 5. Alle Services gleichzeitig starten
+#### 4. Alle Services gleichzeitig starten
 
 ```bash
 # Im Root-Verzeichnis
@@ -294,7 +278,7 @@ open "/Applications/Hamster & Toast.app"
 
 - **Frontend**: Electron, HTML5, CSS3, Vanilla JavaScript
 - **Backend**: Node.js, Express, WebSocket (ws)
-- **Bot**: Discord.js, Slash Commands
+- **Logging**: Winston, Daily Rotation
 - **Build**: electron-builder, npm scripts
 - **Styling**: CSS Grid, Flexbox, Glass Effects, Animations
 
