@@ -47,13 +47,6 @@
         ]
       }
     ],
-    "mac": {
-      "category": "public.app-category.utilities",
-      "icon": "assets/icon/hamster.png",
-      "target": [
-        "dmg"
-      ]
-    },
     "win": {
       "icon": "assets/icon/hamster.ico",
       "target": [
@@ -62,12 +55,6 @@
       "artifactName": "${productName}-${version}-win.${ext}",
       "sign": false,
       "verifyUpdateCodeSignature": false
-    },
-    "linux": {
-      "icon": "assets/icon",
-      "target": [
-        "AppImage"
-      ]
     }
   }
 }
