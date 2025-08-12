@@ -24,6 +24,14 @@ jobs:
           cd client
           npm install
 
+      - name: Create production .env file
+        run: |
+          cd client
+          echo "WS_URL=${{ secrets.PROD_WS_URL }}" > .env
+          echo "WS_TOKEN=${{ secrets.PROD_WS_TOKEN }}" >> .env
+          echo "SERVER_URL=${{ secrets.PROD_SERVER_URL }}" >> .env
+          echo "NODE_ENV=production" >> .env
+
       - name: Build Windows app
         run: |
           cd client
@@ -55,6 +63,14 @@ jobs:
           npm install
           cd client
           npm install
+
+      - name: Create production .env file
+        run: |
+          cd client
+          echo "WS_URL=${{ secrets.PROD_WS_URL }}" > .env
+          echo "WS_TOKEN=${{ secrets.PROD_WS_TOKEN }}" >> .env
+          echo "SERVER_URL=${{ secrets.PROD_SERVER_URL }}" >> .env
+          echo "NODE_ENV=production" >> .env
 
       - name: Build macOS app
         run: |
