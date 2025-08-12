@@ -8,7 +8,7 @@
   "type": "commonjs",
   "scripts": {
     "start": "electron .",
-    "build": "electron-builder",
+    "build": "echo 'Build deaktiviert - verwende build:win statt build'",
     "build:mac": "electron-builder --mac",
     "build:win": "electron-builder --win --x64",
     "build:linux": "electron-builder --linux"
@@ -54,7 +54,9 @@
       ],
       "artifactName": "${productName}-${version}-win.${ext}",
       "sign": false,
-      "verifyUpdateCodeSignature": false
+      "verifyUpdateCodeSignature": false,
+      "codeSigningMac": false,
+      "codeSigningWin": false
     }
   }
 }
