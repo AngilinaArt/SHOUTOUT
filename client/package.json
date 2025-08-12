@@ -8,8 +8,10 @@
   "type": "commonjs",
   "scripts": {
     "start": "electron .",
-    "build": "echo 'Build deaktiviert - verwende build:win statt build'",
-    "build:win": "echo 'Einfacher Build ohne electron-builder' && echo 'Erstelle dist/ Ordner manuell...'"
+    "build": "electron-builder",
+    "build:win": "electron-builder --win --x64",
+    "build:mac": "electron-builder --mac",
+    "build:linux": "electron-builder --linux"
   },
   "dependencies": {
     "dotenv": "^16.4.5",
@@ -17,6 +19,43 @@
   },
   "devDependencies": {
     "7zip-bin": "^5.2.0",
-    "electron": "31.3.1"
+    "electron": "31.3.1",
+    "electron-builder": "^24.13.3"
+  },
+  "build": {
+    "appId": "com.shoutout.app",
+    "productName": "Hamster & Toast",
+    "asar": true,
+    "files": [
+      "main.js",
+      "preload.js",
+      "preload_compose.js",
+      "preload_name.js",
+      "preload_status.js",
+      "preload_reaction.js",
+      "preload_userlist.js",
+      "renderer/**",
+      "assets/**",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "assets",
+        "to": "assets",
+        "filter": [
+          "**/*"
+        ]
+      }
+    ],
+    "win": {
+      "icon": "assets/icon/hamster.ico",
+      "target": [
+        "nsis"
+      ],
+      "artifactName": "${productName}-${version}-win.${ext}",
+      "sign": false,
+      "verifyUpdateCodeSignature": false,
+      "forceCodeSigning": false
+    }
   }
 }
