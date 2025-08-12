@@ -26,6 +26,10 @@
     "appId": "com.shoutout.app",
     "productName": "Hamster & Toast",
     "asar": true,
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    },
     "files": [
       "main.js",
       "preload.js",
@@ -52,10 +56,7 @@
       "target": [
         "nsis"
       ],
-      "artifactName": "${productName}-${version}-win.${ext}",
-      "sign": false,
-      "verifyUpdateCodeSignature": false,
-      "forceCodeSigning": false
+      "artifactName": "${productName}-${version}-win.${ext}"
     }
   }
 }
