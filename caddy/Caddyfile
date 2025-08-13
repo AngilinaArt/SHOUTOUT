@@ -1,0 +1,4 @@
+shoutout.angilina.art {
+  encode zstd gzip
+  reverse_proxy shoutout:3001
+}
