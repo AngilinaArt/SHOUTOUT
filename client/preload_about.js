@@ -29,7 +29,7 @@ contextBridge.exposeInMainWorld("about", {
     description:
       "A fun and interactive shoutout application for sending hamsters and messages",
     authors: [
-      "Angilina Appls - Main Developer & UI/UX Designer",
+      "Angilina - Main Developer & UI/UX Designer",
       "Claude Sonnet 4 - AI Assistant & Code Contributor",
     ],
     features: [
