@@ -1,13 +1,20 @@
 # =========================
-# Base deps (nutzt Root-Lockfile)
+# Base deps (Root + Server)
 # =========================
 FROM node:22-alpine AS deps
 WORKDIR /app
 
-# Nur die Manifeste – maximiert Layer-Caching
+# Root-Manifeste zuerst (für shared deps / Workspaces)
 COPY package*.json ./
+RUN if [ -f package-lock.json ]; then \
+      npm ci --omit=dev; \
+    else \
+      npm install --omit=dev; \
+    fi
 
-# Bevorzugt reproduzierbar mit npm ci; Fallback auf npm install, falls kein Lockfile
+# Jetzt server-spezifische Dependencies separat installieren
+WORKDIR /app/server
+COPY server/package*.json ./
 RUN if [ -f package-lock.json ]; then \
       npm ci --omit=dev; \
     else \
@@ -15,27 +22,24 @@ RUN if [ -f package-lock.json ]; then \
     fi
 
 # =========================
-# Build-Stage (falls du später mal Build-Schritte brauchst)
+# Build-Stage
 # =========================
 FROM node:22-alpine AS build
 WORKDIR /app
 ENV NODE_ENV=production
 
-# Dependencies aus deps übernehmen
+# Dependencies aus deps übernehmen (Root + Server)
 COPY --from=deps /app/node_modules /app/node_modules
+COPY --from=deps /app/server/node_modules /app/server/node_modules
 
 # Restlichen Code – dank .dockerignore kommen client/bot nicht mit
 COPY . .
-
-# Falls du irgendwann einen Build brauchst (z. B. TypeScript o. ä.):
-# RUN npm run build
 
 # =========================
 # Runtime-Stage (schlank)
 # =========================
 FROM node:22-alpine
 WORKDIR /app
-
 
 ENV NODE_ENV=production \
     NODE_OPTIONS=--enable-source-maps
@@ -49,6 +53,7 @@ WORKDIR /app/server
 # Der Server soll im Container auf 0.0.0.0:3001 lauschen
 EXPOSE 3001
 
+# Nicht als root laufen – im node:22-alpine existiert der User bereits
 USER node
 
 # Startbefehl
