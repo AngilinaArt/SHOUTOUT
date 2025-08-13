@@ -36,8 +36,6 @@ COPY . .
 FROM node:22-alpine
 WORKDIR /app
 
-# Sicherheit: Non-root User
-RUN addgroup -S nodejs && adduser -S node -G nodejs
 
 ENV NODE_ENV=production \
     NODE_OPTIONS=--enable-source-maps
