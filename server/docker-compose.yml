@@ -1,0 +1,29 @@
+services:
+  shoutout:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    expose:
+      - "3001"
+    environment:
+      - NODE_ENV=production
+    # falls dein Server .env braucht (im Ordner server):
+    # env_file: ./server/.env
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - shoutout
+
+volumes:
+  caddy_data:
+  caddy_config:
