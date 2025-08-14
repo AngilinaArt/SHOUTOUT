@@ -1,5 +1,21 @@
-require("dotenv").config();
+// Load .env from the correct location
 const path = require("path");
+const fs = require("fs");
+
+// Check if we're in a packaged app (multiple ways)
+const isPackaged =
+  require("electron").app?.isPackaged ||
+  (process.mainModule &&
+    process.mainModule.filename.indexOf("app.asar") !== -1);
+
+if (isPackaged) {
+  // In packaged app, .env is in extraResources
+  const envPath = path.join(process.resourcesPath, ".env");
+  require("dotenv").config({ path: envPath });
+} else {
+  // In development or npm scripts, .env is in current directory
+  require("dotenv").config();
+}
 const { pathToFileURL } = require("url");
 const {
   app,
@@ -12,7 +28,6 @@ const {
   screen,
 } = require("electron");
 const WebSocket = require("ws");
-const fs = require("fs");
 // Use built-in fetch if available (Electron 18+), fallback to node-fetch
 const fetch = globalThis.fetch || require("node-fetch");
 
@@ -724,7 +739,6 @@ function createTray() {
   // Try to load a platform icon; fallback to empty
   let trayImage = null;
   try {
-    const fs = require("fs");
     const iconDir = path.join(__dirname, "assets", "icon");
     // User-provided icons
     const winPrimary = path.join(iconDir, "hamster.ico");
@@ -837,7 +851,6 @@ function updateTrayIcon() {
   if (!tray) return;
 
   try {
-    const fs = require("fs");
     const iconDir = path.join(__dirname, "assets", "icon");
 
     // Simplified icon logic: Windows uses ICO, macOS uses PNG
@@ -1372,7 +1385,6 @@ function getSettingsPath() {
 
 function readSettings() {
   try {
-    const fs = require("fs");
     const p = getSettingsPath();
     if (!fs.existsSync(p)) return {};
     const raw = fs.readFileSync(p, "utf-8");

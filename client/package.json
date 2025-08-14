@@ -45,6 +45,9 @@
       "assets/icon/**",
       "package.json"
     ],
+    "extraResources": [
+      ".env"
+    ],
     "win": {
       "icon": "assets/icon/hamster.ico",
       "target": [
