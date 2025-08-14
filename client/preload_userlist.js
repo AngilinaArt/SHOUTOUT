@@ -15,6 +15,12 @@ contextBridge.exposeInMainWorld("userlistAPI", {
     );
     ipcRenderer.invoke("open-toast-prompt", targetUserId);
   },
+
+  // Notify main process when overlay is hidden
+  notifyHidden: () => {
+    console.log(`🔧 preload_userlist.js: notifyHidden called`);
+    ipcRenderer.invoke("userlist-hidden");
+  },
 });
 
 // IPC-Handler für User-List-Nachrichten - ruft direkt die userlist.js Funktionen auf

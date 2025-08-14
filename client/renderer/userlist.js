@@ -7,8 +7,9 @@ let hideTimeout = null;
 function showUserList(users, durationMs = 15000) {
   console.log(`👥 showUserList called with:`, users);
 
-  // Entferne vorhandene Overlay
+  // Entferne vorhandene Overlay SOFORT und warte auf Animation
   if (userListOverlay) {
+    console.log(`🔄 Removing existing overlay`);
     userListOverlay.remove();
     userListOverlay = null;
   }
@@ -19,89 +20,95 @@ function showUserList(users, durationMs = 15000) {
     hideTimeout = null;
   }
 
-  // Erstelle neues Overlay
-  const wrapper = document.createElement("div");
-  wrapper.className = "userlist-overlay";
+  // Warte kurz damit die DOM-Bereinigung abgeschlossen ist
+  setTimeout(() => {
+    // Erstelle neues Overlay
+    const wrapper = document.createElement("div");
+    wrapper.className = "userlist-overlay";
 
-  const onlineUsers = users.filter((user) => user.status === "online");
-  const userCount = onlineUsers.length;
+    // Force reflow to ensure clean animation start
+    wrapper.offsetHeight;
 
-  wrapper.innerHTML = `
-    <div class="userlist-header">
-      <span class="userlist-icon">👥</span>
-      <span>Online Users</span>
-      <span class="userlist-count">${userCount}</span>
-    </div>
-    <div class="userlist-content">
-      ${
-        userCount === 0
-          ? '<div class="empty-state">Keine User online</div>'
-          : onlineUsers
-              .map(
-                (user) => `
-            <div class="user-item">
-              <span class="user-status ${user.status}"></span>
-              <span class="user-name">${user.name}</span>
-              <button class="user-message-btn" data-user-id="${user.id}" data-user-name="${user.name}" title="Send Message to ${user.name}">💬</button>
-            </div>
-         `
-              )
-              .join("")
-      }
-    </div>
-  `;
+    const onlineUsers = users.filter((user) => user.status === "online");
+    const userCount = onlineUsers.length;
 
-  userlistContainer.appendChild(wrapper);
-  userListOverlay = wrapper;
+    wrapper.innerHTML = `
+      <div class="userlist-header">
+        <span class="userlist-icon">👥</span>
+        <span>Online Users</span>
+        <span class="userlist-count">${userCount}</span>
+      </div>
+      <div class="userlist-content">
+        ${
+          userCount === 0
+            ? '<div class="empty-state">Keine User online</div>'
+            : onlineUsers
+                .map(
+                  (user) => `
+              <div class="user-item">
+                <span class="user-status ${user.status}"></span>
+                <span class="user-name">${user.name}</span>
+                <button class="user-message-btn" data-user-id="${user.id}" data-user-name="${user.name}" title="Send Message to ${user.name}">💬</button>
+              </div>
+           `
+                )
+                .join("")
+        }
+      </div>
+    `;
 
-  // Event-Listener für Message-Buttons hinzufügen
-  const messageButtons = wrapper.querySelectorAll(".user-message-btn");
-  console.log(`🔧 Found ${messageButtons.length} message buttons`);
+    userlistContainer.appendChild(wrapper);
+    userListOverlay = wrapper;
 
-  messageButtons.forEach((btn, index) => {
-    console.log(`🔧 Setting up button ${index}:`, btn);
+    // Event-Listener für Message-Buttons hinzufügen
+    const messageButtons = wrapper.querySelectorAll(".user-message-btn");
+    console.log(`🔧 Found ${messageButtons.length} message buttons`);
 
-    btn.addEventListener("click", (e) => {
-      console.log(`🖱️ BUTTON CLICKED! Event:`, e);
-      e.preventDefault();
-      e.stopPropagation();
+    messageButtons.forEach((btn, index) => {
+      console.log(`🔧 Setting up button ${index}:`, btn);
 
-      const userId = btn.getAttribute("data-user-id");
-      const userName = btn.getAttribute("data-user-name");
+      btn.addEventListener("click", (e) => {
+        console.log(`🖱️ BUTTON CLICKED! Event:`, e);
+        e.preventDefault();
+        e.stopPropagation();
 
-      console.log(
-        `💬 Message button clicked for user: ${userName} (${userId})`
-      );
+        const userId = btn.getAttribute("data-user-id");
+        const userName = btn.getAttribute("data-user-name");
 
-      // Rufe die openToastPrompt Funktion auf
-      console.log(`🔧 Checking window.userlistAPI:`, window.userlistAPI);
-      if (window.userlistAPI && window.userlistAPI.openToastPrompt) {
-        console.log(`✅ Calling openToastPrompt with: ${userId}`);
-        window.userlistAPI.openToastPrompt(userId);
-      } else {
-        console.error(`❌ openToastPrompt not available`, window.userlistAPI);
-        console.error(
-          `❌ Available keys:`,
-          Object.keys(window.userlistAPI || {})
+        console.log(
+          `💬 Message button clicked for user: ${userName} (${userId})`
         );
-      }
 
-      // Schließe die User-Liste nach dem Klick
+        // Rufe die openToastPrompt Funktion auf
+        console.log(`🔧 Checking window.userlistAPI:`, window.userlistAPI);
+        if (window.userlistAPI && window.userlistAPI.openToastPrompt) {
+          console.log(`✅ Calling openToastPrompt with: ${userId}`);
+          window.userlistAPI.openToastPrompt(userId);
+        } else {
+          console.error(`❌ openToastPrompt not available`, window.userlistAPI);
+          console.error(
+            `❌ Available keys:`,
+            Object.keys(window.userlistAPI || {})
+          );
+        }
+
+        // Schließe die User-Liste nach dem Klick
+        hideUserList();
+      });
+
+      // Test: Auch mousedown event hinzufügen
+      btn.addEventListener("mousedown", (e) => {
+        console.log(`🖱️ MOUSEDOWN on button!`, e);
+      });
+    });
+
+    console.log(`✅ User list displayed with ${userCount} online users`);
+
+    // Nach der angegebenen Zeit ausblenden
+    hideTimeout = setTimeout(() => {
       hideUserList();
-    });
-
-    // Test: Auch mousedown event hinzufügen
-    btn.addEventListener("mousedown", (e) => {
-      console.log(`🖱️ MOUSEDOWN on button!`, e);
-    });
-  });
-
-  console.log(`✅ User list displayed with ${userCount} online users`);
-
-  // Nach der angegebenen Zeit ausblenden
-  hideTimeout = setTimeout(() => {
-    hideUserList();
-  }, durationMs);
+    }, durationMs);
+  }, 50); // 50ms Delay für DOM-Bereinigung
 }
 
 // Funktion zum Ausblenden der User-Liste
@@ -109,6 +116,12 @@ function hideUserList() {
   if (!userListOverlay) return;
 
   userListOverlay.classList.add("fade-out");
+
+  // Notify main process that overlay is hiding
+  if (window.userlistAPI && window.userlistAPI.notifyHidden) {
+    window.userlistAPI.notifyHidden();
+  }
+
   setTimeout(() => {
     if (userListOverlay && userListOverlay.parentElement) {
       userListOverlay.remove();

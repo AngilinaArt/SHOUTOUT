@@ -47,7 +47,8 @@ let displayName = null;
 let availableHamsters = []; // Dynamically loaded hamster variants
 let wsConnectToken = 0;
 let lastSeverity = "blue";
-let userListUpdateTimer = null; // Timer für Auto-Update der User-Liste
+let userListUpdateTimer = null;
+let userListVisible = false; // Track visibility state
 
 function createOverlayWindow() {
   console.log(`🏗️ Creating overlay window...`);
@@ -1151,9 +1152,38 @@ function registerHotkey() {
   }
 }
 
+// Prevent multiple instances
+const gotTheLock = app.requestSingleInstanceLock();
+
+if (!gotTheLock) {
+  console.log(`⚠️ Another instance is already running. Quitting...`);
+  app.quit();
+} else {
+  app.on("second-instance", () => {
+    console.log(
+      `⚠️ Second instance attempted to start. Focusing existing instance.`
+    );
+    // Focus existing windows if they exist
+    if (statusWindow && !statusWindow.isDestroyed()) {
+      statusWindow.show();
+    }
+  });
+}
+
 app.whenReady().then(() => {
+  console.log(`🏗️ App is ready, initializing...`);
+
   // IPC-Handler für Toast-Fenster öffnen - SOFORT registrieren
   ipcMain.removeHandler("open-toast-prompt");
+  ipcMain.removeHandler("userlist-hidden");
+
+  // Register userlist-hidden handler IMMEDIATELY
+  ipcMain.handle("userlist-hidden", async () => {
+    console.log(`🔧 userlist-hidden IPC received - resetting flag`);
+    userListVisible = false;
+    console.log(`🏁 userListVisible reset to: ${userListVisible} (via IPC)`);
+  });
+
   ipcMain.handle("open-toast-prompt", async (event, targetUser) => {
     console.log(`📝 open-toast-prompt IPC received: targetUser=${targetUser}`);
     try {
@@ -1672,9 +1702,9 @@ function updateServerName() {
 // IPC Handlers für User-Management
 ipcMain.handle("load-users", async () => {
   try {
-    const response = await fetch(
-      `${WS_URL.replace("ws://", "http://").replace("/ws", "")}/users`
-    );
+    // Use SERVER_URL for API calls
+    const serverUrl = process.env.SERVER_URL || "http://localhost:3001";
+    const response = await fetch(`${serverUrl}/users`);
     if (response.ok) {
       const data = await response.json();
       return data.users || [];
@@ -1688,9 +1718,9 @@ ipcMain.handle("load-users", async () => {
 
 ipcMain.handle("refresh-users", async () => {
   try {
-    const response = await fetch(
-      `${WS_URL.replace("ws://", "http://").replace("/ws", "")}/users`
-    );
+    // Use SERVER_URL for API calls
+    const serverUrl = process.env.SERVER_URL || "http://localhost:3001";
+    const response = await fetch(`${serverUrl}/users`);
     if (response.ok) {
       const data = await response.json();
       return data.users || [];
@@ -1765,9 +1795,9 @@ async function fetchOnlineUsers() {
 
   try {
     // Hole aktuelle User-Liste vom Server
-    const response = await fetch(
-      `${WS_URL.replace("ws://", "http://").replace("/ws", "")}/users`
-    );
+    // Use SERVER_URL for API calls
+    const serverUrl = process.env.SERVER_URL || "http://localhost:3001";
+    const response = await fetch(`${serverUrl}/users`);
 
     if (!response.ok) {
       throw new Error(`Failed to fetch users: ${response.status}`);
@@ -1790,10 +1820,16 @@ async function fetchOnlineUsers() {
 }
 
 async function showOnlineUsers() {
-  console.log(`👥 showOnlineUsers called`);
+  console.log(`👥 showOnlineUsers called, userListVisible=${userListVisible}`);
 
   if (!userListWindow || userListWindow.isDestroyed()) {
     console.error(`❌ User list window not available`);
+    return;
+  }
+
+  // Prevent multiple overlays
+  if (userListVisible) {
+    console.log(`⚠️ User list already visible, ignoring request`);
     return;
   }
 
@@ -1803,13 +1839,34 @@ async function showOnlineUsers() {
   console.log(`📋 Fetched users:`, users);
 
   // Zeige User-Liste an
-  userListWindow.showInactive();
-  userListWindow.webContents.send("show-userlist", {
-    users: users,
-    durationMs: 15000,
-  });
+  console.log(
+    `👁️ Showing userListWindow: isVisible=${userListWindow.isVisible()}, isDestroyed=${userListWindow.isDestroyed()}`
+  );
+
+  userListVisible = true; // Mark as visible
+  console.log(`🏁 userListVisible set to: ${userListVisible}`);
+
+  // Force window invalidation to prevent stacking
+  userListWindow.hide();
+  setTimeout(() => {
+    userListWindow.showInactive();
+    userListWindow.webContents.send("show-userlist", {
+      users: users,
+      durationMs: 15000,
+    });
+  }, 16); // One frame delay
 
   console.log(`✅ Online users sent to overlay: ${users.length} users`);
+
+  // Auto-hide nach 15 Sekunden
+  setTimeout(() => {
+    if (userListWindow && !userListWindow.isDestroyed()) {
+      console.log(`⏰ Auto-hiding userListWindow after 15s`);
+      userListWindow.hide();
+      userListVisible = false; // Mark as hidden
+      console.log(`🏁 userListVisible reset to: ${userListVisible}`);
+    }
+  }, 15000);
 
   // TODO: Auto-Update Timer (auskommentiert - war wahrscheinlich überflüssig da Liste nur 15s sichtbar)
   // startUserListAutoUpdate();
