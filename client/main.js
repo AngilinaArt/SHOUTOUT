@@ -1846,15 +1846,19 @@ async function showOnlineUsers() {
   userListVisible = true; // Mark as visible
   console.log(`🏁 userListVisible set to: ${userListVisible}`);
 
-  // Force window invalidation to prevent stacking
+  // Force window invalidation to prevent stacking (Ultra-Wide Monitor Fix)
   userListWindow.hide();
   setTimeout(() => {
+    // Ultra-Wide Monitor Fix: Force position refresh
+    const bounds = userListWindow.getBounds();
+    userListWindow.setBounds({ ...bounds });
+
     userListWindow.showInactive();
     userListWindow.webContents.send("show-userlist", {
       users: users,
       durationMs: 15000,
     });
-  }, 16); // One frame delay
+  }, 32); // Two frame delay for high refresh rate monitors
 
   console.log(`✅ Online users sent to overlay: ${users.length} users`);
 
