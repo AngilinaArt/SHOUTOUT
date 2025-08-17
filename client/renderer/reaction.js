@@ -1,6 +1,7 @@
 // Reaction Overlay JavaScript
 const reactionContainer = document.getElementById("reaction-container");
 let reactionCounter = 0;
+const MAX_REACTION_STACK = 5; // Maximum number of reactions to show at once
 
 // Reaction-Konfiguration
 const REACTION_CONFIG = {
@@ -27,13 +28,30 @@ const REACTION_CONFIG = {
 };
 
 // Funktion zum Anzeigen von Reaction-Feedback
-function showReactionFeedback(fromUser, reaction, durationMs = 5000) {
+function showReactionFeedback(fromUser, reaction, durationMs = 3000) {
   const reactionId = `reaction-${++reactionCounter}`;
   const config = REACTION_CONFIG[reaction];
 
   if (!config) {
     console.error(`❌ Unknown reaction: ${reaction}`);
     return;
+  }
+
+  // STACKING SYSTEM: Manage reaction stack
+  console.log(`📚 Adding new reaction to stack: ${reaction} from ${fromUser}`);
+
+  // Remove oldest reaction if we exceed max stack size
+  const existingReactions =
+    reactionContainer.querySelectorAll(".reaction-feedback");
+  if (existingReactions.length >= MAX_REACTION_STACK) {
+    const oldest = existingReactions[0]; // First = oldest
+    console.log(`🗑️ Removing oldest reaction to make space`);
+    oldest.classList.add("fade-out");
+    setTimeout(() => {
+      if (oldest.parentElement) {
+        oldest.remove();
+      }
+    }, 200);
   }
 
   const wrapper = document.createElement("div");
@@ -49,20 +67,22 @@ function showReactionFeedback(fromUser, reaction, durationMs = 5000) {
     </div>
   `;
 
+  // Add to the END of the container (newest at bottom)
   reactionContainer.appendChild(wrapper);
 
-  // Starte die Emoji-Animation
+  // Starte die Emoji-Animation sofort
   startEmojiAnimation(reactionId, config.emoji);
 
   console.log(`💖 Reaction feedback displayed: ${fromUser} ${reaction}`);
 
-  // Nach der angegebenen Zeit ausblenden
+  // Nach der angegebenen Zeit ausblenden (individual timer for each reaction)
   setTimeout(() => {
     if (wrapper.parentElement) {
       wrapper.classList.add("fade-out");
       setTimeout(() => {
         if (wrapper.parentElement) {
           wrapper.remove();
+          console.log(`✅ Reaction removed: ${fromUser} ${reaction}`);
         }
       }, 300);
     }

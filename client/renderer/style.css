@@ -75,36 +75,36 @@ body {
   }
 }
 
-#toast #toasts {
+#toast {
   display: flex;
   flex-direction: column;
   align-items: flex-end;
   gap: 8px;
   margin-top: 10px;
-  max-height: 400px;
+  max-height: 600px; /* Mehr Platz für mehr Toasts */
   overflow-y: auto;
   padding-right: 10px;
 }
 
 /* Schöner Scrollbar für Toasts */
-#toast #toasts::-webkit-scrollbar {
+#toast::-webkit-scrollbar {
   width: 6px;
 }
 
-#toast #toasts::-webkit-scrollbar-track {
+#toast::-webkit-scrollbar-track {
   background: rgba(0, 0, 0, 0.1);
   border-radius: 3px;
 }
 
-#toast #toasts::-webkit-scrollbar-thumb {
+#toast::-webkit-scrollbar-thumb {
   background: rgba(139, 92, 246, 0.3);
   border-radius: 3px;
 }
 
-#toast #toasts::-webkit-scrollbar-thumb:hover {
+#toast::-webkit-scrollbar-thumb:hover {
   background: rgba(139, 92, 246, 0.5);
 }
-#toast #toasts .toast-item {
+#toast .toast-item {
   width: 380px; /* Fixe Breite für einheitliches Aussehen */
   animation: slideIn 180ms ease-out;
 }

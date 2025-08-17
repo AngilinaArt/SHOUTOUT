@@ -516,8 +516,11 @@
       // User beim Laden der Seite laden
       loadUsers();
 
-      // Auto-Focus auf das Nachrichtenfeld setzen
-      messageEl.focus();
+      // Auto-Focus auf das Nachrichtenfeld setzen (with delay to ensure window is ready)
+      setTimeout(() => {
+        messageEl.focus();
+        console.log(`🎯 Focus set to message field`);
+      }, 100);
 
       // Nach User-Auswahl automatisch zurück zum Nachrichtenfeld
       targetEl.addEventListener("change", () => {

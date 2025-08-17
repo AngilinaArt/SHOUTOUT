@@ -174,6 +174,35 @@ wss.on("connection", (ws, request) => {
     return true;
   }
 
+  // Close any existing connections from the same user (but NOT the current one)
+  const existingConnections = Array.from(clients).filter(
+    (client) => client.user?.name === ws.user.name && client !== ws
+  );
+
+  // Also check wss.clients for duplicates (but NOT the current one)
+  const existingWssConnections = Array.from(wss.clients).filter(
+    (client) => client.user?.name === ws.user.name && client !== ws
+  );
+
+  const allExistingConnections = [
+    ...new Set([...existingConnections, ...existingWssConnections]),
+  ];
+
+  if (allExistingConnections.length > 0) {
+    console.log(
+      `🔄 Closing ${allExistingConnections.length} existing connections for user: ${ws.user.name}`
+    );
+    allExistingConnections.forEach((client) => {
+      try {
+        client.close(1000, "Replaced by new connection");
+        // Also remove from clients Set
+        clients.delete(client);
+      } catch (e) {
+        console.error("Error closing existing connection:", e);
+      }
+    });
+  }
+
   clients.add(ws);
 
   // Benachrichtige alle anderen über den neuen User

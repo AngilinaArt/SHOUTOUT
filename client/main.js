@@ -63,8 +63,8 @@ function createOverlayWindow() {
   createReactionWindow();
 
   overlayWindow = new BrowserWindow({
-    width: 420,
-    height: 240,
+    width: 500,
+    height: 400,
     frame: false,
     transparent: true,
     resizable: false,
@@ -94,15 +94,15 @@ function createOverlayWindow() {
 
   console.log(`✅ Overlay window created and shown`);
 
-  // DevTools für das Overlay-Fenster (DEAKTIVIERT für Production)
-  // overlayWindow.webContents.once("did-finish-load", () => {
-  //   try {
-  //     overlayWindow.webContents.openDevTools({ mode: "detach" });
-  //     console.log(`🔧 DevTools opened for overlay after load`);
-  //   } catch (error) {
-  //     console.error(`❌ Failed to open DevTools:`, error);
-  //   }
-  // });
+  // DevTools für das Overlay-Fenster (AKTIVIERT für Debugging)
+  overlayWindow.webContents.once("did-finish-load", () => {
+    try {
+      overlayWindow.webContents.openDevTools({ mode: "detach" });
+      console.log(`🔧 DevTools opened for overlay after load`);
+    } catch (error) {
+      console.error(`❌ Failed to open DevTools:`, error);
+    }
+  });
 
   // Event-Listener für das Laden
   overlayWindow.webContents.once("did-finish-load", () => {
@@ -198,12 +198,18 @@ function createStatusWindow() {
 }
 
 function createReactionWindow() {
+  // PREVENT MULTIPLE REACTION WINDOWS
+  if (reactionWindow && !reactionWindow.isDestroyed()) {
+    console.log(`⚠️ Reaction window already exists, skipping creation`);
+    return;
+  }
+
   try {
     console.log(`🏗️ Creating reaction window...`);
 
     reactionWindow = new BrowserWindow({
       width: 400,
-      height: 150,
+      height: 600, // Increased for stacking multiple reactions
       frame: false,
       transparent: true,
       resizable: false,
@@ -253,6 +259,8 @@ function createReactionWindow() {
         );
       }
     );
+
+    // DevTools removed - no longer needed for debugging
 
     console.log(`✅ Reaction window created successfully`);
   } catch (error) {
@@ -1846,19 +1854,12 @@ async function showOnlineUsers() {
   userListVisible = true; // Mark as visible
   console.log(`🏁 userListVisible set to: ${userListVisible}`);
 
-  // Force window invalidation to prevent stacking (Ultra-Wide Monitor Fix)
-  userListWindow.hide();
-  setTimeout(() => {
-    // Ultra-Wide Monitor Fix: Force position refresh
-    const bounds = userListWindow.getBounds();
-    userListWindow.setBounds({ ...bounds });
-
-    userListWindow.showInactive();
-    userListWindow.webContents.send("show-userlist", {
-      users: users,
-      durationMs: 15000,
-    });
-  }, 32); // Two frame delay for high refresh rate monitors
+  // Simple show without animations
+  userListWindow.showInactive();
+  userListWindow.webContents.send("show-userlist", {
+    users: users,
+    durationMs: 15000,
+  });
 
   console.log(`✅ Online users sent to overlay: ${users.length} users`);
 

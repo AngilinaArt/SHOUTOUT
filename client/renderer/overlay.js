@@ -1,8 +1,15 @@
-const hamsterEl = document.getElementById("hamster");
+// Prevent multiple script executions
+if (window.overlayScriptLoaded) {
+  console.log(`⚠️ Overlay script already loaded, skipping...`);
+} else {
+  window.overlayScriptLoaded = true;
+  console.log(`🔧 Loading overlay script...`);
+
+  const hamsterEl = document.getElementById("hamster");
 const hamsterImg = document.getElementById("hamster-img");
 const hamsterBadge = document.getElementById("hamster-badge");
 const toastEl = document.getElementById("toast");
-const toastsContainer = document.getElementById("toasts");
+const toastsContainer = toastEl; // Use toast element directly as container
 
 function hideHamster() {
   hamsterEl.classList.add("hidden");
@@ -169,8 +176,23 @@ console.log(
   typeof window.shoutout.onSuccess
 );
 
+// Prevent multiple registrations
+if (window.toastHandlerRegistered) {
+  console.log(`⚠️ Toast handler already registered, skipping...`);
+} else {
+  window.toastHandlerRegistered = true;
+  console.log(`🔧 Registering toast handler...`);
+}
+
 window.shoutout.onToast(
   ({ message, severity, durationMs, sender, recipientInfo, senderId }) => {
+    console.log(
+      `🚨 DEBUG: onToast called with message: "${message}" from ${sender}`
+    );
+    console.log(
+      `🚨 DEBUG: Current toasts in DOM:`,
+      toastsContainer.children.length
+    );
     const sev = [
       "blue",
       "green",
@@ -197,8 +219,20 @@ window.shoutout.onToast(
       }
     }
 
+    console.log(`🚨 DEBUG: Creating toast wrapper for message: "${safeMsg}"`);
+
     const wrapper = document.createElement("div");
     wrapper.className = `toast-item severity-${sev}`;
+
+    // Eindeutige ID für jeden Toast
+    const toastId = `toast-${Date.now()}-${Math.random()
+      .toString(36)
+      .substr(2, 9)}`;
+    wrapper.id = toastId;
+    wrapper.dataset.message = safeMsg;
+    wrapper.dataset.sender = safeSender;
+
+    console.log(`🚨 DEBUG: Toast wrapper created with ID: ${toastId}`);
 
     // Toast mit Buttons erstellen
     wrapper.innerHTML = `
@@ -218,38 +252,76 @@ window.shoutout.onToast(
       </div>
     `;
 
+    // Keep all existing toasts - show them stacked
+    const existingToasts = toastsContainer.querySelectorAll(".toast-item");
+    console.log(
+      `📚 Toast ${existingToasts.length + 1} added to stack (total: ${
+        existingToasts.length + 1
+      }) - Message: "${safeMsg}" from ${safeSender}`
+    );
+
+    console.log(
+      `🚨 DEBUG: Adding toast to DOM, current count: ${toastsContainer.children.length}`
+    );
     toastsContainer.appendChild(wrapper);
+    console.log(
+      `🚨 DEBUG: Toast added to DOM, new count: ${toastsContainer.children.length}`
+    );
+
+    // Auto-scroll to bottom to show newest toast (AFTER adding to DOM)
+    setTimeout(() => {
+      toastsContainer.scrollTop = toastsContainer.scrollHeight;
+    }, 100);
     toastEl.classList.remove("hidden");
 
-    // Enforce max stack
-    while (toastsContainer.children.length > MAX_STACK) {
-      toastsContainer.removeChild(toastsContainer.firstElementChild);
-    }
+    // NO AUTO-REMOVE - Toasts stay until user clicks OK/REPLY
+    console.log(`📚 Toast added to stack - stays until user action`);
 
     // Buttons sofort anzeigen
     const actionsEl = wrapper.querySelector(".toast-actions");
     if (actionsEl) actionsEl.classList.remove("hidden");
 
-    // Nach 10 Sekunden sanft ausblenden (transparenter machen)
-    setTimeout(() => {
-      wrapper.classList.add("faded");
-      console.log(`⏰ Toast faded after 10 seconds`);
-    }, 10000);
+    // NO FADE - Toasts stay visible until user action
 
     // Event-Listener für Buttons
     const okBtn = wrapper.querySelector(".toast-ok");
     const replyBtn = wrapper.querySelector(".toast-reply");
 
     if (okBtn) {
-      okBtn.addEventListener("click", () => {
-        if (wrapper.parentElement) wrapper.remove();
-        hideToast();
-        checkAndDisableMouseEvents();
+      okBtn.addEventListener("click", (event) => {
+        event.stopPropagation();
+        event.preventDefault();
+        
+        // Finde den Toast über die Button-Position im DOM
+        const toastElement = okBtn.closest(".toast-item");
+        
+        // WICHTIG: Prüfe ob dieser Toast noch im DOM ist
+        if (toastElement && toastElement.parentElement && toastsContainer.contains(toastElement)) {
+          const messageForLog = toastElement.dataset.message;
+          
+          toastElement.remove();
+          console.log(`✅ Toast removed via OK button: ${messageForLog}`);
+
+          // Check immediately after removal
+          const remainingCount = toastsContainer.children.length;
+          console.log(`🔍 DEBUG: Remaining toasts after removal: ${remainingCount}`);
+
+          // Only hide container if no toasts left
+          if (remainingCount === 0) {
+            hideToast();
+          }
+          
+          checkAndDisableMouseEvents();
+        } else {
+          console.log(`⚠️ OK button clicked but toast already removed`);
+        }
       });
     }
 
     if (replyBtn) {
-      replyBtn.addEventListener("click", () => {
+      replyBtn.addEventListener("click", (event) => {
+        event.stopPropagation();
+        event.preventDefault();
         console.log(
           `🖱️ REPLY button clicked for sender: ${safeSender}, senderId: ${senderId}`
         );
@@ -269,7 +341,11 @@ window.shoutout.onToast(
           window.shoutout.openToastPrompt();
         }
         // Toast ausblenden
-        if (wrapper.parentElement) wrapper.remove();
+        const toastElement = replyBtn.closest(".toast-item");
+        if (toastElement && toastElement.parentElement) {
+
+          toastElement.remove();
+        }
         hideToast();
       });
     }
@@ -277,22 +353,36 @@ window.shoutout.onToast(
     // Event-Listener für Reaction-Buttons
     const reactionBtns = wrapper.querySelectorAll(".reaction-btn");
     reactionBtns.forEach((btn) => {
-      btn.addEventListener("click", () => {
+      btn.addEventListener("click", (event) => {
+        event.stopPropagation();
+        event.preventDefault();
         const reaction = btn.getAttribute("data-reaction");
         console.log(
           `💖 Reaction clicked: ${reaction} for senderId: ${senderId}`
         );
 
-        // Sende Reaction zurück zum Absender
-        if (window.shoutout.sendReaction) {
+        // Sende Reaction zurück zum Absender (with debounce to prevent double-clicks)
+        if (window.shoutout.sendReaction && !btn.disabled) {
+          btn.disabled = true; // Prevent double-clicks
           window.shoutout.sendReaction(senderId, reaction);
+
+          // Re-enable after short delay
+          setTimeout(() => {
+            btn.disabled = false;
+          }, 1000);
         }
 
         // Toast nach Reaction entfernen
-        if (wrapper.parentElement) wrapper.remove();
+        const toastElement = btn.closest(".toast-item");
+        if (toastElement && toastElement.parentElement) {
+
+          toastElement.remove();
+        }
         hideToast();
         checkAndDisableMouseEvents();
       });
     });
   }
 );
+
+} // Ende des Script-Load-Guards
