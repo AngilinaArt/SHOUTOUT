@@ -282,12 +282,22 @@ wss.on("connection", (ws, request) => {
         });
       }
 
+      // DEBUG: Count how many clients will receive this message
+      let deliveryCount = 0;
+      const deliveryTargets = [];
+      
       for (const c of clients) {
         if (c.readyState === c.OPEN && shouldDeliver(c, outbound)) {
+          deliveryCount++;
+          deliveryTargets.push(c.user?.name || 'Unknown');
           try {
             c.send(payload);
           } catch (_) {}
         }
+      }
+      
+      if (value.type === "toast") {
+        console.log(`📤 Toast delivered to ${deliveryCount} clients: [${deliveryTargets.join(', ')}]`);
       }
     } catch (_) {}
   });

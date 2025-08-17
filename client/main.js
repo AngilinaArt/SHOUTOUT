@@ -547,7 +547,7 @@ function showToast(
   senderId
 ) {
   if (!overlayWindow || overlayWindow.isDestroyed()) return;
-  positionOverlayTopRight();
+  // Positioning sollte nicht bei jedem Toast passieren - nur bei App-Start und Display-Changes
 
   // Mouse-Events aktivieren wenn Toast angezeigt wird (für Buttons)
   overlayWindow.setIgnoreMouseEvents(false);
