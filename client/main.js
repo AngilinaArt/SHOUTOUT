@@ -27,6 +27,7 @@ const {
   nativeImage,
   screen,
 } = require("electron");
+app.commandLine.appendSwitch('enable-features', 'UseOzonePlatform');
 const WebSocket = require("ws");
 // Use built-in fetch if available (Electron 18+), fallback to node-fetch
 const fetch = globalThis.fetch || require("node-fetch");

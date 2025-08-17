@@ -109,6 +109,35 @@ body {
   animation: slideIn 180ms ease-out;
 }
 
+/* GPU/Compositing Stabilität: vermeidet Ghosting/Phantome auf manchen Macs */
+#toast {
+  /* Erzwinge eigenes Compositing-Layer und klare Invalidations */
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  will-change: transform, opacity;
+  contain: paint;
+}
+
+#toast .toast-item {
+  will-change: transform, opacity;
+  backface-visibility: hidden;
+}
+
+#toast .bubble {
+  /* Verhindert Artefakte bei backdrop-filter + Transparentfenster */
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  will-change: opacity, transform;
+}
+
+/* Sanfte Entfernung mit Transition, triggert zuverlässige Repaints */
+#toast .toast-item.removing { pointer-events: none; }
+#toast .toast-item.removing .bubble {
+  opacity: 0;
+  transform: translateY(-8px);
+  transition: opacity 120ms ease, transform 120ms ease;
+}
+
 #toast .bubble {
   position: relative;
   color: #afc6f3; /* Cursor text color */
@@ -178,7 +207,7 @@ body {
 #toast .toast-ok:hover {
   background: rgba(255, 255, 255, 0.2);
   border-color: rgba(255, 255, 255, 0.3);
-  transform: translateY(-1px);
+  /* transform: translateY(-1px); */
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
 
@@ -193,7 +222,7 @@ body {
 #toast .toast-reply:hover {
   background: rgba(175, 198, 243, 0.3); /* Cursor accent hover */
   border-color: rgba(175, 198, 243, 0.4); /* Cursor accent border hover */
-  transform: translateY(-1px);
+  /* transform: translateY(-1px); */
   box-shadow: 0 4px 12px rgba(175, 198, 243, 0.2); /* Cursor accent shadow */
 }
 
@@ -226,7 +255,7 @@ body {
 #toast .reaction-btn:hover {
   background: rgba(175, 198, 243, 0.2); /* Cursor accent hover */
   backdrop-filter: blur(12px); /* Stärkerer Glaseffekt */
-  transform: translateY(-1px) scale(1.1);
+  /* transform: translateY(-1px) scale(1.1); */
   box-shadow: 0 4px 12px rgba(175, 198, 243, 0.3); /* Cursor accent shadow */
   border-color: rgba(175, 198, 243, 0.4);
 }

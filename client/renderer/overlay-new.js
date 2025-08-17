@@ -54,7 +54,10 @@ function processHamsterQueue() {
 // Render-Funktion: Zeichnet alle Toasts basierend auf dem State neu
 function renderToasts() {
   console.log('🎨 Rendering all toasts...', toasts);
-  toastContainer.innerHTML = ''; // Leere den Container
+  // Robusteres Leeren des Containers
+  while (toastContainer.firstChild) {
+    toastContainer.removeChild(toastContainer.firstChild);
+  }
 
   if (toasts.length === 0) {
     toastContainer.classList.add('hidden');
@@ -113,16 +116,26 @@ toastContainer.addEventListener('click', function(event) {
 
   if (action.contains('toast-ok')) {
     console.log(`✅ OK clicked for toast: ${toastId}`);
-    toasts = toasts.filter(t => t.id !== toastId);
-    renderToasts();
+    // Sanft ausblenden, um sauberes Repaint zu erzwingen
+    toastItem.classList.add('removing');
+    // Force reflow, damit Transition sicher startet
+    void toastItem.offsetWidth;
+    setTimeout(() => {
+      toasts = toasts.filter(t => t.id !== toastId);
+      renderToasts();
+    }, 140);
   } else if (action.contains('toast-reply')) {
     console.log(`💬 Reply to toast: ${toastId}`);
     const senderId = toastItem.dataset.senderId;
     if (window.shoutout && window.shoutout.openToastPrompt) {
       window.shoutout.openToastPrompt(senderId);
     }
-    toasts = toasts.filter(t => t.id !== toastId);
-    renderToasts();
+    toastItem.classList.add('removing');
+    void toastItem.offsetWidth;
+    setTimeout(() => {
+      toasts = toasts.filter(t => t.id !== toastId);
+      renderToasts();
+    }, 140);
   } else if (action.contains('reaction-btn')) {
     console.log(`💖 Reaction to toast: ${toastId}`);
     const senderId = toastItem.dataset.senderId;
@@ -130,8 +143,12 @@ toastContainer.addEventListener('click', function(event) {
     if (window.shoutout && window.shoutout.sendReaction && senderId) {
       window.shoutout.sendReaction(senderId, reaction);
     }
-    toasts = toasts.filter(t => t.id !== toastId);
-    renderToasts();
+    toastItem.classList.add('removing');
+    void toastItem.offsetWidth;
+    setTimeout(() => {
+      toasts = toasts.filter(t => t.id !== toastId);
+      renderToasts();
+    }, 140);
   }
 });
 

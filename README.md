@@ -397,6 +397,24 @@ npm ls electron
 npm install --save-dev electron-builder
 ```
 
+#### macOS: Ghosting/Phantom bei Toasts
+
+Betroffene Systeme: Vor allem Apple Silicon (M1/M2) MacBooks mit transparenten Electron-Fenstern und `backdrop-filter`/starken Schatten.
+
+Symptom: Nach dem Schließen eines Toasts bleibt eine „Geisterspur“/ein Phantom am Bildschirm stehen, bis ein Repaint erzwungen wird (Fenster bewegen, Mission Control, etc.).
+
+Status: Behoben durch Workaround in `client/renderer/style.css` und `client/renderer/overlay-new.js` (Compositing-Hinweise + kurzes Fade‑Out). Keine Funktionsänderung, nur stabilere Repaints.
+
+Manuelle Checks/Workarounds, falls es bei dir dennoch auftritt:
+
+- Diagnose: `cd client && npm start -- --disable-gpu` — wenn das Phantom verschwindet, ist es GPU/Compositing-bedingt.
+- DevTools‑Test: In Elements `.bubble` auswählen und `backdrop-filter` temporär deaktivieren; Toast schließen.
+- Anzeigeeinstellungen: Systemeinstellungen → Bedienungshilfen → Anzeige → „Transparenz reduzieren“ testweise umschalten.
+- Skalierung: Systemeinstellungen → Displays → Auf „Standard“ statt „Mehr Platz“ testen.
+- Externes Display trennen und nur das interne Panel testen.
+
+Hinweis: Der eingebaute Fix erzwingt ein sauberes Repaint über `translateZ(0)`, `backface-visibility: hidden`, `will-change`, `contain: paint` sowie ein kurzes Ausblend‑Transition, bevor ein Toast entfernt wird.
+
 ### 🔍 Debug-Modus
 
 ```bash
