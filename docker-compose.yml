@@ -7,8 +7,16 @@ services:
     expose:
       - "3001"
     environment:
+      # Runtime configuration (do not commit secrets)
       - NODE_ENV=production
-    # falls dein Server .env braucht (im Ordner server):
+      - PORT=${PORT:-3001}
+      # Required: set in deployment environment or .env (project root)
+      - BROADCAST_SECRET=${BROADCAST_SECRET:?Set BROADCAST_SECRET in environment or .env}
+      # Optional WS token (if set, clients must use same token)
+      - WS_TOKEN=${WS_TOKEN:-}
+      # Keep auth enabled by default; set to true only for local dev
+      - ALLOW_NO_AUTH=${ALLOW_NO_AUTH:-false}
+    # Alternative: load from file (uncomment if you keep server/.env on host)
     # env_file: ./server/.env
 
   caddy:

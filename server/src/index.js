@@ -62,6 +62,7 @@ const server = http.createServer(app);
 
 const PORT = Number(process.env.PORT || 3001);
 const BROADCAST_SECRET = process.env.BROADCAST_SECRET || "change-me";
+const WS_TOKEN = process.env.WS_TOKEN || null; // Optional separate WS token
 const ALLOW_NO_AUTH = String(process.env.ALLOW_NO_AUTH || "false") === "true";
 
 // Warnung ausgeben wenn unsichere Standardeinstellungen verwendet werden
@@ -123,14 +124,34 @@ const wss = new WebSocketServer({ noServer: true });
 const clients = new Set();
 
 server.on("upgrade", (request, socket, head) => {
-  const { url } = request;
-  if (!url || !url.startsWith("/ws")) {
+  try {
+    const { url } = request;
+    if (!url || !url.startsWith("/ws")) {
+      socket.destroy();
+      return;
+    }
+
+    // Enforce token for WS connections unless ALLOW_NO_AUTH
+    const parsed = new URL(url, "http://localhost");
+    const token = parsed.searchParams.get("token");
+    const expected = WS_TOKEN || BROADCAST_SECRET;
+
+    if (!ALLOW_NO_AUTH && expected) {
+      if (!token || token !== expected) {
+        try {
+          socket.write("HTTP/1.1 401 Unauthorized\r\n\r\n");
+        } catch (_) {}
+        socket.destroy();
+        return;
+      }
+    }
+
+    wss.handleUpgrade(request, socket, head, (ws) => {
+      wss.emit("connection", ws, request);
+    });
+  } catch (_) {
     socket.destroy();
-    return;
   }
-  wss.handleUpgrade(request, socket, head, (ws) => {
-    wss.emit("connection", ws, request);
-  });
 });
 
 wss.on("connection", (ws, request) => {
