@@ -27,10 +27,10 @@ function processHamsterQueue() {
   if (hamsterActive || hamsterQueue.length === 0) return;
 
   hamsterActive = true;
-  const { variant, durationMs, sender, url } = hamsterQueue.shift();
+  const { variant, durationMs, sender, url, serverUrl } = hamsterQueue.shift();
 
-  // Strict server-first: only use provided data URL; no local variant lookup
-  const imageUrl = url || null;
+  // Prefer provided data URL; fallback to direct server image if available
+  const imageUrl = url || (serverUrl && variant ? `${serverUrl}/api/hamsters/${variant}/image` : null);
 
   // Install a one-shot error fallback to generic icon
   hamsterImg.onerror = () => {

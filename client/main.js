@@ -518,8 +518,9 @@ async function showHamster(variant, durationMs, sender) {
     const payload = {
       variant,
       durationMs,
-      url: finalImageUrl, // null = use placeholder
+      url: finalImageUrl, // null = renderer will fallback to direct server image
       sender,
+      serverUrl, // provide to renderer for direct fallback
     };
     console.log(
       `📤 Sending show-hamster IPC with ${
