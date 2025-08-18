@@ -29,13 +29,19 @@ function processHamsterQueue() {
   hamsterActive = true;
   const { variant, durationMs, sender, url } = hamsterQueue.shift();
 
-  // Prefer data URL provided by main process; fallback to packaged asset
-  const imageUrl = url || (variant ? `../assets/hamsters/${variant}.png` : null);
+  // Strict server-first: only use provided data URL; no local variant lookup
+  const imageUrl = url || null;
+
+  // Install a one-shot error fallback to generic icon
+  hamsterImg.onerror = () => {
+    hamsterImg.onerror = null; // prevent loops if icon missing
+    hamsterImg.src = "../assets/icon/hamster.png";
+  };
 
   if (imageUrl) {
     hamsterImg.src = imageUrl;
   } else {
-    // Final fallback: generic icon if available
+    // Final fallback: generic icon if no URL/variant
     hamsterImg.src = "../assets/icon/hamster.png";
   }
 
