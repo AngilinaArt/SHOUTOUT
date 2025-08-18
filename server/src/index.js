@@ -78,7 +78,12 @@ if (BROADCAST_SECRET === "change-me" || ALLOW_NO_AUTH) {
 }
 
 // Middleware
-app.use(helmet());
+// Configure Helmet to allow cross-origin loading of static resources (e.g., images)
+app.use(
+  helmet({
+    crossOriginResourcePolicy: { policy: "cross-origin" },
+  })
+);
 app.use(
   cors({
     origin: true, // Allow all origins (including file:// protocol from Electron)
@@ -609,6 +614,8 @@ app.get("/api/hamsters/:id/image", (req, res) => {
       }[ext] || "application/octet-stream";
 
     res.setHeader("Content-Type", contentType);
+    // Allow cross-origin resource usage for <img> tags in Electron/file:// contexts
+    res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
     res.setHeader("Cache-Control", "public, max-age=3600"); // Cache for 1 hour
 
     const stream = fs.createReadStream(imagePath);
