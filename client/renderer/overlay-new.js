@@ -27,12 +27,16 @@ function processHamsterQueue() {
   if (hamsterActive || hamsterQueue.length === 0) return;
 
   hamsterActive = true;
-  const { variant, durationMs, sender } = hamsterQueue.shift();
+  const { variant, durationMs, sender, url } = hamsterQueue.shift();
 
-  const imageUrl = variant ? `../assets/hamsters/${variant}.png` : null;
+  // Prefer data URL provided by main process; fallback to packaged asset
+  const imageUrl = url || (variant ? `../assets/hamsters/${variant}.png` : null);
 
   if (imageUrl) {
     hamsterImg.src = imageUrl;
+  } else {
+    // Final fallback: generic icon if available
+    hamsterImg.src = "../assets/icon/hamster.png";
   }
 
   if (sender) {
