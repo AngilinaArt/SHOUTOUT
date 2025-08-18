@@ -29,8 +29,44 @@ const {
 } = require("electron");
 app.commandLine.appendSwitch('enable-features', 'UseOzonePlatform');
 const WebSocket = require("ws");
-// Use built-in fetch if available (Electron 18+), fallback to node-fetch
-const fetch = globalThis.fetch || require("node-fetch");
+// Simple HTTP(S) binary fetch helper (avoids CORS/CORP and node-fetch quirks)
+const http = require("http");
+const https = require("https");
+
+function fetchImageAsDataUrl(imageUrl) {
+  return new Promise((resolve) => {
+    try {
+      const client = imageUrl.startsWith("https:") ? https : http;
+      const req = client.get(imageUrl, (res) => {
+        if (res.statusCode !== 200) {
+          console.error(`❌ Image fetch failed: ${res.statusCode} ${res.statusMessage}`);
+          res.resume();
+          return resolve(null);
+        }
+        const chunks = [];
+        res.on("data", (d) => chunks.push(d));
+        res.on("end", () => {
+          const buf = Buffer.concat(chunks);
+          const contentType = res.headers["content-type"] || "image/png";
+          const base64 = buf.toString("base64");
+          resolve(`data:${contentType};base64,${base64}`);
+        });
+      });
+      req.setTimeout(4000, () => {
+        console.error("❌ Image fetch timeout");
+        req.destroy();
+        resolve(null);
+      });
+      req.on("error", (err) => {
+        console.error("❌ Image fetch error:", err.message);
+        resolve(null);
+      });
+    } catch (e) {
+      console.error("❌ Image fetch exception:", e.message);
+      resolve(null);
+    }
+  });
+}
 
 const WS_URL = process.env.WS_URL || "ws://localhost:3001/ws";
 const WS_TOKEN = process.env.WS_TOKEN || "";
@@ -484,43 +520,25 @@ async function showHamster(variant, durationMs, sender) {
     console.log(`📍 Positioning overlay`);
     positionOverlayTopRight();
 
-    // Fetch image as data URL to completely bypass CORS
+    // Fetch image as data URL to completely bypass CORS/CORP
     const serverUrl = process.env.SERVER_URL || "http://localhost:3001";
     const imageUrl = `${serverUrl}/api/hamsters/${variant}/image`;
     console.log(`🔗 Fetching image from: ${imageUrl}`);
     console.log(`🔍 Variant requested: ${variant}`);
     console.log(`⏰ Duration: ${durationMs}ms`);
 
-    let finalImageUrl = null;
-
-    try {
-      // Import node-fetch
-      const fetch = require("node-fetch");
-      console.log(`📡 Fetching image via node-fetch...`);
-
-      const response = await fetch(imageUrl);
-      if (response.ok) {
-        const buffer = await response.buffer();
-        const base64 = buffer.toString("base64");
-        finalImageUrl = `data:image/png;base64,${base64}`;
-        console.log(`✅ Image converted to data URL (${buffer.length} bytes)`);
-      } else {
-        console.error(
-          `❌ Failed to fetch image: ${response.status} ${response.statusText}`
-        );
-        finalImageUrl = null; // Will use placeholder
-      }
-    } catch (error) {
-      console.error(`❌ Failed to fetch/convert image:`, error.message);
-      finalImageUrl = null; // Will use placeholder
+    let finalImageUrl = await fetchImageAsDataUrl(imageUrl);
+    if (finalImageUrl) {
+      console.log(`✅ Image converted to data URL`);
+    } else {
+      console.error(`❌ Failed to fetch/convert image to data URL`);
     }
 
     const payload = {
       variant,
       durationMs,
-      url: finalImageUrl, // null = renderer will fallback to direct server image
+      url: finalImageUrl, // null = renderer will use generic icon
       sender,
-      serverUrl, // provide to renderer for direct fallback
     };
     console.log(
       `📤 Sending show-hamster IPC with ${
