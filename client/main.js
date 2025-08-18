@@ -27,7 +27,7 @@ const {
   nativeImage,
   screen,
 } = require("electron");
-app.commandLine.appendSwitch('enable-features', 'UseOzonePlatform');
+app.commandLine.appendSwitch("enable-features", "UseOzonePlatform");
 const WebSocket = require("ws");
 // Simple HTTP(S) binary fetch helper (avoids CORS/CORP and node-fetch quirks)
 const http = require("http");
@@ -39,7 +39,9 @@ function fetchImageAsDataUrl(imageUrl) {
       const client = imageUrl.startsWith("https:") ? https : http;
       const req = client.get(imageUrl, (res) => {
         if (res.statusCode !== 200) {
-          console.error(`❌ Image fetch failed: ${res.statusCode} ${res.statusMessage}`);
+          console.error(
+            `❌ Image fetch failed: ${res.statusCode} ${res.statusMessage}`
+          );
           res.resume();
           return resolve(null);
         }
@@ -131,15 +133,15 @@ function createOverlayWindow() {
 
   console.log(`✅ Overlay window created and shown`);
 
-  // DevTools für das Overlay-Fenster (AKTIVIERT für Debugging)
-  overlayWindow.webContents.once("did-finish-load", () => {
-    try {
-      overlayWindow.webContents.openDevTools({ mode: "detach" });
-      console.log(`🔧 DevTools opened for overlay after load`);
-    } catch (error) {
-      console.error(`❌ Failed to open DevTools:`, error);
-    }
-  });
+  // DevTools für das Overlay-Fenster (DEAKTIVIERT - war für Debugging aktiviert)
+  // overlayWindow.webContents.once("did-finish-load", () => {
+  //   try {
+  //     overlayWindow.webContents.openDevTools({ mode: "detach" });
+  //     console.log(`🔧 DevTools opened for overlay after load`);
+  //   } catch (error) {
+  //     console.error(`❌ Failed to open DevTools:`, error);
+  //   }
+  // });
 
   // Event-Listener für das Laden
   overlayWindow.webContents.once("did-finish-load", () => {
