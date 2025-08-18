@@ -36,6 +36,8 @@ function showStatusMessage(message, type = "success", durationMs = 4000) {
   // Nach der angegebenen Zeit ausblenden
   setTimeout(() => {
     if (wrapper.parentElement) {
+      // Force reflow to ensure transition reliably starts
+      void wrapper.offsetWidth;
       wrapper.classList.add("fade-out");
       setTimeout(() => {
         if (wrapper.parentElement) {

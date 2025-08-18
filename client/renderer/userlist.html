@@ -19,6 +19,12 @@
         width: 100%;
         height: 100vh;
         pointer-events: auto; /* Allow mouse events */
+        /* Compositing hints to avoid ghosting */
+        transform: translateZ(0);
+        backface-visibility: hidden;
+        will-change: transform, opacity;
+        contain: paint;
+        isolation: isolate;
       }
 
       .userlist-overlay {
@@ -27,6 +33,7 @@
         left: 20px;
         background: rgba(29, 33, 40, 0.85); /* Cursor dark background */
         backdrop-filter: blur(12px); /* Glaseffekt */
+        -webkit-backdrop-filter: blur(12px);
         color: #afc6f3; /* Cursor text color */
         border-radius: 12px;
         padding: 16px;
@@ -39,7 +46,10 @@
         border-left: 3px solid #10b981; /* Success accent */
         /* NO ANIMATIONS - Simple opacity only */
         opacity: 1;
-        transform: none;
+        transform: translateZ(0);
+        backface-visibility: hidden;
+        will-change: opacity, transform;
+        contain: paint;
       }
 
       .userlist-header {
@@ -128,7 +138,8 @@
       /* NO ANIMATIONS - Simple fade only */
       .fade-out {
         opacity: 0;
-        transition: opacity 200ms ease;
+        transform: translateY(-6px);
+        transition: opacity 200ms ease, transform 200ms ease;
       }
     </style>
   </head>

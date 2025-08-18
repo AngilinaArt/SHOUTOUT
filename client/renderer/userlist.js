@@ -115,6 +115,8 @@ function showUserList(users, durationMs = 15000) {
 function hideUserList() {
   if (!userListOverlay) return;
 
+  // Force reflow to ensure transition reliably starts
+  void userListOverlay.offsetWidth;
   userListOverlay.classList.add("fade-out");
 
   // Notify main process that overlay is hiding

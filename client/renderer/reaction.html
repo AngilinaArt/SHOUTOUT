@@ -26,6 +26,12 @@
         /* Stack reactions vertically */
         display: flex;
         flex-direction: column;
+        /* Compositing hints to avoid ghosting */
+        transform: translateZ(0);
+        backface-visibility: hidden;
+        will-change: transform, opacity;
+        contain: paint;
+        isolation: isolate;
       }
 
       .reaction-feedback {
@@ -33,6 +39,7 @@
         margin-bottom: 12px; /* Space between stacked reactions */
         background: rgba(29, 33, 40, 0.85); /* Cursor dark background */
         backdrop-filter: blur(12px); /* Glaseffekt */
+        -webkit-backdrop-filter: blur(12px);
         color: #afc6f3; /* Cursor text color */
         border-radius: 12px;
         padding: 16px 20px;
@@ -48,6 +55,11 @@
         /* NO ANIMATIONS - Simple opacity only */
         z-index: 1000;
         border-left: 3px solid #10b981; /* Success accent */
+        /* Compositing hints */
+        transform: translateZ(0);
+        backface-visibility: hidden;
+        will-change: opacity, transform;
+        contain: paint;
       }
 
       .reaction-feedback.love {
@@ -109,7 +121,8 @@
       /* Simple fade for overlay show/hide only */
       .fade-out {
         opacity: 0;
-        transition: opacity 200ms ease;
+        transform: translateY(-6px);
+        transition: opacity 200ms ease, transform 200ms ease;
       }
     </style>
   </head>

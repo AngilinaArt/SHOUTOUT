@@ -46,6 +46,8 @@ function showReactionFeedback(fromUser, reaction, durationMs = 3000) {
   if (existingReactions.length >= MAX_REACTION_STACK) {
     const oldest = existingReactions[0]; // First = oldest
     console.log(`🗑️ Removing oldest reaction to make space`);
+    // Force reflow to ensure transition reliably starts
+    void oldest.offsetWidth;
     oldest.classList.add("fade-out");
     setTimeout(() => {
       if (oldest.parentElement) {
@@ -78,6 +80,8 @@ function showReactionFeedback(fromUser, reaction, durationMs = 3000) {
   // Nach der angegebenen Zeit ausblenden (individual timer for each reaction)
   setTimeout(() => {
     if (wrapper.parentElement) {
+      // Force reflow before fade for clean repaint
+      void wrapper.offsetWidth;
       wrapper.classList.add("fade-out");
       setTimeout(() => {
         if (wrapper.parentElement) {
