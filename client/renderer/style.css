@@ -381,3 +381,66 @@ body {
   font-size: 14px;
   font-weight: 500;
 }
+
+/* Spoiler/Invisible Ink styles */
+#toast .toast-item.is-spoiler .text {
+  position: relative;
+}
+
+#toast .toast-item .text .text-content {
+  position: relative;
+  z-index: 1;
+}
+
+/* Default: blur content */
+#toast .toast-item.is-spoiler .text .spoiler-content {
+  filter: blur(10px);
+  transition: filter 140ms ease;
+  user-select: none;
+}
+
+/* Hover-peek: remove blur while hovering toast */
+#toast .toast-item.is-spoiler:hover .text .spoiler-content {
+  filter: blur(0px);
+}
+
+/* Revealed: permanently unblur */
+#toast .toast-item.is-spoiler.revealed .text .spoiler-content {
+  filter: none;
+}
+
+/* Sparkle cover overlay */
+#toast .toast-item.is-spoiler .text .spoiler-cover {
+  position: absolute;
+  inset: 0;
+  border-radius: 10px;
+  background: linear-gradient(135deg, rgba(255,255,255,0.08) 25%, rgba(255,255,255,0) 25%) 0 0 / 8px 8px,
+              linear-gradient(45deg, rgba(255,255,255,0.06) 25%, rgba(255,255,255,0) 25%) 0 0 / 10px 10px,
+              radial-gradient(closest-side, rgba(255,255,255,0.18), rgba(255,255,255,0) 70%);
+  animation: shimmer 1.6s linear infinite;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255,255,255,0.85);
+  font-size: 12px;
+  letter-spacing: 0.1px;
+  z-index: 2;
+  cursor: pointer;
+  transition: opacity 140ms ease;
+}
+
+/* Reduce cover visibility on hover for stronger peek */
+#toast .toast-item.is-spoiler:hover .text .spoiler-cover {
+  opacity: 0.35;
+}
+
+/* Hide cover when revealed */
+#toast .toast-item.is-spoiler.revealed .text .spoiler-cover {
+  display: none;
+}
+
+@keyframes shimmer {
+  0% { background-position: 0 0, 0 0, 50% 50%; }
+  50% { background-position: 20px 0, -20px 0, 48% 52%; }
+  100% { background-position: 40px 0, -40px 0, 46% 54%; }
+}

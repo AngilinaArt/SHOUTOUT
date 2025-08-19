@@ -484,6 +484,8 @@ const toastSchema = Joi.object({
     .default("blue"),
   // Cap toast duration to 10s
   duration: Joi.number().integer().min(500).max(10000).default(4000),
+  // Spoiler flag: if true, message renders hidden until revealed client-side
+  spoiler: Joi.boolean().default(false),
   target: Joi.alternatives()
     .try(Joi.string(), Joi.array().items(Joi.string()))
     .optional(),

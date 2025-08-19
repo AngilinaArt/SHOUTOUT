@@ -15,7 +15,7 @@
       http-equiv="Expires"
       content="0" />
     <title>Send Toast</title>
-    <style>
+      <style>
       :root {
         --bg: #1f2937;
         --panel: #374151;
@@ -213,6 +213,12 @@
         gap: 8px;
         margin-top: 8px;
       }
+      .actions-inline {
+        margin-top: 6px;
+        margin-bottom: 12px;
+        justify-content: center; /* Center buttons for this inline action bar */
+        gap: 12px;
+      }
       button {
         border: 0;
         border-radius: 10px;
@@ -226,6 +232,9 @@
         border: 1px solid rgba(175, 198, 243, 0.2); /* Cursor border */
         transition: all 0.2s ease;
         border-radius: 12px; /* Konsistente Rundungen */
+        padding: 12px 18px; /* Larger touch target */
+        min-width: 128px; /* More prominent width */
+        font-size: 15px;
       }
 
       .btn-secondary:hover {
@@ -249,6 +258,9 @@
         box-shadow: 0 6px 20px rgba(175, 198, 243, 0.3); /* Cursor shadow */
         border-radius: 12px; /* Konsistente Rundungen */
         font-weight: 600; /* Stärkerer Text */
+        padding: 12px 18px; /* Larger touch target */
+        min-width: 140px; /* Slightly wider primary */
+        font-size: 15px;
       }
 
       .btn-primary:hover {
@@ -262,6 +274,23 @@
         opacity: 0.5;
         cursor: not-allowed;
       }
+
+      /* Spoiler toggle (prominent) */
+      .spoiler-toggle {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-top: 10px;
+        padding: 10px 12px;
+        border-radius: 12px;
+        background: rgba(139, 92, 246, 0.12);
+        border: 1px solid rgba(139, 92, 246, 0.25);
+        box-shadow: inset 0 0 0 1px rgba(139, 92, 246, 0.1);
+      }
+      .spoiler-label { display: flex; align-items: center; gap: 12px; cursor: pointer; }
+      .spoiler-checkbox { transform: scale(1.25); accent-color: #8b5cf6; }
+      .spoiler-text { font-size: 15px; font-weight: 600; color: #e9eaf5; letter-spacing: 0.2px; }
+      .spoiler-hint { font-size: 12px; color: #b7b9c7; opacity: 0.9; }
 
       /* User-Auswahl Styles */
       .target-select {
@@ -357,6 +386,19 @@
           <span id="counter">0 / 280</span>
           <span>Max. 10s</span>
         </div>
+        <div class="spoiler-toggle">
+          <label class="spoiler-label">
+            <input type="checkbox" id="spoiler" class="spoiler-checkbox" />
+            <span class="spoiler-text">Nachricht spoilern</span>
+            <span class="spoiler-hint">(Hover-Peek + Klick zum Anzeigen)</span>
+          </label>
+        </div>
+      </div>
+
+      <!-- Actions moved up for better UX -->
+      <div class="actions actions-inline">
+        <button class="btn-secondary" id="cancel">Abbrechen</button>
+        <button class="btn-primary" id="send" disabled>Senden</button>
       </div>
 
       <!-- Neue User-Auswahl -->
@@ -364,7 +406,9 @@
         <div class="label">Empfänger</div>
         <select
           id="target"
-          class="target-select">
+          class="target-select"
+          multiple
+          size="8">
           <option value="all">👥 Alle User</option>
           <option
             value="loading"
@@ -373,7 +417,7 @@
           </option>
         </select>
         <div class="meta">
-          <span id="userCount">0 User online</span>
+          <span id="userCount">0 User online • Mehrfachauswahl: Cmd/Ctrl-Klick</span>
           <span
             id="refreshUsers"
             class="refresh-link"
@@ -412,19 +456,7 @@
         </div>
       </div>
 
-      <div class="actions">
-        <button
-          class="btn-secondary"
-          id="cancel">
-          Abbrechen
-        </button>
-        <button
-          class="btn-primary"
-          id="send"
-          disabled>
-          Senden
-        </button>
-      </div>
+      <!-- actions moved above -->
     </div>
 
     <script>
@@ -438,6 +470,7 @@
       const targetEl = $("target");
       const userCountEl = $("userCount");
       const refreshUsersEl = $("refreshUsers");
+      const spoilerEl = $("spoiler");
 
       // User-Management
       let users = [];
@@ -463,6 +496,11 @@
       }
 
       function updateUserDropdown() {
+        // Merke bisherige Auswahl (für Refresh)
+        const prevSelected = new Set(
+          Array.from(targetEl.selectedOptions).map((o) => o.value)
+        );
+
         // Entferne alle User-Optionen außer den Standard-Optionen
         const defaultOptions = targetEl.querySelectorAll(
           'option[value="all"], option[value="loading"]'
@@ -485,14 +523,7 @@
             "data-display-name",
             user.displayName || user.name
           );
-          option.innerHTML = `
-            <div class="user-option">
-              <span class="user-status ${
-                user.status === "online" ? "" : "offline"
-              }"></span>
-              ${user.name}
-            </div>
-          `;
+          option.textContent = `${user.name}`;
           targetEl.appendChild(option);
         });
 
@@ -500,12 +531,27 @@
         const otherUsers = users.filter(
           (user) => !currentUser || user.name !== currentUser
         );
-        userCountEl.textContent = `${otherUsers.length} andere User online`;
+        userCountEl.textContent = `${otherUsers.length} User online • Mehrfachauswahl: Cmd/Ctrl-Klick`;
 
         // Entferne Loading-Option
         const loadingOption = targetEl.querySelector('option[value="loading"]');
         if (loadingOption) {
           loadingOption.remove();
+        }
+
+        // Auswahl wiederherstellen oder Standard "all"
+        let restored = false;
+        if (prevSelected.size > 0) {
+          Array.from(targetEl.options).forEach((opt) => {
+            if (prevSelected.has(opt.value)) {
+              opt.selected = true;
+              restored = true;
+            }
+          });
+        }
+        if (!restored || Array.from(targetEl.selectedOptions).length === 0) {
+          const allOpt = Array.from(targetEl.options).find((o) => o.value === "all");
+          if (allOpt) allOpt.selected = true;
         }
 
         // WICHTIG: Nach dem User-Loading versuchen, den Target User zu setzen
@@ -524,6 +570,18 @@
 
       // Nach User-Auswahl automatisch zurück zum Nachrichtenfeld
       targetEl.addEventListener("change", () => {
+        // Wenn "all" zusammen mit anderen gewählt wurde, entferne "all"
+        const selected = Array.from(targetEl.selectedOptions).map((o) => o.value);
+        if (selected.includes("all") && selected.length > 1) {
+          // Deselect "all"
+          const allOpt = Array.from(targetEl.options).find((o) => o.value === "all");
+          if (allOpt) allOpt.selected = false;
+        }
+        // Wenn gar nichts gewählt ist, default "all" selektieren
+        if (Array.from(targetEl.selectedOptions).length === 0) {
+          const allOpt = Array.from(targetEl.options).find((o) => o.value === "all");
+          if (allOpt) allOpt.selected = true;
+        }
         messageEl.focus();
         console.log(`🎯 Target changed, focus back to message field`);
       });
@@ -583,10 +641,17 @@
       validate();
 
       sendBtn.addEventListener("click", () => {
+        // Erzeuge Ziel: "all" oder Liste von IDs
+        const selectedValues = Array.from(targetEl.selectedOptions).map((o) => o.value);
+        const targetPayload =
+          selectedValues.length === 0 || selectedValues.includes("all")
+            ? "all"
+            : selectedValues;
         window.compose.submit({
           message: messageEl.value,
           severity: getSeverity(),
-          target: targetEl.value || "all",
+          spoiler: !!spoilerEl.checked,
+          target: targetPayload,
         });
       });
       $("cancel").addEventListener("click", () => window.compose.cancel());
@@ -800,7 +865,13 @@
                 optionValue === pendingTargetUser ? "ID" : "displayName"
               })`
             );
-            targetEl.selectedIndex = i;
+            // Bei Multi-Select: andere Auswahl entfernen und nur diesen selektieren
+            if (targetEl.multiple) {
+              Array.from(targetEl.options).forEach((opt) => (opt.selected = false));
+              option.selected = true;
+            } else {
+              targetEl.selectedIndex = i;
+            }
             pendingTargetUser = null; // Erfolgreich gesetzt
             return;
           }

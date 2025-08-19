@@ -84,6 +84,11 @@ function renderToasts() {
     toastDiv.dataset.senderId = toast.senderId || '';
     toastDiv.dataset.sender = toast.sender || '';
 
+    if (toast.spoiler) {
+      toastDiv.classList.add('is-spoiler');
+      if (toast.revealed) toastDiv.classList.add('revealed');
+    }
+
     let senderHtml = '';
     if (toast.sender) {
       if (toast.recipientInfo) {
@@ -93,10 +98,14 @@ function renderToasts() {
       }
     }
 
+    const textHtml = toast.spoiler && !toast.revealed
+      ? `<div class="text"><div class="text-content spoiler-content">${toast.message}</div><div class="spoiler-cover" role="button" tabindex="0" aria-label="Spoiler anzeigen" title="Zum Anzeigen klicken">✨ Zum Anzeigen klicken</div></div>`
+      : `<div class="text"><div class="text-content">${toast.message}</div></div>`;
+
     toastDiv.innerHTML = `
       <div class="bubble">
         ${senderHtml}
-        <div class="text">${toast.message}</div>
+        ${textHtml}
         <div class="toast-actions">
           <button class="toast-btn toast-ok">OK</button>
           <button class="toast-btn toast-reply">REPLY</button>
@@ -123,6 +132,16 @@ toastContainer.addEventListener('click', function(event) {
 
   const toastId = toastItem.id;
   const action = target.classList;
+
+  // Spoiler reveal by clicking cover
+  if (target.closest && target.closest('.spoiler-cover')) {
+    const idx = toasts.findIndex(t => t.id === toastId);
+    if (idx !== -1) {
+      toasts[idx] = { ...toasts[idx], revealed: true };
+      renderToasts();
+      return; // stop further handling
+    }
+  }
 
   if (action.contains('toast-ok')) {
     console.log(`✅ OK clicked for toast: ${toastId}`);
@@ -171,7 +190,9 @@ function createToast(message, severity, sender, recipientInfo, senderId) {
     severity,
     sender,
     recipientInfo,
-    senderId
+    senderId,
+    spoiler: false,
+    revealed: false
   };
 
   // Füge neuen Toast am ANFANG des Arrays hinzu
@@ -222,8 +243,21 @@ if (window.shoutout) {
 
   window.shoutout.onToast(function(data) {
     console.log('🍞 NEW OVERLAY V2: Toast event:', data);
-    const { message, severity = 'blue', sender, recipientInfo, senderId } = data;
-    createToast(message, severity, sender, recipientInfo, senderId);
+    const { message, severity = 'blue', sender, recipientInfo, senderId, spoiler } = data;
+    const toastId = `toast-${++toastCounter}-${Date.now()}`;
+    const newToast = {
+      id: toastId,
+      message,
+      severity,
+      sender,
+      recipientInfo,
+      senderId,
+      spoiler: Boolean(spoiler),
+      revealed: false,
+    };
+    toasts.unshift(newToast);
+    if (toasts.length > MAX_TOASTS) toasts.pop();
+    renderToasts();
   });
 
   window.shoutout.onSuccess(function(data) {

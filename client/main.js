@@ -566,7 +566,8 @@ function showToast(
   durationMs,
   sender,
   recipientInfo,
-  senderId
+  senderId,
+  spoiler
 ) {
   if (!overlayWindow || overlayWindow.isDestroyed()) return;
   // Positioning sollte nicht bei jedem Toast passieren - nur bei App-Start und Display-Changes
@@ -581,6 +582,7 @@ function showToast(
     sender,
     recipientInfo,
     senderId,
+    spoiler: Boolean(spoiler),
   });
 }
 
@@ -705,7 +707,8 @@ function connectWebSocket() {
             event.duration || 4000,
             event.sender,
             event.recipientInfo,
-            event.senderId
+            event.senderId,
+            event.spoiler
           );
         } else if (event.type === "user-status") {
           console.log(`👤 User status: ${event.user} is ${event.status}`);
@@ -1302,9 +1305,28 @@ function openToastPrompt(targetUser = null) {
   console.log(`📝 openToastPrompt called: targetUser=${targetUser}`);
   console.log(`🔍 targetUser type: ${typeof targetUser}, value: ${targetUser}`);
 
+  // Dynamische Größe anhand des aktuellen Displays berechnen
+  let work = null;
+  try {
+    const disp = screen.getPrimaryDisplay();
+    work = disp?.workArea || null;
+  } catch (_) {}
+
+  // Zielbreite/-höhe: genug Platz für Multi-Select (8 Zeilen) ohne Scrollbar
+  const desiredWidth = 660;
+  const desiredHeight = 980; // Mehr Höhe für Multi-Select + große Spoiler-Option
+  const margin = 100; // Abstand zu Displayrändern
+
+  const width = work ? Math.min(Math.max(desiredWidth, 600), Math.max(600, work.width - margin)) : desiredWidth;
+  const height = work ? Math.min(Math.max(desiredHeight, 820), Math.max(820, work.height - margin)) : desiredHeight;
+
   const composeWin = new BrowserWindow({
-    width: 600,
-    height: 700, // Höher für Windows
+    width,
+    height,
+    minWidth: 600,
+    minHeight: 820,
+    useContentSize: true, // width/height beziehen sich auf den Inhalt (nicht Rahmen)
+    center: true,
     resizable: true,
     modal: true,
     frame: true,
@@ -1378,6 +1400,7 @@ function openToastPrompt(targetUser = null) {
       : "blue";
     const duration = 3000; // Fixed duration (not used anymore since toasts are permanent)
     const target = payload?.target || "all";
+    const spoiler = Boolean(payload?.spoiler);
 
     if (ws && ws.readyState === ws.OPEN && message) {
       ws.send(
@@ -1386,6 +1409,7 @@ function openToastPrompt(targetUser = null) {
           message,
           severity,
           duration,
+          spoiler,
           target,
           sender: displayName || "unknown",
         })
