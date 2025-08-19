@@ -275,6 +275,70 @@
         cursor: not-allowed;
       }
 
+      /* Match overlay bubble look for compose */
+      .compose-bubble {
+        position: relative;
+        color: #afc6f3;
+        border-radius: 12px;
+        padding: 14px 16px;
+        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(175, 198, 243, 0.15);
+        backdrop-filter: blur(10px);
+        border: none; /* override .field default border */
+      }
+      .compose-bubble:after {
+        content: "";
+        position: absolute;
+        top: 10px;
+        right: -6px;
+        width: 0; height: 0;
+        border-top: 6px solid transparent;
+        border-bottom: 6px solid transparent;
+      }
+      /* Severity accent like overlay */
+      .severity-blue.compose-bubble { background: rgba(29,33,40,0.85); border-left: 3px solid #3b82f6; }
+      .severity-blue.compose-bubble:after { border-left: 6px solid rgba(29,33,40,0.85); }
+      .severity-green.compose-bubble { background: rgba(29,33,40,0.85); border-left: 3px solid #10b981; }
+      .severity-green.compose-bubble:after { border-left: 6px solid rgba(29,33,40,0.85); }
+      .severity-pink.compose-bubble { background: rgba(29,33,40,0.85); border-left: 3px solid #ec4899; }
+      .severity-pink.compose-bubble:after { border-left: 6px solid rgba(29,33,40,0.85); }
+      .severity-red.compose-bubble { background: rgba(29,33,40,0.85); border-left: 3px solid #ef4444; }
+      .severity-red.compose-bubble:after { border-left: 6px solid rgba(29,33,40,0.85); }
+
+      /* Toast-like actions/buttons */
+      .toast-actions { display: flex; gap: 8px; margin-top: 8px; justify-content: center; }
+      .toast-btn {
+        padding: 10px 18px;
+        border: none;
+        border-radius: 16px;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+      }
+      .toast-ok {
+        background: rgba(255,255,255,0.1);
+        color: #afc6f3;
+        border: 1px solid rgba(255,255,255,0.2);
+        backdrop-filter: blur(10px);
+      }
+      .toast-ok:hover {
+        background: rgba(255,255,255,0.2);
+        border-color: rgba(255,255,255,0.3);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+      }
+      .toast-reply {
+        background: rgba(175, 198, 243, 0.2);
+        color: #ffffff;
+        border: 1px solid rgba(175, 198, 243, 0.3);
+        backdrop-filter: blur(10px);
+      }
+      .toast-reply:hover {
+        background: rgba(175, 198, 243, 0.3);
+        border-color: rgba(175, 198, 243, 0.4);
+        box-shadow: 0 4px 12px rgba(175, 198, 243, 0.2);
+      }
+
       /* Spoiler toggle (prominent) */
       .spoiler-toggle {
         display: flex;
@@ -359,12 +423,20 @@
         background: #94a3b8;
         box-shadow: 0 0 4px rgba(148, 163, 184, 0.3);
       }
+
+      /* Secondary bubble styling for recipient block */
+      .compose-bubble.secondary {
+        padding: 10px 12px;
+        background: rgba(29, 33, 40, 0.72);
+        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(175, 198, 243, 0.12);
+        border-left: 2px solid rgba(175, 198, 243, 0.24);
+      }
     </style>
   </head>
   <body>
     <div class="wrap">
       <div class="header">Send Toast</div>
-      <div class="field">
+      <div class="field compose-bubble severity-blue" id="composeField">
         <div class="toolbar">
           <button
             type="button"
@@ -384,25 +456,36 @@
           placeholder="Deine Nachricht… (Enter = senden)"></textarea>
         <div class="meta">
           <span id="counter">0 / 280</span>
-          <span>Max. 10s</span>
         </div>
         <div class="spoiler-toggle">
           <label class="spoiler-label">
             <input type="checkbox" id="spoiler" class="spoiler-checkbox" />
             <span class="spoiler-text">Nachricht spoilern</span>
-            <span class="spoiler-hint">(Hover-Peek + Klick zum Anzeigen)</span>
           </label>
         </div>
       </div>
 
-      <!-- Actions moved up for better UX -->
-      <div class="actions actions-inline">
-        <button class="btn-secondary" id="cancel">Abbrechen</button>
-        <button class="btn-primary" id="send" disabled>Senden</button>
+      <!-- Farben direkt unter dem Eingabefeld -->
+      <div class="row">
+        <div class="col">
+          <div class="label">Farbe</div>
+          <div class="pills" id="sev-pills">
+            <div class="pill active" data-sev="blue">blue</div>
+            <div class="pill" data-sev="green">green</div>
+            <div class="pill" data-sev="pink">pink</div>
+            <div class="pill crit" data-sev="red">red</div>
+          </div>
+        </div>
       </div>
 
-      <!-- Neue User-Auswahl -->
-      <div class="field">
+      <!-- Actions moved up for better UX -->
+      <div class="actions actions-inline toast-actions">
+        <button class="btn-secondary toast-btn toast-ok" id="cancel">ABBRECHEN</button>
+        <button class="btn-primary toast-btn toast-reply" id="send" disabled>SENDEN</button>
+      </div>
+
+      <!-- Neue User-Auswahl in kleiner Bubble -->
+      <div class="field compose-bubble secondary">
         <div class="label">Empfänger</div>
         <select
           id="target"
@@ -423,36 +506,6 @@
             class="refresh-link"
             >🔄 Aktualisieren</span
           >
-        </div>
-      </div>
-
-      <div class="row">
-        <div class="col">
-          <div class="label">Farbe</div>
-          <div
-            class="pills"
-            id="sev-pills">
-            <div
-              class="pill active"
-              data-sev="blue">
-              blue
-            </div>
-            <div
-              class="pill"
-              data-sev="green">
-              green
-            </div>
-            <div
-              class="pill"
-              data-sev="pink">
-              pink
-            </div>
-            <div
-              class="pill crit"
-              data-sev="red">
-              red
-            </div>
-          </div>
         </div>
       </div>
 
@@ -614,6 +667,16 @@
           .querySelectorAll(".pill")
           .forEach((x) => x.classList.remove("active"));
         p.classList.add("active");
+        // Update compose bubble severity class to match selection
+        try {
+          const composeField = document.getElementById('composeField');
+          if (composeField) {
+            ['severity-blue','severity-green','severity-pink','severity-red','severity-info','severity-success','severity-warn','severity-critical']
+              .forEach(cls => composeField.classList.remove(cls));
+            const sev = p.getAttribute('data-sev') || 'blue';
+            composeField.classList.add(`severity-${sev}`);
+          }
+        } catch (_) {}
         validate();
       });
       messageEl.addEventListener("input", validate);
