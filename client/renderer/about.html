@@ -116,9 +116,12 @@
 
       .authors {
         display: grid;
-        grid-template-columns: 1fr 1fr;
+        grid-template-columns: 1fr 1fr 1fr; /* three across to avoid wrapping */
         gap: 12px; /* reduced */
         margin-bottom: 16px; /* reduced */
+      }
+      @media (max-width: 900px) {
+        .authors { grid-template-columns: 1fr 1fr; }
       }
 
       .author-card {
@@ -260,11 +263,13 @@
               authors: [
                 "Angilina - Main Developer & UI/UX Designer",
                 "Claude Sonnet 4 - AI Assistant & Code Contributor",
+                "OpenAI GPT - AI Assistant & Code Contributor",
               ],
               features: [
                 "🐹 Interactive Hamster Animations",
                 "💬 Real-time Toast Messages",
                 "👥 Online User Management",
+                "🌐 Local Translation (DE↔EN)",
                 "🎨 Beautiful Cursor-style Theme",
                 "🔧 Professional Logging System",
                 "🚀 Cross-platform Desktop App",
@@ -274,7 +279,15 @@
                 "Node.js - Backend Runtime",
                 "WebSockets - Real-time Communication",
                 "Winston - Professional Logging",
+                "HuggingFace Transformers + MarianMT (OPUS-MT) - Local NMT",
+                "PyTorch Runtime (CPU) + SentencePiece",
                 "Glassmorphism - Modern UI Design",
+              ],
+              attributions: [
+                "Helsinki-NLP/opus-mt-de-en, opus-mt-en-de (OPUS-MT) — CC-BY-4.0",
+                "HuggingFace Transformers — Apache-2.0",
+                "PyTorch — BSD-style license",
+                "SentencePiece — Apache-2.0",
               ],
             };
 

@@ -31,6 +31,7 @@ contextBridge.exposeInMainWorld("about", {
     authors: [
       "Angilina - Main Developer & UI/UX Designer",
       "Claude Sonnet 4 - AI Assistant & Code Contributor",
+      "OpenAI GPT - AI Assistant & Code Contributor",
     ],
     features: [
       "🐹 Interactive Hamster Animations",
@@ -46,12 +47,15 @@ contextBridge.exposeInMainWorld("about", {
       "Node.js - Backend Runtime",
       "WebSockets - Real-time Communication",
       "Winston - Professional Logging",
-      "CTranslate2 + SentencePiece - Local NMT",
+      "HuggingFace Transformers + MarianMT (OPUS-MT) - Local NMT",
+      "PyTorch Runtime (CPU) + SentencePiece",
       "Glassmorphism - Modern UI Design",
     ],
     attributions: [
-      "Translations powered by OPUS-MT (Helsinki-NLP), trained on OPUS — CC-BY-4.0",
-      "CTranslate2 by OpenNMT — MIT License",
+      "Helsinki-NLP/opus-mt-de-en, opus-mt-en-de (OPUS-MT) — CC-BY-4.0",
+      "HuggingFace Transformers — Apache-2.0",
+      "PyTorch — BSD-style license",
+      "SentencePiece — Apache-2.0",
     ],
   }),
 });

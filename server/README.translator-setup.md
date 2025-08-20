@@ -183,3 +183,20 @@ echo "Hallo Welt" | python3 src/translate/ct2_translator.py --from de --to en
 ```
 
 Expected: JSON with `translated` text (e.g., “Hello world”) and `provider: hf` if forced.
+
+## Model Overview
+
+- Models: We use the MarianMT OPUS‑MT pair for German↔English:
+  - `Helsinki-NLP/opus-mt-de-en`
+  - `Helsinki-NLP/opus-mt-en-de`
+- Runtime: HuggingFace Transformers (PyTorch) loads model + tokenizer from local folders in `server/models/hf/...`.
+- Tokenization: `MarianTokenizer` (SentencePiece vocab is embedded in the HF repos). No internet is required at runtime.
+- Decoding strategy (balanced quality + determinism):
+  - `num_beams=5`, `early_stopping=true`
+  - `no_repeat_ngram_size=3` (and a stricter retry with 4 on rare loops)
+  - `repetition_penalty≈1.15–1.3`
+  - `max_new_tokens` scales with input length to prevent runaways
+- Quality/performance notes:
+  - OPUS‑MT is compact classical NMT: good general quality, not domain‑specialized.
+  - CPU‑only inference is fine for short/medium texts. For heavy load, consider more CPU/RAM or different models.
+  - Optional: `pip install sacremoses` removes a tokenizer warning and can slightly help with pre/post‑processing.
