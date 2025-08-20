@@ -29,6 +29,12 @@ server/.env
 client/.env
 bot/.env
 server/broadcast.log
+server/.venv/
+server/models/hf/
+server/models/ct2/
+server/logs/
+server/**/__pycache__/
+server/**/*.pyc
 coverage/
 tmp/
 
@@ -39,5 +45,4 @@ tmp/
 
 # Developer Notes (internal only)
 DEVELOPER_NOTES.md
-
 

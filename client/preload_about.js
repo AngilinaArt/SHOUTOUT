@@ -36,6 +36,7 @@ contextBridge.exposeInMainWorld("about", {
       "🐹 Interactive Hamster Animations",
       "💬 Real-time Toast Messages",
       "👥 Online User Management",
+      "🌐 Local Translation (DE↔EN)",
       "🎨 Beautiful Cursor-style Theme",
       "🔧 Professional Logging System",
       "🚀 Cross-platform Desktop App",
@@ -45,7 +46,12 @@ contextBridge.exposeInMainWorld("about", {
       "Node.js - Backend Runtime",
       "WebSockets - Real-time Communication",
       "Winston - Professional Logging",
+      "CTranslate2 + SentencePiece - Local NMT",
       "Glassmorphism - Modern UI Design",
+    ],
+    attributions: [
+      "Translations powered by OPUS-MT (Helsinki-NLP), trained on OPUS — CC-BY-4.0",
+      "CTranslate2 by OpenNMT — MIT License",
     ],
   }),
 });

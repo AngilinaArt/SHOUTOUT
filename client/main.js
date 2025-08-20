@@ -78,6 +78,7 @@ let overlayWindow = null;
 let statusWindow = null;
 let reactionWindow = null;
 let userListWindow = null;
+let translateWindow = null;
 let doNotDisturb = false; // Will be loaded from settings on startup
 let autostartEnabled = false; // Will be loaded from settings on startup
 let ws = null;
@@ -1586,6 +1587,14 @@ function buildTrayMenu() {
         openToastPrompt();
       },
     },
+    // Translate
+    {
+      label: `🌐 Translate…`,
+      click: () => {
+        console.log(`🖱️ Tray menu clicked for Translate`);
+        openTranslateWindow();
+      },
+    },
     { type: "separator" },
 
     // Show Online Users
@@ -1966,3 +1975,76 @@ function stopUserListAutoUpdate() {
   }
 }
 */
+
+// Translate window
+function openTranslateWindow() {
+  try {
+    if (translateWindow && !translateWindow.isDestroyed()) {
+      translateWindow.show();
+      return;
+    }
+  } catch (_) {}
+
+  // Dynamische Größe anhand des Displays (mehr Höhe, ohne abgeschnitten zu werden)
+  let work = null;
+  try {
+    const disp = screen.getPrimaryDisplay();
+    work = disp?.workArea || null;
+  } catch (_) {}
+  const margin = 80;
+  const desiredWidth = 1100;
+  const desiredHeight = 1000;
+  const width = work ? Math.min(Math.max(desiredWidth, 900), Math.max(900, work.width - margin)) : desiredWidth;
+  const height = work ? Math.min(Math.max(desiredHeight, 860), Math.max(860, work.height - margin)) : desiredHeight;
+
+  translateWindow = new BrowserWindow({
+    width,
+    height,
+    useContentSize: true,
+    center: true,
+    resizable: true,
+    modal: false,
+    frame: true,
+    alwaysOnTop: false,
+    transparent: true,
+    backgroundColor: "#00000000",
+    webPreferences: {
+      preload: path.join(__dirname, "preload_translate.js"),
+      contextIsolation: true,
+      nodeIntegration: false,
+    },
+  });
+  translateWindow.loadFile(path.join(__dirname, "renderer", "translate.html"));
+  translateWindow.on("closed", () => {
+    translateWindow = null;
+  });
+}
+
+// IPC bridge for translation
+ipcMain.handle("translate", async (_evt, { text, direction, formatMode }) => {
+  try {
+    const serverUrl = process.env.SERVER_URL || "http://localhost:3001";
+    const resp = await fetch(`${serverUrl}/translate`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text, direction, formatMode }),
+    });
+    const data = await resp.json();
+    if (!resp.ok) {
+      return { ok: false, error: data?.error || `http_${resp.status}` };
+    }
+    return data;
+  } catch (error) {
+    console.error("translate IPC error:", error);
+    return { ok: false, error: "ipc_error" };
+  }
+});
+
+// Allow renderer to request closing the translate window
+ipcMain.on("translate-close", () => {
+  try {
+    if (translateWindow && !translateWindow.isDestroyed()) {
+      translateWindow.close();
+    }
+  } catch (_) {}
+});

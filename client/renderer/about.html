@@ -234,6 +234,11 @@
       </ul>
     </div>
 
+    <div class="section">
+      <div class="section-title">🙏 Attributions</div>
+      <ul class="list" id="attributions"></ul>
+    </div>
+
     <div class="footer">Made with 💖 and lots of 🐹 hamsters</div>
 
     <script>
@@ -334,6 +339,14 @@
             "✅ Technologies populated:",
             appInfo.technologies.length
           );
+        }
+
+        const attributionsContainer = document.getElementById("attributions");
+        if (attributionsContainer && appInfo.attributions) {
+          attributionsContainer.innerHTML = appInfo.attributions
+            .map((item) => `<li>${item}</li>`)
+            .join("");
+          console.log("✅ Attributions populated:", appInfo.attributions.length);
         }
 
         console.log("🎉 All content loaded successfully!");

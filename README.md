@@ -49,6 +49,25 @@ cd ../client && npm install
 npm run dev
 ```
 
+### 🌐 Übersetzung (optional, lokal)
+
+1. Python-Abhängigkeiten installieren (HF‑Modus):
+
+```bash
+pip install transformers torch sentencepiece
+```
+
+2. Übersetzer aktivieren (HF erzwingen):
+
+```bash
+# server/.env
+TRANSLATOR_ENABLED=true
+TRANSLATOR_PROVIDER=ct2
+TRANSLATOR_FORCE_HF=true
+```
+
+3. App starten und im Tray „🌐 Translate…“ öffnen.
+
 ---
 
 ## 🏗️ Architektur
@@ -143,6 +162,14 @@ npm run dev
 PORT=3001
 BROADCAST_SECRET=your-super-secret-token-123
 ALLOW_NO_AUTH=false
+# Optional: Local translation (offline)
+TRANSLATOR_ENABLED=true
+TRANSLATOR_PROVIDER=ct2
+# Optional override of script path
+# TRANSLATOR_PY=./src/translate/ct2_translator.py
+# CTranslate2 model paths
+# CT2_MODEL_DE_EN=/absolute/path/to/ct2_models/de-en
+# CT2_MODEL_EN_DE=/absolute/path/to/ct2_models/en-de
 ```
 
 #### Bot (.env)
@@ -260,6 +287,7 @@ open "/Applications/Hamster & Toast.app"
 - **🚀 Autostart** - Beim Login starten
 - **🐹 Send hamster** - Hamster-Varianten
 - **💬 Send Toast** - Nachricht senden
+- **🌐 Translate** - DE↔EN Übersetzung (lokal)
 - **👥 Show Online Users** - Online-User anzeigen
 - **❌ Quit** - App beenden
 
@@ -281,6 +309,7 @@ open "/Applications/Hamster & Toast.app"
 - **Logging**: Winston, Daily Rotation
 - **Build**: electron-builder, npm scripts
 - **Styling**: CSS Grid, Flexbox, Glass Effects, Animations
+- **Translation (optional, offline)**: CTranslate2 + SentencePiece + OPUS-MT (DE↔EN)
 
 ### 📁 Projektstruktur
 
@@ -346,6 +375,16 @@ shoutout/
   targetUserId: "uuid",
   fromUser: "username"
 }
+
+// Translate (Server, optional)
+// HTTP JSON: POST /translate
+// Body:
+// {
+//   text: "Freitext oder E-Mail-Inhalt",
+//   direction: "auto" | "de-en" | "en-de",
+//   formatMode: "auto" | "email" | "plain"
+// }
+// Response: { ok, from, to, format, translated }
 ```
 
 #### HTTP Endpoints

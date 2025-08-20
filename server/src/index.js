@@ -11,6 +11,7 @@ const Joi = require("joi");
 const { WebSocketServer } = require("ws");
 const winston = require("winston");
 require("winston-daily-rotate-file");
+const { spawn } = require("child_process");
 
 // Winston Logger Configuration
 const logger = winston.createLogger({
@@ -64,6 +65,12 @@ const PORT = Number(process.env.PORT || 3001);
 const BROADCAST_SECRET = process.env.BROADCAST_SECRET || "change-me";
 const WS_TOKEN = process.env.WS_TOKEN || null; // Optional separate WS token
 const ALLOW_NO_AUTH = String(process.env.ALLOW_NO_AUTH || "false") === "true";
+const TRANSLATOR_ENABLED = String(process.env.TRANSLATOR_ENABLED || "false") === "true";
+const TRANSLATOR_PROVIDER = String(process.env.TRANSLATOR_PROVIDER || "none");
+const TRANSLATOR_SCRIPT = process.env.TRANSLATOR_PY || path.join(__dirname, "translate", "ct2_translator.py");
+// Prefer the project venv Python to ensure required packages are available
+const VENV_PY = path.join(__dirname, "..", ".venv", "bin", "python3");
+const PYTHON_BIN = fs.existsSync(VENV_PY) ? VENV_PY : "python3";
 
 // Warnung ausgeben wenn unsichere Standardeinstellungen verwendet werden
 if (BROADCAST_SECRET === "change-me" || ALLOW_NO_AUTH) {
@@ -495,6 +502,210 @@ const toastSchema = Joi.object({
 const eventSchema = Joi.alternatives().try(hamsterSchema, toastSchema);
 
 // Helpers
+
+// Very lightweight language detection (DE vs EN) without deps
+function detectLang(text) {
+  try {
+    const sample = String(text || "").slice(0, 2000);
+    const lower = sample.toLowerCase();
+    // Word-boundary based hints (more robust for short inputs like "Hallo Welt")
+    const deWordRe = /(\b(hallo|und|nicht|danke|bitte|mit|ich|meine|mein|der|die|das|den|dem|zum|zur|für|weil|oder|aber|wird)\b)/g;
+    const enWordRe = /(\b(hello|the|and|not|thanks|please|with|i|you|we|is|are|to|of|in|on|for)\b)/g;
+    let deScore = 0;
+    let enScore = 0;
+    if (/[äöüß]/.test(lower)) deScore += 3; // strong German signal
+    // Count matches
+    const deMatches = lower.match(deWordRe);
+    const enMatches = lower.match(enWordRe);
+    if (deMatches) deScore += Math.min(3, deMatches.length);
+    if (enMatches) enScore += Math.min(3, enMatches.length);
+    // Specific start-of-text hints
+    if (/^hallo\b/.test(lower)) deScore += 2;
+    if (/^hello\b/.test(lower)) enScore += 2;
+    if (deScore > enScore) return "de";
+    if (enScore > deScore) return "en";
+    // Fallback: majority of ASCII words
+    return /[äöüß]/.test(lower) ? "de" : "en";
+  } catch (_) {
+    return "en";
+  }
+}
+
+function detectFormat(text) {
+  const t = String(text || "");
+  const hasHeaders = /^(subject|betreff|from|to|cc|bcc)\s*:/im.test(t);
+  const hasQuoted = /^>\s/m.test(t);
+  const hasOriginalMarker = /original message|ursprüngliche nachricht/i.test(t);
+  return hasHeaders || hasQuoted || hasOriginalMarker ? "email" : "plain";
+}
+
+function splitEmail(text) {
+  const lines = String(text || "").split(/\r?\n/);
+  const headers = {};
+  let i = 0;
+  for (; i < lines.length; i++) {
+    const m = lines[i].match(/^\s*([^:]+):\s*(.*)$/);
+    if (m) {
+      const key = m[1].trim();
+      const val = m[2].trim();
+      headers[key] = val;
+      continue;
+    }
+    // blank line ends headers
+    if (lines[i].trim() === "") {
+      i += 1;
+      break;
+    }
+    // no header-like anymore
+    break;
+  }
+  const body = lines.slice(i).join("\n");
+  return { headers, body };
+}
+
+function mapHeaderKey(key, langFrom, langTo) {
+  const mapDeToEn = {
+    Betreff: "Subject",
+    Von: "From",
+    An: "To",
+    Kopie: "Cc",
+    Blindkopie: "Bcc",
+    Datum: "Date",
+  };
+  const mapEnToDe = {
+    Subject: "Betreff",
+    From: "Von",
+    To: "An",
+    Cc: "Kopie",
+    Bcc: "Blindkopie",
+    Date: "Datum",
+  };
+  if (langFrom === "de" && langTo === "en") return mapDeToEn[key] || key;
+  if (langFrom === "en" && langTo === "de") return mapEnToDe[key] || key;
+  return key;
+}
+
+async function runProviderTranslate(text, from, to) {
+  if (!TRANSLATOR_ENABLED || TRANSLATOR_PROVIDER === "none") {
+    return { ok: false, reason: "translator_disabled", translated: text };
+  }
+  if (TRANSLATOR_PROVIDER === "ct2") {
+    return new Promise((resolve) => {
+      try {
+        const proc = spawn(PYTHON_BIN, [TRANSLATOR_SCRIPT, "--from", from, "--to", to], {
+          stdio: ["pipe", "pipe", "pipe"],
+          cwd: path.join(__dirname, ".."),
+          env: process.env,
+        });
+        let out = "";
+        let err = "";
+        proc.stdout.on("data", (d) => (out += d.toString()));
+        proc.stderr.on("data", (d) => (err += d.toString()));
+        proc.on("close", () => {
+          try {
+            const parsed = JSON.parse(out || "{}");
+            if (parsed && parsed.translated) {
+              try {
+                const meta = parsed.meta || {};
+                console.log("[translator] from=%s to=%s provider=%s reason=%s", from, to, meta.provider || "n/a", meta.reason || "");
+              } catch (_) {}
+              resolve({ ok: true, translated: parsed.translated, meta: parsed.meta });
+            } else {
+              resolve({ ok: false, reason: err || "no_output", translated: text });
+            }
+          } catch (_) {
+            resolve({ ok: false, reason: "invalid_json", translated: text });
+          }
+        });
+        proc.on("error", () => resolve({ ok: false, reason: "spawn_error", translated: text }));
+        proc.stdin.write(text);
+        proc.stdin.end();
+      } catch (e) {
+        resolve({ ok: false, reason: e.message || "exception", translated: text });
+      }
+    });
+  }
+  // Unknown provider
+  return { ok: false, reason: "unknown_provider", translated: text };
+}
+
+async function translatePipeline({ text, direction = "auto", formatMode = "auto" }) {
+  const detectedFormat = formatMode === "auto" ? detectFormat(text) : formatMode;
+  let from = detectLang(text);
+  let to = from === "de" ? "en" : "de";
+  if (direction === "de-en") {
+    from = "de";
+    to = "en";
+  } else if (direction === "en-de") {
+    from = "en";
+    to = "de";
+  }
+
+  if (detectedFormat === "email") {
+    const { headers, body } = splitEmail(text);
+    const headerLines = Object.entries(headers).map(([k, v]) => {
+      const mapped = mapHeaderKey(k, from, to);
+      // Do not translate email addresses/dates
+      return `${mapped}: ${v}`;
+    });
+    // Preserve quoted lines; translate non-quoted paragraphs
+    const bodyLines = body.split(/\r?\n/);
+    const chunks = [];
+    let buffer = [];
+    function flushBuffer(arr) {
+      if (arr.length) {
+        chunks.push({ type: "text", value: arr.join("\n") });
+        arr.length = 0;
+      }
+    }
+    for (const line of bodyLines) {
+      if (/^>\s?/.test(line)) {
+        flushBuffer(buffer);
+        chunks.push({ type: "quote", value: line });
+      } else if (/^--\s?$/.test(line)) {
+        flushBuffer(buffer);
+        chunks.push({ type: "sep", value: line });
+      } else {
+        buffer.push(line);
+      }
+    }
+    flushBuffer(buffer);
+
+    // Translate only text chunks
+    const outParts = [];
+    outParts.push(headerLines.join("\n"));
+    outParts.push("");
+    for (const c of chunks) {
+      if (c.type === "text") {
+        // run provider per block
+        // Note: synchronous serial translation to keep it simple
+        // eslint-disable-next-line no-await-in-loop
+        const res = await runProviderTranslate(c.value, from, to);
+        outParts.push(res.translated);
+      } else {
+        outParts.push(c.value);
+      }
+    }
+    return {
+      ok: true,
+      from,
+      to,
+      format: "email",
+      translated: outParts.join("\n"),
+    };
+  }
+
+  // Plain text: single shot
+  const res = await runProviderTranslate(text, from, to);
+  return {
+    ok: !!res.ok,
+    from,
+    to,
+    format: "plain",
+    translated: res.translated,
+    meta: res.meta || (res.reason ? { reason: res.reason } : undefined),
+  };
+}
 function isAuthorized(req) {
   const auth = req.header("authorization") || "";
 
@@ -799,4 +1010,30 @@ server.listen(PORT, () => {
   // Minimal console output (no sensitive data)
   console.log(`🚀 Server started on port ${PORT}`);
   console.log(`📝 Logs: ./logs/shoutout-*.log`);
+});
+
+// Translation API (optional)
+app.post("/translate", express.json({ limit: "1mb" }), async (req, res) => {
+  try {
+    if (!TRANSLATOR_ENABLED) {
+      return res.status(503).json({ error: "translator_disabled" });
+    }
+    const { text, direction = "auto", formatMode = "auto" } = req.body || {};
+    if (!text || typeof text !== "string" || text.trim().length === 0) {
+      return res.status(400).json({ error: "invalid_text" });
+    }
+    const result = await translatePipeline({ text, direction, formatMode });
+    const ok = typeof result.ok === "boolean" ? result.ok : true;
+    if (!ok) {
+      logger.warn("Translation fallback", {
+        event: "translation_fallback",
+        reason: result?.meta?.reason || "unknown",
+        provider: TRANSLATOR_PROVIDER,
+      });
+    }
+    res.json({ ok, ...result });
+  } catch (error) {
+    console.error("/translate error:", error);
+    res.status(500).json({ error: "translate_failed" });
+  }
 });
