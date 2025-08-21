@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Invite-Code eingeben</title>
+    <style>
+      :root {
+        --accent: #afc6f3;
+        --accentBorder: rgba(175, 198, 243, 0.9);
+        --accentDim: rgba(175, 198, 243, 0.2);
+        --bg: rgba(29, 33, 40, 0.6);
+        --text: #e2e8f0;
+        --muted: #9ca3af;
+        --radius: 12px;
+      }
+      * { box-sizing: border-box; }
+      html, body { height: 100%; }
+      body {
+        margin: 0;
+        padding: 0;
+        font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+        background: var(--bg);
+        color: var(--text);
+        backdrop-filter: blur(22px);
+        -webkit-backdrop-filter: blur(22px);
+        border-radius: var(--radius);
+        border: 1px solid rgba(175, 198, 243, 0.15);
+        overflow: hidden; /* avoid scrollbars in small dialog */
+        /* Compositing hints to avoid ghosting on macOS */
+        transform: translateZ(0);
+        backface-visibility: hidden;
+        will-change: transform, opacity;
+        contain: paint;
+        isolation: isolate;
+      }
+      .wrap { position: relative; z-index: 1; display: grid; gap: 16px; padding: 22px; transform: translateZ(0); backface-visibility: hidden; will-change: transform, opacity; contain: paint; }
+      .backplate { position: fixed; inset: 0; z-index: 0; pointer-events: none; backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); background: rgba(29,33,40,0.35); border-radius: var(--radius); }
+      .header { font-weight: 700; letter-spacing: .2px; color: var(--accent); text-shadow: 0 0 10px rgba(175,198,243,.3); }
+      .label { font-size: 12px; color: var(--muted); }
+      .field {
+        background: rgba(29,33,40,0.45); /* use backplate for blur; lighter tint here */
+        border: 1px solid var(--accentDim);
+        border-radius: var(--radius);
+        padding: 14px;
+        /* Avoid heavy shadows to reduce recomposition flicker */
+        box-shadow: 0 0 0 1px rgba(175,198,243,0.12);
+        transform: translateZ(0);
+        backface-visibility: hidden;
+        will-change: transform, opacity;
+        contain: paint;
+      }
+      input[type="text"] {
+        width: 100%;
+        background: transparent;
+        border: none;
+        outline: none;
+        color: var(--text);
+        font-size: 16px;
+        -webkit-appearance: none;
+        background-clip: padding-box;
+        caret-color: var(--text);
+      }
+      ::placeholder { color: var(--muted); opacity: 0.9; }
+      :-ms-input-placeholder { color: var(--muted); }
+      ::-ms-input-placeholder { color: var(--muted); }
+      input::selection { background: rgba(175,198,243,0.25); }
+      input::-moz-selection { background: rgba(175,198,243,0.25); }
+      input::-webkit-selection { background: rgba(175,198,243,0.25); }
+      .field:hover { border-color: rgba(175,198,243,0.28); }
+      .field:focus-within {
+        outline: 2px solid var(--accent);
+        outline-offset: 0;
+        box-shadow: 0 0 0 1px var(--accentBorder);
+      }
+      /* Neutralize macOS/WebKit autofill/OS tint */
+      input:-webkit-autofill,
+      input:-webkit-autofill:hover,
+      input:-webkit-autofill:focus {
+        -webkit-box-shadow: 0 0 0 1000px transparent inset;
+        -webkit-text-fill-color: var(--text) !important;
+        caret-color: var(--text);
+      }
+      .row { display: flex; gap: 10px; justify-content: flex-end; }
+      button { border: 0; border-radius: 12px; padding: 12px 18px; cursor: pointer; font-size: 15px; transform: translateZ(0); backface-visibility: hidden; will-change: transform, opacity; contain: paint; }
+      .btn-secondary {
+        background: rgba(175, 198, 243, 0.1);
+        color: var(--accent);
+        border: 1px solid var(--accentDim);
+        transition: all .2s ease;
+      }
+      .btn-secondary:hover { background: rgba(175,198,243,0.2); transform: translateY(-1px) translateZ(0); }
+      .btn-primary {
+        background: rgba(175, 198, 243, 0.85);
+        color: #1d2128;
+        border: 1px solid var(--accentBorder);
+        transition: all .2s ease;
+        font-weight: 600;
+        min-width: 120px;
+      }
+      .btn-primary:hover { background: rgba(175,198,243,0.95); transform: translateY(-1px) translateZ(0); }
+      .error { color:#f87171; min-height:18px; font-size: 13px; }
+      .hint { color: var(--muted); font-size: 12px; line-height: 1.4; }
+    </style>
+  </head>
+  <body>
+    <div class="backplate"></div>
+    <div class="wrap">
+      <div class="header">Invite-Code eingeben</div>
+      <div class="label">Bitte deinen Invite-Code eingeben</div>
+      <div class="field">
+        <input id="code" type="text" placeholder="z. B. supersecret1" autocomplete="off" />
+      </div>
+      <div id="err" class="error"></div>
+      <div class="hint">Den Einladungscode erhältst du von der Person, die dir die App geschickt hat.</div>
+      <div class="row">
+        <button id="cancel" class="btn-secondary">Abbrechen</button>
+        <button id="ok" class="btn-primary">Bestätigen</button>
+      </div>
+    </div>
+    <script>
+      const codeEl = document.getElementById('code');
+      const errEl = document.getElementById('err');
+      const okEl = document.getElementById('ok');
+      const cancelEl = document.getElementById('cancel');
+
+      function setError(msg){ errEl.textContent = msg || ''; }
+      const api = (window && window.invite) ? window.invite : {
+        submit: () => setError('IPC-Bridge nicht verfügbar'),
+        cancel: () => {},
+        onError: () => {},
+      };
+      api.onError((data) => setError(data?.message || 'Fehler'));
+
+      okEl.addEventListener('click', () => {
+        const inviteCode = String(codeEl.value || '').trim();
+        if (!inviteCode) { setError('Bitte Code eingeben'); codeEl.focus(); return; }
+        setError('');
+        api.submit({ inviteCode });
+      });
+      cancelEl.addEventListener('click', () => api.cancel());
+      codeEl.addEventListener('keydown', (e) => { if (e.key === 'Enter') okEl.click(); });
+      setTimeout(() => codeEl.focus(), 50);
+    </script>
+  </body>
+  </html>

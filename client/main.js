@@ -26,6 +26,7 @@ const {
   ipcMain,
   nativeImage,
   screen,
+  dialog,
 } = require("electron");
 app.commandLine.appendSwitch("enable-features", "UseOzonePlatform");
 const WebSocket = require("ws");
@@ -71,7 +72,9 @@ function fetchImageAsDataUrl(imageUrl) {
 }
 
 const WS_URL = process.env.WS_URL || "ws://localhost:3001/ws";
-const WS_TOKEN = process.env.WS_TOKEN || "";
+const WS_TOKEN = process.env.WS_TOKEN || ""; // legacy fallback
+const SERVER_URL = process.env.SERVER_URL || "http://localhost:3001";
+const { safeStorage } = require("electron");
 
 let tray = null;
 let overlayWindow = null;
@@ -89,6 +92,9 @@ let wsConnectToken = 0;
 let lastSeverity = "blue";
 let userListUpdateTimer = null;
 let userListVisible = false; // Track visibility state
+let authToken = null; // Persisted client token obtained via /invite
+let isLoggingOut = false; // Prevent double-invocations of logout
+let isInviteOpen = false; // Prevent multiple invite prompts
 
 function createOverlayWindow() {
   console.log(`🏗️ Creating overlay window...`);
@@ -656,17 +662,33 @@ function showUserStatusMessage(user, status, message) {
   }
 }
 
+function showStatus(type, message, durationMs = 3000) {
+  try {
+    if (!statusWindow || statusWindow.isDestroyed()) return;
+    statusWindow.webContents.send("show-status", {
+      type,
+      message,
+      durationMs,
+    });
+  } catch (_) {}
+}
+
 function connectWebSocket() {
   const token = ++wsConnectToken;
   const url = new URL(WS_URL);
-  if (WS_TOKEN) url.searchParams.set("token", WS_TOKEN);
+  if (!authToken && WS_TOKEN) url.searchParams.set("token", WS_TOKEN); // legacy query param
   if (displayName) url.searchParams.set("name", displayName);
 
   function doConnect() {
     if (token !== wsConnectToken) return; // aborted by newer connect
     wsStatus = "connecting";
     updateTrayMenu();
-    ws = new WebSocket(url.toString());
+    const wsOptions = {};
+    if (authToken) {
+      wsOptions.headers = { Authorization: `Bearer ${authToken}` };
+    }
+    // Important: pass options as THIRD argument; second is subprotocols
+    ws = new WebSocket(url.toString(), [], wsOptions);
 
     ws.on("open", () => {
       console.log("🔌 WS connected successfully");
@@ -726,6 +748,21 @@ function connectWebSocket() {
     });
     ws.on("close", (code, reason) => {
       console.log(`🔌 WS disconnected: code=${code}, reason=${reason}`);
+      // Force logout if server revoked the token
+      if (code === 4001) {
+        console.log("🔐 Token revoked by server — prompting re-auth");
+        // Clear token and prompt for a new invite code without restarting the app
+        try { wsConnectToken++; } catch (_) {}
+        try { clearStoredTokenSilent(); } catch (_) {}
+        authToken = null;
+        wsStatus = "disconnected";
+        updateTrayMenu();
+        if (!isInviteOpen) {
+          showStatus("error", "Token widerrufen — bitte neuen Code eingeben", 4000);
+          openInvitePrompt().then((ok) => { if (ok) connectWebSocket(); });
+        }
+        return;
+      }
       wsStatus = "disconnected";
       updateTrayMenu();
       setTimeout(() => {
@@ -736,6 +773,21 @@ function connectWebSocket() {
       console.error(`❌ WS error:`, error);
       wsStatus = "disconnected";
       updateTrayMenu();
+      // If auth failed during handshake (401), clear token and prompt for a new one
+      try {
+        const msg = String(error && (error.message || error)).toLowerCase();
+        if (msg.includes("401")) {
+          clearStoredTokenSilent();
+          authToken = null;
+          if (!isLoggingOut && !isInviteOpen) {
+            showStatus("error", "Token ungültig – bitte neuen Code eingeben", 4000);
+            openInvitePrompt().then((ok) => {
+              if (ok) connectWebSocket();
+            });
+          }
+          return;
+        }
+      } catch (_) {}
       // handled by 'close' retry
     });
   }
@@ -744,30 +796,52 @@ function connectWebSocket() {
 }
 
 function reconnectWebSocket() {
-  try {
-    wsConnectToken++;
-  } catch (_) {}
+  try { wsConnectToken++; } catch (_) {}
 
-  // Sofort Status auf "connecting" setzen
-  wsStatus = "connecting";
-  updateTrayMenu();
+  // Prüfe Token-Situation zuerst: wenn keiner vorhanden → Invite-Dialog
+  (async () => {
+    const stored = authToken || loadStoredToken();
+    if (!stored) {
+      wsStatus = "connecting";
+      updateTrayMenu();
+      const ok = await openInvitePrompt();
+      if (ok) connectWebSocket();
+      return;
+    }
 
-  try {
-    if (ws) {
-      // WebSocket schließen und sofort neu verbinden
-      ws.close();
-      // Kurz warten, dann neu verbinden
-      setTimeout(() => {
+    // Wenn Token vorhanden → serverseitig validieren; bei 401 → Invite-Dialog
+    try {
+      const resp = await fetch(`${SERVER_URL}/auth-check`, {
+        headers: { Authorization: `Bearer ${stored}` },
+      });
+      if (resp.status === 401) {
+        wsStatus = "connecting";
+        updateTrayMenu();
+        const ok = await openInvitePrompt();
+        if (ok) connectWebSocket();
+        return;
+      }
+      // Für alle anderen Status (inkl. 404, 5xx) nicht prompten, normal reconnecten
+    } catch (_) {
+      // Netzfehler: Hinweis im Status-Overlay anzeigen, dann dennoch verbinden
+      showStatus("warning", "Server nicht erreichbar – verbinde erneut...", 3000);
+      // und weiter unten normal reconnecten
+    }
+
+    // Token scheint ok → normal neu verbinden
+    wsStatus = "connecting";
+    updateTrayMenu();
+    try {
+      if (ws) {
+        ws.close();
+        setTimeout(() => connectWebSocket(), 100);
+      } else {
         connectWebSocket();
-      }, 100);
-    } else {
-      // Kein WebSocket vorhanden, direkt neu verbinden
+      }
+    } catch (_) {
       connectWebSocket();
     }
-  } catch (_) {
-    // Bei Fehler trotzdem neu verbinden
-    connectWebSocket();
-  }
+  })();
 }
 
 function createTray() {
@@ -1244,6 +1318,7 @@ app.whenReady().then(() => {
       registerHotkey(); // Register hotkeys after hamsters are loaded
       return ensureDisplayName();
     })
+    .then(() => ensureAuthToken())
     .then(() => {
       connectWebSocket();
       buildTrayMenu();
@@ -1252,10 +1327,12 @@ app.whenReady().then(() => {
       console.error("❌ Failed to initialize hamsters:", error);
       // Continue with app initialization even if hamsters fail
       registerHotkey(); // Register with empty hamsters
-      ensureDisplayName().then(() => {
-        connectWebSocket();
-        buildTrayMenu();
-      });
+      ensureDisplayName()
+        .then(() => ensureAuthToken())
+        .then(() => {
+          connectWebSocket();
+          buildTrayMenu();
+        });
     });
 
   // Position overlay top-right on primary display
@@ -1295,9 +1372,11 @@ function sendHamsterUpstream(variant, durationMs) {
     console.log(
       `❌ WebSocket not ready: status=${wsStatus}, readyState=${ws?.readyState}`
     );
+    showStatus("warning", "Nicht verbunden – bitte neu authentifizieren", 3000);
+    return;
   }
 
-  // Local echo for the sender
+  // Local echo for the sender (only when actually sent)
   console.log(`👁️ Showing local hamster echo`);
   showHamster(variant, durationMs, displayName);
 }
@@ -1421,14 +1500,9 @@ function openToastPrompt(targetUser = null) {
         showSuccessMessage(target);
       }, 100);
     } else if (message) {
-      // HTTP-Fallback
-      console.log(`❌ WebSocket not ready, using HTTP fallback`);
-      // Hier könnte man HTTP-Fallback implementieren
-
-      // Trotzdem Erfolgsmeldung anzeigen
-      setTimeout(() => {
-        showSuccessMessage(target);
-      }, 100);
+      // Kein Versand ohne WS-Verbindung
+      console.log(`❌ WebSocket not ready, cannot send toast`);
+      showStatus("warning", "Nicht verbunden – bitte Token eingeben", 3000);
     }
     try {
       updateSettings({ lastSeverity: severity });
@@ -1534,6 +1608,18 @@ function buildTrayMenu() {
     },
     { type: "separator" },
 
+    // Logout / Token reset
+    {
+      label: "🔐 Logout (Token zurücksetzen)",
+      click: () => {
+        try {
+          logoutAndRestart();
+        } catch (e) {
+          console.error("Failed to logout and restart:", e);
+        }
+      },
+    },
+
     // Do Not Disturb
     {
       label: "🔕 Do Not Disturb",
@@ -1565,6 +1651,7 @@ function buildTrayMenu() {
           const key = keyNumber === 0 ? "0" : String(keyNumber);
           return {
             label: `  ${hamster}\t\t${cmdKey}⌥${key}`,
+            enabled: wsStatus === "connected",
             click: () => {
               console.log(`🖱️ Tray menu clicked for hamster: ${hamster}`);
               sendHamsterUpstream(hamster, 1500);
@@ -1582,6 +1669,7 @@ function buildTrayMenu() {
     // Send Toast
     {
       label: `💬 Send Toast...\t\t${cmdKey}⌥T`,
+      enabled: wsStatus === "connected",
       click: () => {
         console.log(`🖱️ Tray menu clicked for Send Toast`);
         openToastPrompt();
@@ -1657,19 +1745,27 @@ function showAboutWindow() {
 }
 
 function openNamePrompt() {
-  const nameWin = new BrowserWindow({
-    width: 420,
-    height: 200,
+  const opts = {
+    width: 520,
+    height: 280,
+    useContentSize: true,
     resizable: false,
     modal: true,
     frame: true,
     alwaysOnTop: true,
+    transparent: true,
+    backgroundColor: "#00000000",
     webPreferences: {
       preload: path.join(__dirname, "preload_name.js"),
       contextIsolation: true,
       nodeIntegration: false,
     },
-  });
+  };
+  if (process.platform === "darwin") {
+    opts.vibrancy = "popover";
+    opts.visualEffectState = "active";
+  }
+  const nameWin = new BrowserWindow(opts);
   nameWin.loadFile(path.join(__dirname, "renderer", "name.html"), {
     query: { current: String(displayName || "") },
   });
@@ -1703,6 +1799,247 @@ function openNamePrompt() {
   };
   ipcMain.once("name-submit", onSubmit);
   ipcMain.once("name-cancel", onCancel);
+}
+
+async function logoutAndRestart() {
+  try {
+    if (isLoggingOut) {
+      return; // Already in progress
+    }
+    isLoggingOut = true;
+
+    // Attempt to revoke token on the server (best-effort)
+    const tokenToRevoke = authToken || loadStoredToken();
+    try {
+      if (tokenToRevoke) {
+        await fetch(`${SERVER_URL}/revoke-self`, {
+          method: "DELETE",
+          headers: { Authorization: `Bearer ${tokenToRevoke}` },
+        }).catch(() => {});
+      }
+    } catch (_) {}
+
+    // Close WS if open
+    try { if (ws && ws.readyState === ws.OPEN) ws.close(); } catch (_) {}
+
+    // Clear in-memory token
+    authToken = null;
+
+    // Remove stored token file
+    const p = getAuthPath();
+    try {
+      if (fs.existsSync(p)) {
+        // Ensure file is removed (not just overwritten)
+        if (fs.rmSync) {
+          fs.rmSync(p, { force: true });
+        } else {
+          try { fs.unlinkSync(p); } catch (_) {}
+        }
+      }
+    } catch (e) {
+      console.warn("Failed to delete token file:", e?.message || e);
+    }
+
+    // Note: Electron safeStorage does not persist anything by itself; encryption
+    // is applied to data we store. Deleting the token file clears encrypted data.
+
+    // Inform the user
+    try {
+      await dialog.showMessageBox({
+        type: "info",
+        buttons: ["OK"],
+        defaultId: 0,
+        title: "Logout",
+        message: "Token wurde zurückgesetzt. Die App startet neu.",
+      });
+    } catch (_) {}
+
+    // Relaunch application
+    try {
+      app.relaunch();
+      app.exit(0);
+    } catch (e) {
+      console.error("Failed to relaunch app:", e);
+    }
+  } catch (e) {
+    console.error("logoutAndRestart error:", e);
+  }
+}
+
+// Invite prompt and token storage
+function getAuthPath() {
+  return path.join(app.getPath("userData"), "shoutout-auth.json");
+}
+
+function loadStoredToken() {
+  try {
+    const p = getAuthPath();
+    if (!fs.existsSync(p)) return null;
+    const raw = fs.readFileSync(p, "utf-8");
+    const obj = JSON.parse(raw || "{}");
+    if (obj.tokenEnc && safeStorage?.isEncryptionAvailable?.()) {
+      try {
+        return safeStorage.decryptString(Buffer.from(String(obj.tokenEnc), "base64"));
+      } catch (_) {}
+    }
+    if (obj.token) return String(obj.token);
+  } catch (_) {}
+  return null;
+}
+
+function persistToken(token) {
+  try {
+    const p = getAuthPath();
+    const dir = path.dirname(p);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    let payload = {};
+    if (safeStorage?.isEncryptionAvailable?.()) {
+      const enc = safeStorage.encryptString(String(token));
+      payload = { tokenEnc: Buffer.from(enc).toString("base64"), createdAt: new Date().toISOString() };
+    } else {
+      payload = { token: String(token), createdAt: new Date().toISOString() };
+    }
+    fs.writeFileSync(p, JSON.stringify(payload, null, 2), { mode: 0o600 });
+  } catch (e) {
+    console.error("Failed to persist token:", e);
+  }
+}
+
+function clearStoredTokenSilent() {
+  try {
+    const p = getAuthPath();
+    if (fs.existsSync(p)) {
+      if (fs.rmSync) fs.rmSync(p, { force: true });
+      else try { fs.unlinkSync(p); } catch (_) {}
+    }
+  } catch (_) {}
+}
+
+function openInvitePrompt() {
+  return new Promise((resolve) => {
+    if (isInviteOpen) return resolve(false);
+    isInviteOpen = true;
+    // Temporarily hide overlay-style windows so the modal is fully interactive
+    const wasOverlayVisible = overlayWindow && !overlayWindow.isDestroyed() && overlayWindow.isVisible();
+    const wasStatusVisible = statusWindow && !statusWindow.isDestroyed() && statusWindow.isVisible();
+    const wasReactionVisible = reactionWindow && !reactionWindow.isDestroyed() && reactionWindow.isVisible();
+    const wasUserListVisible = userListWindow && !userListWindow.isDestroyed() && userListWindow.isVisible();
+    try { if (overlayWindow && !overlayWindow.isDestroyed()) overlayWindow.hide(); } catch (_) {}
+    try { if (statusWindow && !statusWindow.isDestroyed()) statusWindow.hide(); } catch (_) {}
+    try { if (reactionWindow && !reactionWindow.isDestroyed()) reactionWindow.hide(); } catch (_) {}
+    try { if (userListWindow && !userListWindow.isDestroyed()) userListWindow.hide(); } catch (_) {}
+
+    const inviteOpts = {
+      width: 540,
+      height: 300,
+      useContentSize: true,
+      resizable: false,
+      modal: true,
+      frame: true,
+      alwaysOnTop: true,
+      transparent: true,
+      backgroundColor: "#00000000",
+      webPreferences: {
+        preload: path.join(__dirname, "preload_invite.js"),
+        contextIsolation: true,
+        nodeIntegration: false,
+      },
+    };
+    if (process.platform === "darwin") {
+      inviteOpts.vibrancy = "popover";
+      inviteOpts.visualEffectState = "active";
+    }
+    const win = new BrowserWindow(inviteOpts);
+
+    // Ensure the invite window is above any overlay windows
+    try { win.setAlwaysOnTop(true, "screen-saver"); } catch (_) {}
+    try { win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true }); } catch (_) {}
+    try { win.focus(); } catch (_) {}
+
+    win.loadFile(path.join(__dirname, "renderer", "invite.html"));
+
+    const onSubmit = async (_evt, payload) => {
+      const code = String(payload?.inviteCode || "").trim();
+      if (!code) {
+        try { win.webContents.send("invite-error", { message: "Bitte Code eingeben" }); } catch (_) {}
+        return;
+      }
+      try {
+        const resp = await fetch(`${SERVER_URL}/invite`, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ inviteCode: code }),
+        });
+        if (!resp.ok) {
+          try { win.webContents.send("invite-error", { message: "Code ungültig" }); } catch (_) {}
+          return;
+        }
+        const data = await resp.json();
+        if (data && data.token) {
+          authToken = String(data.token);
+          persistToken(authToken);
+          try { win.close(); } catch (_) {}
+          resolve(true);
+        } else {
+          try { win.webContents.send("invite-error", { message: "Ungültige Server-Antwort" }); } catch (_) {}
+        }
+      } catch (e) {
+        try { win.webContents.send("invite-error", { message: "Server nicht erreichbar" }); } catch (_) {}
+      }
+    };
+
+    const onCancel = () => {
+      try { ipcMain.removeListener("invite-submit", onSubmit); } catch (_) {}
+      try { win.close(); } catch (_) {}
+      resolve(false);
+    };
+
+    ipcMain.once("invite-submit", onSubmit);
+    ipcMain.once("invite-cancel", onCancel);
+
+    win.on("closed", () => {
+      try { ipcMain.removeListener("invite-submit", onSubmit); } catch (_) {}
+      try { ipcMain.removeListener("invite-cancel", onCancel); } catch (_) {}
+      // Restore previously visible overlay-style windows
+      try { if (overlayWindow && !overlayWindow.isDestroyed() && wasOverlayVisible) overlayWindow.showInactive(); } catch (_) {}
+      try { if (statusWindow && !statusWindow.isDestroyed() && wasStatusVisible) statusWindow.showInactive(); } catch (_) {}
+      try { if (reactionWindow && !reactionWindow.isDestroyed() && wasReactionVisible) reactionWindow.showInactive(); } catch (_) {}
+      try { if (userListWindow && !userListWindow.isDestroyed() && wasUserListVisible) userListWindow.showInactive(); } catch (_) {}
+      isInviteOpen = false;
+    });
+  });
+}
+
+async function ensureAuthToken() {
+  // Try to load stored token; if not present, open invite prompt
+  try {
+    const existing = loadStoredToken();
+    if (existing) {
+      // Validate existing token with server; if invalid, clear and prompt
+      try {
+        const resp = await fetch(`${SERVER_URL}/auth-check`, {
+          headers: { Authorization: `Bearer ${existing}` },
+        });
+        if (resp.status === 200) {
+          authToken = existing;
+          return true;
+        }
+        if (resp.status === 401) {
+          clearStoredTokenSilent();
+          authToken = null;
+          const ok = await openInvitePrompt();
+          return ok;
+        }
+      } catch (_) {
+        // Network error: proceed with existing token; WS layer will retry
+        authToken = existing;
+        return true;
+      }
+    }
+  } catch (_) {}
+  // No token stored -> ask for invite code
+  const ok = await openInvitePrompt();
+  return ok;
 }
 
 async function ensureDisplayName() {

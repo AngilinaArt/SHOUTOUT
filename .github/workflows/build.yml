@@ -24,11 +24,10 @@ jobs:
           cd client
           npm install
 
-      - name: Create production .env file
+      - name: Create production .env file (client)
         run: |
           cd client
           echo "WS_URL=${{ secrets.PROD_WS_URL }}" > .env
-          echo "WS_TOKEN=${{ secrets.PROD_WS_TOKEN }}" >> .env
           echo "SERVER_URL=${{ secrets.PROD_SERVER_URL }}" >> .env
           echo "NODE_ENV=production" >> .env
 
@@ -64,11 +63,10 @@ jobs:
           cd client
           npm install
 
-      - name: Create production .env file
+      - name: Create production .env file (client)
         run: |
           cd client
           echo "WS_URL=${{ secrets.PROD_WS_URL }}" > .env
-          echo "WS_TOKEN=${{ secrets.PROD_WS_TOKEN }}" >> .env
           echo "SERVER_URL=${{ secrets.PROD_SERVER_URL }}" >> .env
           echo "NODE_ENV=production" >> .env
 

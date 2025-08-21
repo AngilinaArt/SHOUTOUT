@@ -160,8 +160,19 @@ npm run dev
 
 ```bash
 PORT=3001
-BROADCAST_SECRET=your-super-secret-token-123
+
+# Auth / Tokens
+# Invite-Modus ist aktiv, sobald INVITE_CODES gesetzt ist ODER bereits Tokens ausgestellt wurden.
+# In Invite-Modus erwarten alle geschützten Endpoints und der WS-Handshake einen ausgegebenen Client-Token.
+INVITE_CODES=supersecret1,supersecret2
+ADMIN_SECRET=super-admin-123
 ALLOW_NO_AUTH=false
+
+# Legacy/Fallback (wenn Invite nicht aktiv ist):
+BROADCAST_SECRET=your-super-secret-token-123
+# Optional separates Legacy-WS-Token (Query ?token=)
+WS_TOKEN=
+
 # Optional: Local translation (offline)
 TRANSLATOR_ENABLED=true
 TRANSLATOR_PROVIDER=ct2
@@ -172,19 +183,29 @@ TRANSLATOR_PROVIDER=ct2
 # CT2_MODEL_EN_DE=/absolute/path/to/ct2_models/en-de
 ```
 
+Notes
+- Invite aktiv: Broadcast-/Admin-APIs akzeptieren nur gültige Tokens (bzw. `ADMIN_SECRET` für Admin‑APIs). WS nutzt bevorzugt `Authorization: Bearer <token>` im Handshake.
+- Invite inaktiv (keine Codes, keine Tokens): Fallback auf `BROADCAST_SECRET` bzw. optional `WS_TOKEN`. Für Produktion `ALLOW_NO_AUTH=false` lassen.
+
 #### Bot (.env)
 
 ```bash
 DISCORD_TOKEN=your-discord-bot-token
 GUILD_ID=optional-guild-id
 HUB_URL=http://localhost:3001
-HUB_SECRET=your-super-secret-token-123
+
+# Wenn Invite aktiv ist, muss der Bot einen ausgegebenen Token verwenden (Authorization: Bearer <token>).
+# Das frühere HUB_SECRET/BROADCAST_SECRET greift dann nicht mehr auf /broadcast.
+# HUB_SECRET kann weiterhin für Legacy/Dev ohne Invite verwendet werden.
+HUB_SECRET=
 ```
 
 #### Client (.env)
 
 ```bash
 WS_URL=ws://localhost:3001/ws
+SERVER_URL=http://localhost:3001
+# Kein WS_TOKEN mehr erforderlich – der Client holt per Invite-Code einen Token
 ```
 
 ### 🏗️ Build & Distribution
@@ -390,14 +411,45 @@ shoutout/
 #### HTTP Endpoints
 
 ```bash
-# Broadcast Event (mit Auth)
-POST /broadcast
-Authorization: Bearer your-secret-token
+# Invite: Austausch Invite-Code gegen Client-Token
+POST /invite
 Content-Type: application/json
+{ "inviteCode": "supersecret1" }
+
+# Token-Check (keine Nebenwirkungen)
+GET /auth-check
+Authorization: Bearer <token>
+
+# Broadcast (geschützt)
+POST /broadcast
+Authorization: Bearer <token>
+Content-Type: application/json
+
+# Self-Revoke (Client kann eigenen Token widerrufen)
+DELETE /revoke-self
+Authorization: Bearer <token>
+
+# Admin API (mit ADMIN_SECRET)
+GET /tokens
+Authorization: Bearer <ADMIN_SECRET>
+
+DELETE /revoke/:tokenOrPrefix
+Authorization: Bearer <ADMIN_SECRET>
+
+# Admin UI (HTML)
+GET /admin
+# Das Secret wird in der UI eingegeben (kein Query-Secret nötig)
 
 # Online Users List
 GET /users
 ```
+
+### 🧭 Onboarding & Tokens
+
+- Erste App-Ausführung: Der Client zeigt eine kleine Eingabemaske „Invite‑Code eingeben“. Nach Erfolg wird der Token lokal gespeichert und der WS‑Handshake nutzt `Authorization: Bearer <token>`.
+- Revoke: Widerruft ein Admin einen Token, trennt der Server die WS‑Verbindung (Code 4001). Der Client löscht den lokalen Token, zeigt die Invite‑Maske und verbindet nach Eingabe erneut – ohne App‑Neustart.
+- Logout: Tray → „🔐 Logout (Token zurücksetzen)“ widerruft best‑effort (`DELETE /revoke-self`), löscht die lokale Datei und startet die App neu, um die Invite‑Maske zu zeigen.
+- Reconnect: Bei manuellem „🔄 Reconnect“ prüft der Client den Token via `/auth-check` und fordert bei 401 den Invite‑Code erneut an.
 
 ---
 

@@ -63,7 +63,12 @@ const server = http.createServer(app);
 
 const PORT = Number(process.env.PORT || 3001);
 const BROADCAST_SECRET = process.env.BROADCAST_SECRET || "change-me";
-const WS_TOKEN = process.env.WS_TOKEN || null; // Optional separate WS token
+const WS_TOKEN = process.env.WS_TOKEN || null; // Optional separate WS token (legacy)
+const ADMIN_SECRET = process.env.ADMIN_SECRET || null; // Admin API secret for token management
+const INVITE_CODES = String(process.env.INVITE_CODES || "")
+  .split(",")
+  .map((s) => s.trim())
+  .filter(Boolean);
 const ALLOW_NO_AUTH = String(process.env.ALLOW_NO_AUTH || "false") === "true";
 const TRANSLATOR_ENABLED = String(process.env.TRANSLATOR_ENABLED || "false") === "true";
 const TRANSLATOR_PROVIDER = String(process.env.TRANSLATOR_PROVIDER || "none");
@@ -89,6 +94,8 @@ if (BROADCAST_SECRET === "change-me" || ALLOW_NO_AUTH) {
 // Configure Helmet to allow cross-origin loading of static resources (e.g., images)
 app.use(
   helmet({
+    // We set a custom CSP for the admin route; disable global CSP to avoid conflicts
+    contentSecurityPolicy: false,
     crossOriginResourcePolicy: { policy: "cross-origin" },
   })
 );
@@ -130,6 +137,80 @@ const wss = new WebSocketServer({ noServer: true });
 // Track clients
 const clients = new Set();
 
+// Simple token store (JSON file persisted) for issued invite tokens
+const configDir = path.join(__dirname, "..", "config");
+const tokensPath = path.join(configDir, "tokens.json");
+let issuedTokens = new Set();
+let issuedTokenMeta = new Map(); // token -> { createdAt }
+
+function loadIssuedTokens() {
+  try {
+    if (!fs.existsSync(configDir)) fs.mkdirSync(configDir, { recursive: true });
+    if (fs.existsSync(tokensPath)) {
+      const raw = fs.readFileSync(tokensPath, "utf-8");
+      const arr = JSON.parse(raw || "[]");
+      if (Array.isArray(arr)) {
+        if (arr.length && typeof arr[0] === "object" && arr[0] !== null) {
+          const tokens = [];
+          for (const it of arr) {
+            if (!it || typeof it.token !== "string") continue;
+            tokens.push(it.token);
+            issuedTokenMeta.set(it.token, { createdAt: String(it.createdAt || new Date().toISOString()) });
+          }
+          issuedTokens = new Set(tokens);
+        } else {
+          // legacy: array of strings
+          issuedTokens = new Set(arr.filter((t) => typeof t === "string"));
+          // initialize meta and upgrade file format
+          for (const t of issuedTokens) {
+            issuedTokenMeta.set(t, { createdAt: new Date().toISOString() });
+          }
+          try { persistIssuedTokens(); } catch (_) {}
+        }
+      }
+    }
+  } catch (_) {
+    issuedTokens = new Set();
+    issuedTokenMeta = new Map();
+  }
+}
+
+function persistIssuedTokens() {
+  try {
+    if (!fs.existsSync(configDir)) fs.mkdirSync(configDir, { recursive: true });
+    const out = Array.from(issuedTokens).map((t) => ({
+      token: t,
+      createdAt: issuedTokenMeta.get(t)?.createdAt || new Date().toISOString(),
+    }));
+    fs.writeFileSync(tokensPath, JSON.stringify(out, null, 2));
+  } catch (_) {}
+}
+
+function generateToken() {
+  try {
+    return require("crypto").randomUUID();
+  } catch (_) {
+    return require("crypto").randomBytes(24).toString("hex");
+  }
+}
+
+function hasInviteSystemEnabled() {
+  // Invite system is considered enabled if any invite code is configured
+  // or if there are already issued tokens present.
+  return INVITE_CODES.length > 0 || issuedTokens.size > 0;
+}
+
+function isTokenValid(token) {
+  if (!token) return false;
+  // If invite system enabled, only accept issued tokens
+  if (hasInviteSystemEnabled()) return issuedTokens.has(token);
+  // Fallback to legacy single-secret when no invite system configured
+  return token === BROADCAST_SECRET || (!!WS_TOKEN && token === WS_TOKEN);
+}
+
+// Load tokens at startup
+loadIssuedTokens();
+
 server.on("upgrade", (request, socket, head) => {
   try {
     const { url } = request;
@@ -140,11 +221,19 @@ server.on("upgrade", (request, socket, head) => {
 
     // Enforce token for WS connections unless ALLOW_NO_AUTH
     const parsed = new URL(url, "http://localhost");
-    const token = parsed.searchParams.get("token");
-    const expected = WS_TOKEN || BROADCAST_SECRET;
+    // Prefer Authorization header if present (Bearer <token>), else ?token=...
+    const authHeader = String(request.headers["authorization"] || "");
+    let token = null;
+    if (authHeader.toLowerCase().startsWith("bearer ")) {
+      token = authHeader.slice("bearer ".length).trim();
+    } else {
+      token = parsed.searchParams.get("token");
+    }
+    const expected = WS_TOKEN || BROADCAST_SECRET; // legacy fallback
 
-    if (!ALLOW_NO_AUTH && expected) {
-      if (!token || token !== expected) {
+    if (!ALLOW_NO_AUTH) {
+      const ok = isTokenValid(token);
+      if (!ok) {
         try {
           socket.write("HTTP/1.1 401 Unauthorized\r\n\r\n");
         } catch (_) {}
@@ -167,6 +256,13 @@ wss.on("connection", (ws, request) => {
     const parsed = new URL(request.url, "http://localhost");
     const name = (parsed.searchParams.get("name") || "Anonymous").slice(0, 32);
     const ip = request.socket.remoteAddress || "unknown";
+    const authHeader = String(request.headers["authorization"] || "");
+    let connToken = null;
+    if (authHeader.toLowerCase().startsWith("bearer ")) {
+      connToken = authHeader.slice("bearer ".length).trim();
+    } else {
+      connToken = parsed.searchParams.get("token");
+    }
 
     // Generiere eindeutige User-ID basierend auf Name + IP + Timestamp
     const uniqueId = `${name}-${ip}-${Date.now()}`;
@@ -178,6 +274,7 @@ wss.on("connection", (ws, request) => {
       status: "online",
       lastSeen: new Date().toISOString(),
       connectedAt: new Date().toISOString(),
+      token: connToken || undefined,
     };
 
     logger.info("WebSocket Connected", {
@@ -185,6 +282,7 @@ wss.on("connection", (ws, request) => {
       userName: name,
       totalClients: clients.size + 1,
       ip: ip,
+      tokenPrefix: connToken ? String(connToken).slice(0, 8) : undefined,
     });
   } catch (_) {
     ws.user = {
@@ -723,8 +821,8 @@ function isAuthorized(req) {
     return false;
   }
 
-  const token = auth.slice("Bearer ".length);
-  const isValid = token === BROADCAST_SECRET;
+  const token = auth.slice("Bearer ".length).trim();
+  const isValid = isTokenValid(token);
 
   if (!isValid) {
     console.log("❌ Unauthorized: Ungültiger Token");
@@ -744,6 +842,380 @@ function logBroadcast(req, eventType) {
 // Routes
 app.get("/health", (req, res) => {
   res.json({ ok: true });
+});
+
+// Simple auth check for client tokens (no side effects)
+app.get("/auth-check", (req, res) => {
+  try {
+    const auth = String(req.header("authorization") || "");
+    let token = null;
+    if (auth.toLowerCase().startsWith("bearer ")) {
+      token = auth.slice("bearer ".length).trim();
+    }
+    if (!ALLOW_NO_AUTH) {
+      if (!isTokenValid(token)) return res.status(401).json({ ok: false });
+    }
+    return res.json({ ok: true });
+  } catch (_) {
+    return res.status(500).json({ ok: false });
+  }
+});
+
+// Admin auth helper
+function isAdminAuthorized(req) {
+  try {
+    const auth = String(req.header("authorization") || "");
+    if (!auth.startsWith("Bearer ")) return false;
+    const token = auth.slice("Bearer ".length).trim();
+    if (!ADMIN_SECRET) return false;
+    return token === ADMIN_SECRET;
+  } catch (_) {
+    return false;
+  }
+}
+
+// List tokens (prefix + createdAt only)
+app.get("/tokens", (req, res) => {
+  if (!isAdminAuthorized(req)) return res.status(401).json({ error: "Unauthorized" });
+  const list = Array.from(issuedTokens).map((t) => ({
+    prefix: String(t).slice(0, 8),
+    createdAt: issuedTokenMeta.get(t)?.createdAt || null,
+  }));
+  res.json({ tokens: list, count: list.length });
+});
+
+// Revoke token by exact value
+app.delete("/revoke/:token", (req, res) => {
+  if (!isAdminAuthorized(req)) return res.status(401).json({ error: "Unauthorized" });
+  const raw = String(req.params.token || "");
+  if (!raw) return res.status(404).json({ error: "Token not found" });
+
+  // If exact match exists, revoke it. Otherwise, treat as prefix.
+  let targetToken = null;
+  if (issuedTokens.has(raw)) {
+    targetToken = raw;
+  } else {
+    const matches = Array.from(issuedTokens).filter((t) => t.startsWith(raw));
+    if (matches.length === 1) {
+      targetToken = matches[0];
+    } else if (matches.length === 0) {
+      return res.status(404).json({ error: "Token not found" });
+    } else {
+      return res.status(400).json({ error: "Ambiguous prefix" });
+    }
+  }
+
+  issuedTokens.delete(targetToken);
+  issuedTokenMeta.delete(targetToken);
+  persistIssuedTokens();
+  const prefix = String(targetToken).slice(0, 8);
+  console.log(`Revoked token ${prefix} by admin`);
+
+  // Close active WS connections that used this token
+  let closed = 0;
+  try {
+    // Close from our tracked set
+    for (const ws of clients) {
+      try {
+        if (ws && ws.readyState === ws.OPEN && ws.user?.token === targetToken) {
+          ws.close(4001, "Token revoked");
+          closed += 1;
+        }
+      } catch (_) {}
+    }
+    // Also iterate native wss.clients for safety
+    for (const ws of wss.clients) {
+      try {
+        if (ws && ws.readyState === ws.OPEN && ws.user?.token === targetToken) {
+          ws.close(4001, "Token revoked");
+          closed += 1;
+        }
+      } catch (_) {}
+    }
+    if (closed > 0) {
+      console.log(`Closed ${closed} WS connection(s) for revoked token ${prefix}`);
+    }
+  } catch (_) {}
+  res.json({ revoked: prefix, closed });
+});
+
+// Self-revoke: allow a client to revoke its own token without admin secret
+app.delete("/revoke-self", (req, res) => {
+  try {
+    // Expect Authorization: Bearer <client-token>
+    const auth = String(req.header("authorization") || "");
+    if (!auth.toLowerCase().startsWith("bearer ")) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+    const token = auth.slice("bearer ".length).trim();
+    if (!token) return res.status(400).json({ error: "invalid_token" });
+    if (!issuedTokens.has(token)) {
+      return res.status(404).json({ error: "Token not found" });
+    }
+
+    issuedTokens.delete(token);
+    issuedTokenMeta.delete(token);
+    persistIssuedTokens();
+    const prefix = token.slice(0, 8);
+    console.log(`Self-revoked token ${prefix}`);
+
+    // Close any active WS connections that used this token
+    let closed = 0;
+    try {
+      for (const ws of clients) {
+        try {
+          if (ws && ws.readyState === ws.OPEN && ws.user?.token === token) {
+            ws.close(4001, "Token revoked");
+            closed += 1;
+          }
+        } catch (_) {}
+      }
+      for (const ws of wss.clients) {
+        try {
+          if (ws && ws.readyState === ws.OPEN && ws.user?.token === token) {
+            ws.close(4001, "Token revoked");
+            closed += 1;
+          }
+        } catch (_) {}
+      }
+      if (closed > 0) {
+        console.log(`Closed ${closed} WS connection(s) for self-revoked token ${prefix}`);
+      }
+    } catch (_) {}
+
+    return res.json({ revoked: prefix, closed });
+  } catch (e) {
+    return res.status(500).json({ error: "revoke_error" });
+  }
+});
+
+// Simple admin dashboard (HTML) protected via ?secret=...
+app.get("/admin", (req, res) => {
+  try {
+    // Serve the Admin UI even without a query secret; the UI will prompt for it.
+    if (!ADMIN_SECRET) {
+      return res.status(401).send("Unauthorized (ADMIN_SECRET not configured)");
+    }
+    res.setHeader("content-type", "text/html; charset=utf-8");
+
+    // Per-request nonces for CSP
+    const crypto = require("crypto");
+    const scriptNonce = crypto.randomBytes(16).toString("base64");
+    const styleNonce = crypto.randomBytes(16).toString("base64");
+
+    // Tight CSP: allow self + nonced inline for script/style
+    res.setHeader(
+      "Content-Security-Policy",
+      [
+        "default-src 'self'",
+        `script-src 'self' 'nonce-${scriptNonce}'`,
+        `style-src 'self' 'nonce-${styleNonce}'`,
+        "img-src 'self'",
+        "connect-src 'self'",
+        "object-src 'none'",
+        "base-uri 'self'",
+        "frame-ancestors 'none'",
+      ].join('; ')
+    );
+
+    const html = `<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Shoutout Admin</title>
+    <style nonce="${styleNonce}">
+      body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; background:#0f1115; color:#e5e7eb; margin:0; }
+      header { padding:16px 20px; border-bottom:1px solid #1f2937; font-weight:600; }
+      main { padding:20px; }
+      table { width:100%; border-collapse: collapse; }
+      th, td { text-align:left; padding:10px 12px; border-bottom:1px solid #1f2937; }
+      th { color:#93c5fd; font-weight:600; }
+      .btn { background:#ef4444; color:#fff; border:none; padding:6px 10px; border-radius:6px; cursor:pointer; }
+      .muted { color:#9ca3af; font-size: 12px; }
+      .wrap { max-width: 900px; margin: 0 auto; }
+      .login { max-width: 460px; margin: 32px auto; background:#111827; border:1px solid #1f2937; border-radius:10px; padding:16px; }
+      .row { display:flex; gap:8px; }
+      input[type="password"] { flex:1; background:#0b1220; color:#e5e7eb; border:1px solid #1f2937; border-radius:8px; padding:10px 12px; outline:none; }
+      .btn-blue { background:#3b82f6; color:#fff; border:none; padding:8px 12px; border-radius:8px; cursor:pointer; }
+      .topbar { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+      .right { display:flex; align-items:center; gap:8px; }
+      .hidden { display:none; }
+      .error { color:#f87171; font-size:13px; min-height:18px; margin-top:8px; }
+      .mb-8 { margin-bottom: 8px; }
+      .mt-8 { margin-top: 8px; }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div class="wrap topbar">
+        <div>Shoutout Admin</div>
+        <div class="right">
+          <button id="logout" class="btn hidden">Logout</button>
+        </div>
+      </div>
+    </header>
+    <main>
+      <div id="login" class="login hidden">
+        <div class="muted mb-8">Admin-Secret eingeben</div>
+        <div class="row">
+          <input id="secret" type="password" placeholder="z. B. super-admin-123" autocomplete="off" />
+          <button id="loginBtn" class="btn-blue">Login</button>
+        </div>
+        <div id="err" class="error"></div>
+        <div class="muted mt-8">Das Secret wird lokal im Browser (sessionStorage) gespeichert.</div>
+      </div>
+
+      <div id="app" class="wrap hidden">
+        <p class="muted">Tokens ansehen und widerrufen. Aktionen verwenden das gespeicherte Admin-Secret für API-Aufrufe.</p>
+        <table id="toktbl">
+          <thead>
+            <tr>
+              <th>Token Prefix</th>
+              <th>Created At</th>
+              <th>Aktion</th>
+            </tr>
+          </thead>
+          <tbody id="tb"></tbody>
+        </table>
+      </div>
+    </main>
+    <script nonce="${scriptNonce}">
+      (function(){
+        const loginBox = document.getElementById('login');
+        const appBox = document.getElementById('app');
+        const logoutBtn = document.getElementById('logout');
+        const secretEl = document.getElementById('secret');
+        const loginBtn = document.getElementById('loginBtn');
+        const errEl = document.getElementById('err');
+
+        function getSecret() {
+          const params = new URLSearchParams(window.location.search);
+          const fromQuery = params.get('secret');
+          if (fromQuery) return fromQuery;
+          try { return sessionStorage.getItem('adminSecret') || ''; } catch(_) { return ''; }
+        }
+        function setSecret(value){ try { sessionStorage.setItem('adminSecret', value || ''); } catch(_) {} }
+        function clearSecret(){ try { sessionStorage.removeItem('adminSecret'); } catch(_) {} }
+        function setError(msg){ errEl.textContent = msg || ''; }
+
+        async function loadTokens(){
+          try{
+            const adminSecret = getSecret();
+            if (!adminSecret) { throw new Error('NO_SECRET'); }
+            const resp = await fetch('/tokens', { headers: { Authorization: 'Bearer ' + adminSecret } });
+            if(!resp.ok){ throw new Error('HTTP ' + resp.status); }
+            const data = await resp.json();
+            const tb = document.getElementById('tb');
+            tb.innerHTML='';
+            (data.tokens || []).forEach(row => {
+              const tr = document.createElement('tr');
+              const tdP = document.createElement('td'); tdP.textContent = row.prefix; tr.appendChild(tdP);
+              const tdC = document.createElement('td'); tdC.textContent = row.createdAt || ''; tr.appendChild(tdC);
+              const tdA = document.createElement('td');
+              const btn = document.createElement('button'); btn.className='btn'; btn.textContent='Revoke';
+              btn.addEventListener('click', async () => {
+                if(!confirm('Diesen Token widerrufen?')) return;
+                try{
+                  const adminSecret = getSecret();
+                  // Revocation by prefix (server accepts exact match or unique prefix)
+                  const r = await fetch('/revoke/' + encodeURIComponent(row.prefix), { method: 'DELETE', headers: { Authorization: 'Bearer ' + adminSecret } });
+                  if(r.ok){
+                    let msg = 'Token ' + row.prefix + ' revoked.';
+                    try { const j = await r.json(); if (typeof j.closed === 'number') msg += ' Closed ' + j.closed + ' connection(s).'; } catch(_){ }
+                    alert(msg);
+                    tr.remove();
+                  }
+                  else { alert('Fehlgeschlagen: ' + r.status); }
+                }catch(e){ alert('Fehler: ' + (e && e.message || e)); }
+              });
+              tdA.appendChild(btn); tr.appendChild(tdA);
+              tb.appendChild(tr);
+            });
+            if((data.tokens || []).length===0){
+              document.getElementById('tb').innerHTML = '<tr><td colspan="3">Keine Tokens</td></tr>';
+            }
+            // UI state
+            loginBox.classList.add('hidden');
+            appBox.classList.remove('hidden');
+            logoutBtn.classList.remove('hidden');
+          }catch(e){
+            // If unauthorized or missing secret, show login box
+            appBox.classList.add('hidden');
+            loginBox.classList.remove('hidden');
+            logoutBtn.classList.add('hidden');
+            if ((e && e.message === 'NO_SECRET') || /401/.test(String(e))) {
+              setError('Bitte gültiges Secret eingeben');
+            } else {
+              setError('Fehler beim Laden');
+            }
+          }
+        }
+        // Login handlers
+        loginBtn.addEventListener('click', async () => {
+          const value = String(secretEl.value || '').trim();
+          if (!value) { setError('Bitte Secret eingeben'); secretEl.focus(); return; }
+          setError('');
+          setSecret(value);
+          await loadTokens();
+        });
+        secretEl.addEventListener('keydown', (e) => { if (e.key === 'Enter') loginBtn.click(); });
+        logoutBtn.addEventListener('click', () => { clearSecret(); loadTokens(); });
+
+        // Auto-attempt using query or stored secret
+        loadTokens();
+      })();
+    </script>
+  </body>
+</html>`;
+    res.send(html);
+  } catch (e) {
+    res.status(500).send("Admin page error");
+  }
+});
+
+// Quietly handle favicon requests from browsers
+app.get('/favicon.ico', (_req, res) => res.status(204).end());
+
+// Invite endpoint: exchange inviteCode for a client token
+app.post("/invite", express.json({ limit: "64kb" }), (req, res) => {
+  try {
+    const inviteCode = String(req.body?.inviteCode || "").trim();
+    if (!inviteCode) {
+      return res.status(400).json({ error: "invalid_invite_code" });
+    }
+
+    // Support invite codes from env or from config/invites.json
+    let validCodes = [...INVITE_CODES];
+    try {
+      const invitePath = path.join(__dirname, "..", "config", "invites.json");
+      if (fs.existsSync(invitePath)) {
+        const arr = JSON.parse(fs.readFileSync(invitePath, "utf-8"));
+        if (Array.isArray(arr)) {
+          validCodes = [...new Set([...validCodes, ...arr.map((s) => String(s).trim())])].filter(Boolean);
+        }
+      }
+    } catch (_) {}
+
+    if (!validCodes.includes(inviteCode)) {
+      logger.warn("Invite Failed", { event: "invite_failed", ip: req.ip });
+      return res.status(403).json({ error: "forbidden" });
+    }
+
+    const token = generateToken();
+    issuedTokens.add(token);
+    issuedTokenMeta.set(token, { createdAt: new Date().toISOString() });
+    persistIssuedTokens();
+
+    logger.info("Invite Issued", {
+      event: "invite_issued",
+      ip: req.ip,
+      tokenPrefix: token.slice(0, 8),
+    });
+    return res.json({ token });
+  } catch (e) {
+    return res.status(500).json({ error: "invite_error" });
+  }
 });
 
 // Hamster Assets API
