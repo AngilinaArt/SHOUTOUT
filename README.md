@@ -301,16 +301,20 @@ open "/Applications/Hamster & Toast.app"
 
 ### 🎯 Tray Menu
 
-- **🟢 Your name** - Aktueller Status und Name
-- **✏️ Change Name** - Namen ändern
-- **🔄 Reconnect** - WebSocket neu verbinden
-- **🔕 Do Not Disturb** - Störungen blockieren
-- **🚀 Autostart** - Beim Login starten
-- **🐹 Send hamster** - Hamster-Varianten
-- **💬 Send Toast** - Nachricht senden
-- **🌐 Translate** - DE↔EN Übersetzung (lokal)
-- **👥 Show Online Users** - Online-User anzeigen
-- **❌ Quit** - App beenden
+- Statuszeile: „🟢 Your name: … (Online/…)“ — nicht klickbar
+- ✏️ Change Name — aktiv wenn verbunden
+- 🔄 Reconnect — immer verfügbar (außer beim Verbinden)
+- 🔐 Logout (Token zurücksetzen) — aktiv wenn verbunden
+- 🔕 Do Not Disturb — aktiv wenn verbunden
+- 🚀 Autostart — aktiv wenn verbunden
+- —
+- 🐹 Send hamster — aktiv wenn verbunden
+- 💬 Send Toast… — aktiv wenn verbunden
+- 🌐 Translate… — aktiv wenn verbunden
+- 👥 Show Online Users — aktiv wenn verbunden
+- ℹ️ About Shoutout — aktiv wenn verbunden
+- —
+- ❌ Quit — immer verfügbar
 
 ### 💬 Toast System
 
@@ -332,38 +336,48 @@ open "/Applications/Hamster & Toast.app"
 - **Styling**: CSS Grid, Flexbox, Glass Effects, Animations
 - **Translation (optional, offline)**: CTranslate2 + SentencePiece + OPUS-MT (DE↔EN)
 
-### 📁 Projektstruktur
+### 📁 Projektstruktur (aktuell)
 
 ```
 shoutout/
-├── client/                    # Electron Desktop App
-│   ├── main.js              # Hauptprozess (Tray, Overlays, WS)
-│   ├── preload.js           # IPC Bridge für Overlay
-│   ├── preload_compose.js   # IPC Bridge für Toast-Compose
-│   ├── preload_name.js      # IPC Bridge für Name-Änderung
-│   ├── preload_status.js    # IPC Bridge für Status-Overlay
-│   ├── preload_reaction.js  # IPC Bridge für Reaction-Overlay
-│   ├── preload_userlist.js  # IPC Bridge für User-List
-│   ├── renderer/            # UI-Komponenten
-│   │   ├── overlay.html     # Haupt-Overlay
-│   │   ├── overlay.js       # Overlay-Logic
-│   │   ├── compose.html     # Toast-Erstellung
-│   │   ├── name.html        # Name-Änderung
-│   │   ├── status.html      # Status-Overlay
-│   │   ├── reaction.html    # Reaction-Overlay
-│   │   ├── userlist.html    # Online User List
-│   │   ├── userlist.js      # User List Logic
-│   │   ├── status.js        # Status Logic
-│   │   ├── reaction.js      # Reaction Logic
-│   │   └── style.css        # Styling
-│   └── assets/              # Bilder und Icons
-│       ├── icon/            # App Icons
-│       └── hamsters/        # Hamster-Varianten
-├── server/                   # WebSocket Hub
-│   └── src/index.js         # Express + WS Server
-├── bot/                      # Discord Bot
-│   └── src/index.js         # Bot Logic + Commands
-└── package.json              # Workspace Management
+├── client/                         # Electron Desktop App
+│   ├── main.js                   # Hauptprozess (Tray, Overlays, WS)
+│   ├── preload.js                # IPC Bridge (Overlay)
+│   ├── preload_compose.js        # IPC Bridge (Toast-Compose)
+│   ├── preload_name.js           # IPC Bridge (Name-Änderung)
+│   ├── preload_status.js         # IPC Bridge (Status-Overlay)
+│   ├── preload_reaction.js       # IPC Bridge (Reaction-Overlay)
+│   ├── preload_userlist.js       # IPC Bridge (User-List)
+│   ├── preload_invite.js         # IPC Bridge (Invite)
+│   ├── preload_translate.js      # IPC Bridge (Translate)
+│   ├── preload_about.js          # IPC Bridge (About)
+│   ├── renderer/
+│   │   ├── overlay.html          # Haupt-Overlay
+│   │   ├── overlay.js            # Overlay-Logic (klassisch)
+│   │   ├── overlay-new.js        # Overlay-Logic (neu)
+│   │   ├── compose.html          # Toast-Erstellung (Glass)
+│   │   ├── name.html             # Name-Änderung (Glass)
+│   │   ├── invite.html           # Invite-Dialog (Glass)
+│   │   ├── translate.html        # Translate (optional)
+│   │   ├── status.html/js        # Status-Overlay
+│   │   ├── reaction.html/js      # Reaction-Overlay
+│   │   ├── userlist.html/js      # Online User List
+│   │   ├── about.html            # About-Fenster
+│   │   └── style.css             # Gemeinsame Styles
+│   └── assets/
+│       ├── icon/                 # App Icons
+│       └── hamsters/             # Hamster-Varianten
+├── server/                        # WebSocket Hub + HTTP API
+│   ├── src/index.js              # Express + WS Server
+│   ├── config/
+│   │   ├── tokens.json           # Ausgestellte Tokens (gitignored)
+│   │   └── invites.json          # Optionale Invite-Codes (Array)
+│   ├── assets/hamsters/          # Serverseitige Hamster-Bilder
+│   └── logs/                     # Winston Logfiles
+├── bot/                           # Discord Bot (optional)
+│   └── src/index.js              # Bot Logic + Commands
+├── .github/workflows/build.yml    # Build-Pipeline (ohne WS_TOKEN)
+└── package.json                   # Workspace Management
 ```
 
 ### 🔌 API Endpoints
@@ -438,11 +452,24 @@ Authorization: Bearer <ADMIN_SECRET>
 
 # Admin UI (HTML)
 GET /admin
-# Das Secret wird in der UI eingegeben (kein Query-Secret nötig)
+# UI mit Login-Feld; Admin-Secret wird in der Sitzung (sessionStorage) gespeichert
 
 # Online Users List
 GET /users
 ```
+
+#### Admin Utilities
+
+- Token-Eigentümer ändern (Admin):
+
+```bash
+PATCH /reassign-owner/:tokenOrPrefix
+Authorization: Bearer <ADMIN_SECRET>
+Content-Type: application/json
+{ "ownerId": "<new-user-id>" }
+```
+
+Hinweis: Der Server trennt bestehende Verbindungen des Tokens sofort (4001 „Token owner changed“); Clients müssen sich neu authentifizieren.
 
 ### 🧭 Onboarding & Tokens
 
@@ -450,6 +477,19 @@ GET /users
 - Revoke: Widerruft ein Admin einen Token, trennt der Server die WS‑Verbindung (Code 4001). Der Client löscht den lokalen Token, zeigt die Invite‑Maske und verbindet nach Eingabe erneut – ohne App‑Neustart.
 - Logout: Tray → „🔐 Logout (Token zurücksetzen)“ widerruft best‑effort (`DELETE /revoke-self`), löscht die lokale Datei und startet die App neu, um die Invite‑Maske zu zeigen.
 - Reconnect: Bei manuellem „🔄 Reconnect“ prüft der Client den Token via `/auth-check` und fordert bei 401 den Invite‑Code erneut an.
+
+### 🔐 Ownership Binding
+
+- Jeder ausgegebene Token wird an eine stabile `ownerId` (UserID) gebunden; optional wird eine `deviceId` gespeichert.
+- Der Client erzeugt/persistiert `userId` und `deviceId` in `client` → `shoutout-user.json` und sendet diese bei:
+  - Invite: `POST /invite { inviteCode, ownerId, deviceId }`
+  - WS-Handshake: Header `x-client-user: <userId>`, `x-client-device: <deviceId>`
+  - Auth-Check: `GET /auth-check` mit `x-client-user`
+- Server prüft im Invite‑Modus, dass `x-client-user` mit der beim Token gespeicherten `ownerId` übereinstimmt:
+  - WS: 401 bei Mismatch (Client re‑authentifiziert)
+  - `/auth-check`: 401 bei Mismatch
+  - `/broadcast`: 401 bei Mismatch (kein HTTP‑Bypass)
+- Admin UI zeigt zusätzlich den aktuellen Anzeigenamen (falls verbunden), sowie Device‑Prefix und `lastUsedAt`.
 
 ---
 

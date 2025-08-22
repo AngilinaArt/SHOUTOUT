@@ -95,6 +95,8 @@ let userListVisible = false; // Track visibility state
 let authToken = null; // Persisted client token obtained via /invite
 let isLoggingOut = false; // Prevent double-invocations of logout
 let isInviteOpen = false; // Prevent multiple invite prompts
+let userId = null; // Stable user identifier
+let deviceId = null; // Stable device identifier
 
 function createOverlayWindow() {
   console.log(`🏗️ Creating overlay window...`);
@@ -685,7 +687,11 @@ function connectWebSocket() {
     updateTrayMenu();
     const wsOptions = {};
     if (authToken) {
-      wsOptions.headers = { Authorization: `Bearer ${authToken}` };
+      wsOptions.headers = {
+        Authorization: `Bearer ${authToken}`,
+        "x-client-user": String(userId || ""),
+        "x-client-device": String(deviceId || ""),
+      };
     }
     // Important: pass options as THIRD argument; second is subprotocols
     ws = new WebSocket(url.toString(), [], wsOptions);
@@ -812,7 +818,7 @@ function reconnectWebSocket() {
     // Wenn Token vorhanden → serverseitig validieren; bei 401 → Invite-Dialog
     try {
       const resp = await fetch(`${SERVER_URL}/auth-check`, {
-        headers: { Authorization: `Bearer ${stored}` },
+        headers: { Authorization: `Bearer ${stored}`, "x-client-user": String(userId || "") },
       });
       if (resp.status === 401) {
         wsStatus = "connecting";
@@ -1318,7 +1324,7 @@ app.whenReady().then(() => {
       registerHotkey(); // Register hotkeys after hamsters are loaded
       return ensureDisplayName();
     })
-    .then(() => ensureAuthToken())
+    .then(() => { ensureUserAndDeviceIds(); return ensureAuthToken(); })
     .then(() => {
       connectWebSocket();
       buildTrayMenu();
@@ -1328,7 +1334,7 @@ app.whenReady().then(() => {
       // Continue with app initialization even if hamsters fail
       registerHotkey(); // Register with empty hamsters
       ensureDisplayName()
-        .then(() => ensureAuthToken())
+        .then(() => { ensureUserAndDeviceIds(); return ensureAuthToken(); })
         .then(() => {
           connectWebSocket();
           buildTrayMenu();
@@ -1566,6 +1572,32 @@ function updateSettings(patch) {
   } catch (_) {}
 }
 
+function ensureUserAndDeviceIds() {
+  try {
+    const curr = readSettings() || {};
+    let changed = false;
+    if (!curr.userId) {
+      try { curr.userId = require("crypto").randomUUID(); } catch (_) { curr.userId = `user-${Date.now()}`; }
+      changed = true;
+    }
+    if (!curr.deviceId) {
+      try { curr.deviceId = require("crypto").randomUUID(); } catch (_) { curr.deviceId = `device-${Date.now()}`; }
+      changed = true;
+    }
+    if (changed) updateSettings(curr);
+    userId = curr.userId;
+    deviceId = curr.deviceId;
+  } catch (_) {
+    try {
+      userId = require("crypto").randomUUID();
+      deviceId = require("crypto").randomUUID();
+    } catch (_) {
+      userId = `user-${Date.now()}`;
+      deviceId = `device-${Date.now()}`;
+    }
+  }
+}
+
 function buildTrayMenu() {
   console.log(`🏗️ buildTrayMenu called`);
   if (!tray) {
@@ -1591,16 +1623,17 @@ function buildTrayMenu() {
   };
 
   const statusInfo = getStatusInfo();
+  const isActive = wsStatus === "connected";
 
   const template = [
     // User Info with Status
     {
-      label: `${statusInfo.emoji} Your name: ${displayName || "Anonymous"} (${
+      label: `${statusInfo.emoji} Your name: ${displayName || "Anonymous"} (${ 
         statusInfo.text
       })`,
       enabled: false,
     },
-    { label: "✏️ Change Name", click: () => openNamePrompt() },
+    { label: "✏️ Change Name", click: () => openNamePrompt(), enabled: isActive },
     {
       label: "🔄 Reconnect",
       click: () => reconnectWebSocket(),
@@ -1618,6 +1651,7 @@ function buildTrayMenu() {
           console.error("Failed to logout and restart:", e);
         }
       },
+      enabled: isActive,
     },
 
     // Do Not Disturb
@@ -1628,6 +1662,7 @@ function buildTrayMenu() {
       click: (item) => {
         updateDNDStatus(item.checked);
       },
+      enabled: isActive,
     },
     { type: "separator" },
 
@@ -1639,6 +1674,7 @@ function buildTrayMenu() {
       click: (item) => {
         updateAutostartStatus(item.checked);
       },
+      enabled: isActive,
     },
     { type: "separator" },
 
@@ -1651,7 +1687,7 @@ function buildTrayMenu() {
           const key = keyNumber === 0 ? "0" : String(keyNumber);
           return {
             label: `  ${hamster}\t\t${cmdKey}⌥${key}`,
-            enabled: wsStatus === "connected",
+            enabled: isActive,
             click: () => {
               console.log(`🖱️ Tray menu clicked for hamster: ${hamster}`);
               sendHamsterUpstream(hamster, 1500);
@@ -1669,7 +1705,7 @@ function buildTrayMenu() {
     // Send Toast
     {
       label: `💬 Send Toast...\t\t${cmdKey}⌥T`,
-      enabled: wsStatus === "connected",
+      enabled: isActive,
       click: () => {
         console.log(`🖱️ Tray menu clicked for Send Toast`);
         openToastPrompt();
@@ -1678,6 +1714,7 @@ function buildTrayMenu() {
     // Translate
     {
       label: `🌐 Translate…`,
+      enabled: isActive,
       click: () => {
         console.log(`🖱️ Tray menu clicked for Translate`);
         openTranslateWindow();
@@ -1688,6 +1725,7 @@ function buildTrayMenu() {
     // Show Online Users
     {
       label: `👥 Show Online Users`,
+      enabled: isActive,
       click: () => {
         console.log(`🖱️ Tray menu clicked for Show Online Users`);
         showOnlineUsers();
@@ -1698,6 +1736,7 @@ function buildTrayMenu() {
     // About/Version
     {
       label: "ℹ️ About Shoutout",
+      enabled: isActive,
       click: () => {
         console.log(`🖱️ Tray menu clicked for About`);
         showAboutWindow();
@@ -1968,7 +2007,7 @@ function openInvitePrompt() {
         const resp = await fetch(`${SERVER_URL}/invite`, {
           method: "POST",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify({ inviteCode: code }),
+          body: JSON.stringify({ inviteCode: code, ownerId: String(userId || ""), deviceId: String(deviceId || "") }),
         });
         if (!resp.ok) {
           try { win.webContents.send("invite-error", { message: "Code ungültig" }); } catch (_) {}
@@ -2018,7 +2057,7 @@ async function ensureAuthToken() {
       // Validate existing token with server; if invalid, clear and prompt
       try {
         const resp = await fetch(`${SERVER_URL}/auth-check`, {
-          headers: { Authorization: `Bearer ${existing}` },
+          headers: { Authorization: `Bearer ${existing}`, "x-client-user": String(userId || "") },
         });
         if (resp.status === 200) {
           authToken = existing;

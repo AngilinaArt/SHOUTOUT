@@ -21,6 +21,21 @@ All notable changes to this project will be documented in this file.
 - feature(server/auth-check): add `GET /auth-check` for clients to validate their token without side effects (200 or 401).
 - improvement(client/reconnect): `Reconnect` now opens the invite prompt if no token is stored or if `/auth-check` returns 401 for the current token; otherwise proceeds to reconnect.
 
+## 2025-08-22 — Owner Binding, Admin UI, Ghosting Fixes
+
+- feature(server/owner-binding): tokens now carry metadata `{ ownerId, deviceId, createdAt, lastUsedAt }`. WS handshake and `/auth-check` enforce that header `x-client-user` matches the token's `ownerId` (401 on mismatch). `/broadcast` authorization also checks the owner to prevent HTTP bypass.
+- feature(client/ids): client persists stable `userId` and `deviceId` in `shoutout-user.json` and sends them on `/invite` and WS headers (`x-client-user`, `x-client-device`).
+- feature(server/admin-ui/columns): admin token list shows Owner (prefix), Name (current display name if connected), Device (prefix), Last Used.
+- feature(server/admin/reassign-owner): added `PATCH /reassign-owner/:token` (admin only) to change a token's ownerId; all WS using that token are closed with code `4001` ("Token owner changed"). Admin UI adds an “Owner…” action per row.
+- fix(server/invite-disable): `/invite` returns 403 `invite_disabled` when no invite codes are configured (neither env `INVITE_CODES` nor `server/config/invites.json`).
+- change(client/revoke-flow): when a token is revoked or owner changed (WS code 4001), client clears local token, shows re-auth prompt, and reconnects after success (no app restart).
+- fix(client/logout-dialog): prevent double dialog on logout with a reentrancy guard; logout now best‑effort calls `/revoke-self` then restarts.
+- improvement(client/tray-gating): when not connected, only “🔄 Reconnect” and “❌ Quit” remain clickable; all other actions (Change Name, Toast, Hamsters, Translate, Online Users, About, Logout, DND, Autostart) are disabled.
+- improvement(client/reconnect/telemetry): added `/auth-check` usage with `x-client-user`; status overlay warns on temporary server unreachability.
+- improvement(client/invite+name UI): refreshed to glass style, enlarged, and aligned with Compose window. Applied macOS ghosting workarounds (compositing hints, stable blur backplate, native vibrancy on macOS).
+- improvement(server/admin-csp+login): CSP hardened via nonces; Admin UI no longer requires `?secret=` in URL — shows a login field and stores secret in sessionStorage for API calls. Favicon handled with 204.
+- ops(ci): removed `WS_TOKEN` from client build workflow; client relies on invite/token onboarding.
+
 ## 2025-08-21 — Invite/Auth, Admin Dashboard, Force Logout
 
 - feature(server/invite): added POST `/invite` to exchange a valid invite code for a client token. Invite codes are read from `INVITE_CODES` env or optional `server/config/invites.json`.

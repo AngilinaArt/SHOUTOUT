@@ -141,7 +141,7 @@ const clients = new Set();
 const configDir = path.join(__dirname, "..", "config");
 const tokensPath = path.join(configDir, "tokens.json");
 let issuedTokens = new Set();
-let issuedTokenMeta = new Map(); // token -> { createdAt }
+let issuedTokenMeta = new Map(); // token -> { createdAt, ownerId?, deviceId?, lastUsedAt? }
 
 function loadIssuedTokens() {
   try {
@@ -155,7 +155,12 @@ function loadIssuedTokens() {
           for (const it of arr) {
             if (!it || typeof it.token !== "string") continue;
             tokens.push(it.token);
-            issuedTokenMeta.set(it.token, { createdAt: String(it.createdAt || new Date().toISOString()) });
+            issuedTokenMeta.set(it.token, {
+              createdAt: String(it.createdAt || new Date().toISOString()),
+              ownerId: it.ownerId || null,
+              deviceId: it.deviceId || null,
+              lastUsedAt: it.lastUsedAt || null,
+            });
           }
           issuedTokens = new Set(tokens);
         } else {
@@ -163,7 +168,7 @@ function loadIssuedTokens() {
           issuedTokens = new Set(arr.filter((t) => typeof t === "string"));
           // initialize meta and upgrade file format
           for (const t of issuedTokens) {
-            issuedTokenMeta.set(t, { createdAt: new Date().toISOString() });
+            issuedTokenMeta.set(t, { createdAt: new Date().toISOString(), ownerId: null, deviceId: null, lastUsedAt: null });
           }
           try { persistIssuedTokens(); } catch (_) {}
         }
@@ -181,6 +186,9 @@ function persistIssuedTokens() {
     const out = Array.from(issuedTokens).map((t) => ({
       token: t,
       createdAt: issuedTokenMeta.get(t)?.createdAt || new Date().toISOString(),
+      ownerId: issuedTokenMeta.get(t)?.ownerId || null,
+      deviceId: issuedTokenMeta.get(t)?.deviceId || null,
+      lastUsedAt: issuedTokenMeta.get(t)?.lastUsedAt || null,
     }));
     fs.writeFileSync(tokensPath, JSON.stringify(out, null, 2));
   } catch (_) {}
@@ -206,6 +214,17 @@ function isTokenValid(token) {
   if (hasInviteSystemEnabled()) return issuedTokens.has(token);
   // Fallback to legacy single-secret when no invite system configured
   return token === BROADCAST_SECRET || (!!WS_TOKEN && token === WS_TOKEN);
+}
+
+function isTokenOwnerValid(token, ownerId) {
+  if (!hasInviteSystemEnabled()) return true;
+  const meta = issuedTokenMeta.get(token);
+  if (!meta || !meta.ownerId) return false;
+  return String(meta.ownerId) === String(ownerId || "");
+}
+
+function getTokenMeta(token) {
+  try { return issuedTokenMeta.get(token) || null; } catch (_) { return null; }
 }
 
 // Load tokens at startup
@@ -240,6 +259,24 @@ server.on("upgrade", (request, socket, head) => {
         socket.destroy();
         return;
       }
+      if (hasInviteSystemEnabled()) {
+        const ownerHeader = String(request.headers["x-client-user"] || "").trim();
+        const meta = getTokenMeta(token);
+        const ownOk = isTokenOwnerValid(token, ownerHeader);
+        if (!ownOk) {
+          try {
+            console.warn("WS owner check failed", {
+              event: "ws_owner_mismatch",
+              tokenPrefix: token ? String(token).slice(0, 8) : null,
+              headerOwnerPrefix: ownerHeader ? ownerHeader.slice(0, 8) : null,
+              storedOwnerPrefix: meta?.ownerId ? String(meta.ownerId).slice(0, 8) : null,
+            });
+          } catch (_) {}
+          try { socket.write("HTTP/1.1 401 Unauthorized\r\n\r\n"); } catch (_) {}
+          socket.destroy();
+          return;
+        }
+      }
     }
 
     wss.handleUpgrade(request, socket, head, (ws) => {
@@ -266,6 +303,8 @@ wss.on("connection", (ws, request) => {
 
     // Generiere eindeutige User-ID basierend auf Name + IP + Timestamp
     const uniqueId = `${name}-${ip}-${Date.now()}`;
+    const ownerHeader = String(request.headers["x-client-user"] || "").trim();
+    const deviceHeader = String(request.headers["x-client-device"] || "").trim();
 
     ws.user = {
       name,
@@ -275,6 +314,8 @@ wss.on("connection", (ws, request) => {
       lastSeen: new Date().toISOString(),
       connectedAt: new Date().toISOString(),
       token: connToken || undefined,
+      ownerId: ownerHeader || undefined,
+      deviceId: deviceHeader || undefined,
     };
 
     logger.info("WebSocket Connected", {
@@ -283,7 +324,17 @@ wss.on("connection", (ws, request) => {
       totalClients: clients.size + 1,
       ip: ip,
       tokenPrefix: connToken ? String(connToken).slice(0, 8) : undefined,
+      ownerPrefix: ownerHeader ? String(ownerHeader).slice(0, 8) : undefined,
+      devicePrefix: deviceHeader ? String(deviceHeader).slice(0, 8) : undefined,
     });
+    try {
+      if (connToken && issuedTokens.has(connToken)) {
+        const meta = issuedTokenMeta.get(connToken) || {};
+        meta.lastUsedAt = new Date().toISOString();
+        issuedTokenMeta.set(connToken, meta);
+        persistIssuedTokens();
+      }
+    } catch (_) {}
   } catch (_) {
     ws.user = {
       name: "Anonymous",
@@ -828,7 +879,16 @@ function isAuthorized(req) {
     console.log("❌ Unauthorized: Ungültiger Token");
   }
 
-  return isValid;
+  if (!isValid) return false;
+  if (hasInviteSystemEnabled()) {
+    const ownerHeader = String(req.header("x-client-user") || "").trim();
+    const ownOk = isTokenOwnerValid(token, ownerHeader);
+    if (!ownOk) {
+      console.log("❌ Unauthorized: Owner mismatch for token");
+      return false;
+    }
+  }
+  return true;
 }
 
 function logBroadcast(req, eventType) {
@@ -854,6 +914,10 @@ app.get("/auth-check", (req, res) => {
     }
     if (!ALLOW_NO_AUTH) {
       if (!isTokenValid(token)) return res.status(401).json({ ok: false });
+      if (hasInviteSystemEnabled()) {
+        const ownerHeader = String(req.header("x-client-user") || "").trim();
+        if (!isTokenOwnerValid(token, ownerHeader)) return res.status(401).json({ ok: false });
+      }
     }
     return res.json({ ok: true });
   } catch (_) {
@@ -877,10 +941,34 @@ function isAdminAuthorized(req) {
 // List tokens (prefix + createdAt only)
 app.get("/tokens", (req, res) => {
   if (!isAdminAuthorized(req)) return res.status(401).json({ error: "Unauthorized" });
-  const list = Array.from(issuedTokens).map((t) => ({
-    prefix: String(t).slice(0, 8),
-    createdAt: issuedTokenMeta.get(t)?.createdAt || null,
-  }));
+  const list = Array.from(issuedTokens).map((t) => {
+    // Try to resolve current display name from active connections using this token
+    let currentName = null;
+    try {
+      for (const ws of clients) {
+        if (ws && ws.readyState === ws.OPEN && ws.user?.token === t) {
+          currentName = ws.user?.name || null;
+          break;
+        }
+      }
+      if (!currentName) {
+        for (const ws of wss.clients) {
+          if (ws && ws.readyState === ws.OPEN && ws.user?.token === t) {
+            currentName = ws.user?.name || null;
+            break;
+          }
+        }
+      }
+    } catch (_) {}
+    return {
+      prefix: String(t).slice(0, 8),
+      createdAt: issuedTokenMeta.get(t)?.createdAt || null,
+      ownerId: issuedTokenMeta.get(t)?.ownerId || null,
+      deviceId: issuedTokenMeta.get(t)?.deviceId || null,
+      lastUsedAt: issuedTokenMeta.get(t)?.lastUsedAt || null,
+      currentName,
+    };
+  });
   res.json({ tokens: list, count: list.length });
 });
 
@@ -937,6 +1025,53 @@ app.delete("/revoke/:token", (req, res) => {
     }
   } catch (_) {}
   res.json({ revoked: prefix, closed });
+});
+
+// Reassign token ownerId (admin only)
+app.patch("/reassign-owner/:token", express.json({ limit: "32kb" }), (req, res) => {
+  if (!isAdminAuthorized(req)) return res.status(401).json({ error: "Unauthorized" });
+  const raw = String(req.params.token || "").trim();
+  const newOwner = String(req.body?.ownerId || "").trim();
+  if (!raw) return res.status(404).json({ error: "Token not found" });
+  if (!newOwner) return res.status(400).json({ error: "invalid_owner" });
+
+  let targetToken = null;
+  if (issuedTokens.has(raw)) {
+    targetToken = raw;
+  } else {
+    const matches = Array.from(issuedTokens).filter((t) => t.startsWith(raw));
+    if (matches.length === 1) targetToken = matches[0];
+  }
+  if (!targetToken) return res.status(404).json({ error: "Token not found" });
+
+  // Update metadata
+  const meta = issuedTokenMeta.get(targetToken) || { createdAt: new Date().toISOString() };
+  meta.ownerId = newOwner;
+  issuedTokenMeta.set(targetToken, meta);
+  persistIssuedTokens();
+
+  // Close any active WS connections for this token to force re-auth with correct owner
+  let closed = 0;
+  try {
+    for (const ws of clients) {
+      try {
+        if (ws && ws.readyState === ws.OPEN && ws.user?.token === targetToken) {
+          ws.close(4001, "Token owner changed");
+          closed += 1;
+        }
+      } catch (_) {}
+    }
+    for (const ws of wss.clients) {
+      try {
+        if (ws && ws.readyState === ws.OPEN && ws.user?.token === targetToken) {
+          ws.close(4001, "Token owner changed");
+          closed += 1;
+        }
+      } catch (_) {}
+    }
+  } catch (_) {}
+
+  return res.json({ ok: true, tokenPrefix: targetToken.slice(0, 8), ownerPrefix: newOwner.slice(0, 8), closed });
 });
 
 // Self-revoke: allow a client to revoke its own token without admin secret
@@ -1073,6 +1208,10 @@ app.get("/admin", (req, res) => {
             <tr>
               <th>Token Prefix</th>
               <th>Created At</th>
+              <th>Owner</th>
+              <th>Name</th>
+              <th>Device</th>
+              <th>Last Used</th>
               <th>Aktion</th>
             </tr>
           </thead>
@@ -1112,8 +1251,14 @@ app.get("/admin", (req, res) => {
               const tr = document.createElement('tr');
               const tdP = document.createElement('td'); tdP.textContent = row.prefix; tr.appendChild(tdP);
               const tdC = document.createElement('td'); tdC.textContent = row.createdAt || ''; tr.appendChild(tdC);
+              const tdO = document.createElement('td'); tdO.textContent = row.ownerId ? (row.ownerId.slice(0,8) + '…') : ''; tr.appendChild(tdO);
+              const tdN = document.createElement('td'); tdN.textContent = row.currentName || ''; tr.appendChild(tdN);
+              const tdD = document.createElement('td'); tdD.textContent = row.deviceId ? (row.deviceId.slice(0,8) + '…') : ''; tr.appendChild(tdD);
+              const tdL = document.createElement('td'); tdL.textContent = row.lastUsedAt || ''; tr.appendChild(tdL);
               const tdA = document.createElement('td');
+              // Revoke button
               const btn = document.createElement('button'); btn.className='btn'; btn.textContent='Revoke';
+              btn.style.marginRight = '8px';
               btn.addEventListener('click', async () => {
                 if(!confirm('Diesen Token widerrufen?')) return;
                 try{
@@ -1129,7 +1274,27 @@ app.get("/admin", (req, res) => {
                   else { alert('Fehlgeschlagen: ' + r.status); }
                 }catch(e){ alert('Fehler: ' + (e && e.message || e)); }
               });
-              tdA.appendChild(btn); tr.appendChild(tdA);
+              tdA.appendChild(btn);
+              // Reassign owner button
+              const btnOwner = document.createElement('button'); btnOwner.className='btn'; btnOwner.textContent='Owner…'; btnOwner.style.background = '#6b7280';
+              btnOwner.addEventListener('click', async () => {
+                const newOwner = prompt('Neue Owner-ID (UserID) für Token ' + row.prefix + ':', row.ownerId || '');
+                if(!newOwner) return;
+                try{
+                  const adminSecret = getSecret();
+                  const r = await fetch('/reassign-owner/' + encodeURIComponent(row.prefix), { method: 'PATCH', headers: { 'content-type':'application/json', Authorization: 'Bearer ' + adminSecret }, body: JSON.stringify({ ownerId: newOwner }) });
+                  if(r.ok){
+                    alert('Owner aktualisiert. Aktive Verbindungen werden getrennt.');
+                    // Update cell
+                    tdO.textContent = newOwner ? (newOwner.slice(0,8) + '…') : '';
+                    tdN.textContent = '';
+                  } else {
+                    alert('Fehlgeschlagen: ' + r.status);
+                  }
+                }catch(e){ alert('Fehler: ' + (e && e.message || e)); }
+              });
+              tdA.appendChild(btnOwner);
+              tr.appendChild(tdA);
               tb.appendChild(tr);
             });
             if((data.tokens || []).length===0){
@@ -1181,8 +1346,13 @@ app.get('/favicon.ico', (_req, res) => res.status(204).end());
 app.post("/invite", express.json({ limit: "64kb" }), (req, res) => {
   try {
     const inviteCode = String(req.body?.inviteCode || "").trim();
+    const ownerId = String(req.body?.ownerId || "").trim();
+    const deviceId = String(req.body?.deviceId || "").trim();
     if (!inviteCode) {
       return res.status(400).json({ error: "invalid_invite_code" });
+    }
+    if (!ownerId) {
+      return res.status(400).json({ error: "invalid_owner" });
     }
 
     // Support invite codes from env or from config/invites.json
@@ -1197,6 +1367,12 @@ app.post("/invite", express.json({ limit: "64kb" }), (req, res) => {
       }
     } catch (_) {}
 
+    // If no invite codes are configured anywhere, disable issuance explicitly
+    if (!validCodes || validCodes.length === 0) {
+      logger.warn("Invite Disabled", { event: "invite_disabled", reason: "no_valid_codes" });
+      return res.status(403).json({ error: "invite_disabled" });
+    }
+
     if (!validCodes.includes(inviteCode)) {
       logger.warn("Invite Failed", { event: "invite_failed", ip: req.ip });
       return res.status(403).json({ error: "forbidden" });
@@ -1204,13 +1380,15 @@ app.post("/invite", express.json({ limit: "64kb" }), (req, res) => {
 
     const token = generateToken();
     issuedTokens.add(token);
-    issuedTokenMeta.set(token, { createdAt: new Date().toISOString() });
+    issuedTokenMeta.set(token, { createdAt: new Date().toISOString(), ownerId, deviceId: deviceId || null, lastUsedAt: null });
     persistIssuedTokens();
 
     logger.info("Invite Issued", {
       event: "invite_issued",
       ip: req.ip,
       tokenPrefix: token.slice(0, 8),
+      ownerPrefix: ownerId.slice(0, 8),
+      devicePrefix: deviceId ? deviceId.slice(0, 8) : undefined,
     });
     return res.json({ token });
   } catch (e) {
