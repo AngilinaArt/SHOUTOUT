@@ -14,6 +14,22 @@ services:
       # Mount models/venv if you use the translator locally (optional)
       # - ./models:/app/models:ro
       # - ./.venv:/app/.venv:ro
+  
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      # Caddyfile liegt im Repo-Root unter ./caddy/Caddyfile
+      - ../caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - server
 
 volumes:
   server_config:
+  caddy_data:
+  caddy_config:
