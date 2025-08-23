@@ -1,0 +1,19 @@
+services:
+  server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    env_file:
+      - ./.env
+    volumes:
+      # Persist issued tokens and optional invites.json
+      - server_config:/app/config
+      # Mount models/venv if you use the translator locally (optional)
+      # - ./models:/app/models:ro
+      # - ./.venv:/app/.venv:ro
+
+volumes:
+  server_config:

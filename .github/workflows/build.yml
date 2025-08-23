@@ -18,11 +18,10 @@ jobs:
           node-version: "18"
           cache: "npm"
 
-      - name: Install dependencies
+      - name: Install client dependencies
         run: |
-          npm install
           cd client
-          npm install
+          npm ci || npm install
 
       - name: Create production .env file (client)
         run: |
@@ -57,11 +56,10 @@ jobs:
           node-version: "18"
           cache: "npm"
 
-      - name: Install dependencies
+      - name: Install client dependencies
         run: |
-          npm install
           cd client
-          npm install
+          npm ci || npm install
 
       - name: Create production .env file (client)
         run: |
