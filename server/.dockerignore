@@ -1,9 +1,0 @@
-node_modules
-npm-debug.log*
-logs
-.DS_Store
-.venv
-models
-*.log
-config/tokens.json
-.env
