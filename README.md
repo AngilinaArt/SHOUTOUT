@@ -337,13 +337,13 @@ npm run build:linux
 
 ```bash
 # 1. Quarantäne-Flag entfernen
-xattr -dr com.apple.quarantine "/Applications/Hamster & Toast.app"
+xattr -dr com.apple.quarantine "/Applications/Shoutout.app"
 
 # 2. Ad-hoc signieren
-codesign --force --deep --sign - "/Applications/Hamster & Toast.app"
+codesign --force --deep --sign - "/Applications/Shoutout.app"
 
 # 3. App starten
-open "/Applications/Hamster & Toast.app"
+open "/Applications/Shoutout.app"
 ```
 
 **Alternativ:** Rechtsklick auf die App → "Öffnen" wählen

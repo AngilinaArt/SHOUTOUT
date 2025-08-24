@@ -1643,7 +1643,7 @@ function buildTrayMenu() {
 
     // Logout / Token reset
     {
-      label: "🔐 Logout (Token zurücksetzen)",
+      label: "🔐 Logout (Reset token)",
       click: () => {
         try {
           logoutAndRestart();
@@ -1678,8 +1678,8 @@ function buildTrayMenu() {
     },
     { type: "separator" },
 
-    // Hamsters (Self Hamster entfernt!)
-    { label: "🐹 Send hamster:", enabled: false },
+    // Hamsters (pic broadcast)
+    { label: "🐹 Send pic to all", enabled: false },
     // Hamster direkt als Hauptmenü-Items
     ...(availableHamsters.length > 0
       ? availableHamsters.map((hamster, index) => {
@@ -1969,8 +1969,8 @@ function openInvitePrompt() {
     try { if (userListWindow && !userListWindow.isDestroyed()) userListWindow.hide(); } catch (_) {}
 
     const inviteOpts = {
-      width: 540,
-      height: 300,
+      width: 580,
+      height: 420,
       useContentSize: true,
       resizable: false,
       modal: true,

@@ -27,7 +27,7 @@
   },
   "build": {
     "appId": "com.shoutout.app",
-    "productName": "Hamster & Toast",
+    "productName": "Shoutout",
     "asar": true,
     "nsis": {
       "oneClick": false,
