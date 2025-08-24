@@ -1,0 +1,25 @@
+# Caddyfile example for Shoutout
+# Copy to caddy/Caddyfile and adjust your domain before running Caddy.
+
+# Production (automatic HTTPS via Let's Encrypt)
+yourdomain.com {
+  encode zstd gzip
+
+  # Security headers (adjust to your needs)
+  header {
+    Strict-Transport-Security "max-age=63072000; includeSubDomains; preload"
+    Referrer-Policy "no-referrer"
+    X-Content-Type-Options "nosniff"
+    X-Frame-Options "DENY"
+  }
+
+  # Upstream: Docker service name from server/docker-compose.yml
+  reverse_proxy server:3001
+}
+
+# Optional: Local dev (uncomment for HTTP on :8080)
+# :8080 {
+#   encode zstd gzip
+#   reverse_proxy 127.0.0.1:3001
+# }
+

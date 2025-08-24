@@ -46,3 +46,5 @@ tmp/
 # Developer Notes (internal only)
 DEVELOPER_NOTES.md
 
+# Caddy (do not commit production file with hostnames/secrets)
+caddy/Caddyfile
