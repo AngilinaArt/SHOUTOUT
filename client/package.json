@@ -41,6 +41,9 @@
       "preload_status.js",
       "preload_reaction.js",
       "preload_userlist.js",
+      "preload_invite.js",
+      "preload_translate.js",
+      "preload_about.js",
       "renderer/**",
       "assets/icon/**",
       "package.json"
