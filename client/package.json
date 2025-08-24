@@ -46,6 +46,7 @@
       "preload_about.js",
       "renderer/**",
       "assets/icon/**",
+      "assets/logo/**",
       "package.json"
     ],
     "extraResources": [

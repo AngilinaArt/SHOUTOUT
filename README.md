@@ -1,5 +1,7 @@
 # 🐹 Shoutout - Desktop Notification System
 
+![Shoutout Logo](client/assets/logo/SHOUTOUT_LOGO.png)
+
 > **Ein zauberhaftes Desktop-Notification-System mit Hamster-Overlays, Toast-Nachrichten und Emoji-Reactions!** ✨
 
 [![Status](https://img.shields.io/badge/Status-Produktionsreif-brightgreen.svg)](https://github.com/yourusername/shoutout)

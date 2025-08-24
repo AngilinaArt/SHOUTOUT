@@ -35,7 +35,7 @@
         isolation: isolate;
       }
       .wrap { position: relative; z-index: 1; display: grid; gap: 16px; padding: 22px; transform: translateZ(0); backface-visibility: hidden; will-change: transform, opacity; contain: paint; }
-      .logo { display:block; margin: 8px auto 6px; width: 180px; height: 180px; object-fit: contain; filter: drop-shadow(0 8px 18px rgba(0,0,0,0.55)); }
+      .logo { display:block; margin: 8px auto 6px; width: 200px; height: auto; object-fit: contain; filter: drop-shadow(0 8px 18px rgba(0,0,0,0.55)); }
       .backplate { position: fixed; inset: 0; z-index: 0; pointer-events: none; backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); background: rgba(29,33,40,0.35); border-radius: var(--radius); }
       .header { font-weight: 700; letter-spacing: .2px; color: var(--accent); text-shadow: 0 0 10px rgba(175,198,243,.3); }
       .label { font-size: 12px; color: var(--muted); }
@@ -107,7 +107,7 @@
   <body>
     <div class="backplate"></div>
     <div class="wrap">
-      <img class="logo" src="../assets/icon/hamster.png" alt="Hamster" />
+      <img class="logo" src="../assets/logo/SHOUTOUT_LOGO.png" alt="Shoutout" />
       <div class="header">Invite-Code eingeben</div>
       <div class="label">Bitte deinen Invite-Code eingeben</div>
       <div class="field">
