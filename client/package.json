@@ -1,7 +1,7 @@
 {
   "name": "shoutout-client",
-  "version": "1.0.1",
-  "description": "Desktop notification system with hamster overlays and toast messages",
+  "version": "1.0.2",
+  "description": "Desktop notification system with funny images, messages, reactions and translations",
   "author": "Shoutout Team",
   "private": true,
   "main": "main.js",
