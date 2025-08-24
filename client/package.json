@@ -53,7 +53,7 @@
       ".env"
     ],
     "win": {
-      "icon": "assets/icon/hamster.ico",
+      "icon": "assets/logo/SHOUTOUT_LOGO.ico",
       "target": [
         "nsis"
       ],
@@ -61,13 +61,16 @@
     },
     "mac": {
       "category": "public.app-category.utilities",
-      "icon": "assets/icon/hamster.png",
+      "icon": "assets/logo/SHOUTOUT_LOGO.png",
       "target": [
         "dmg"
       ],
       "artifactName": "${productName}-${version}-mac.${ext}",
       "hardenedRuntime": true,
       "gatekeeperAssess": false
+    },
+    "dmg": {
+      "icon": "assets/logo/SHOUTOUT_LOGO.png"
     }
   }
 }
