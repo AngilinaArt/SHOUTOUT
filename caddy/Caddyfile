@@ -1,4 +1,6 @@
 shoutout.angilina.art {
   encode zstd gzip
-  reverse_proxy shoutout:3001
+  # Im Compose-Netzwerk zeigt der Service-Name auf den Backend-Container
+  reverse_proxy server:3001
 }
+

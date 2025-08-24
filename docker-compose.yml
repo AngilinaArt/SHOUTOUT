@@ -1,0 +1,52 @@
+version: "3.9"
+
+services:
+  server:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    env_file:
+      - ./server/.env
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+    volumes:
+      - ./server/logs:/app/logs
+      - ./server/config:/app/config
+      # Optional: persist tokens.json separately
+      # - tokens_data:/app/config
+    expose:
+      - "3001"
+    # Für lokales Debuggen optional nach außen öffnen:
+    # ports:
+    #   - "3001:3001"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:3001/health || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
+  caddy:
+    image: caddy:2-alpine
+    depends_on:
+      server:
+        condition: service_healthy
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    environment:
+      # Optional: E-Mail für Let's Encrypt
+      - ACME_AGREE=true
+      # Setze, wenn gewünscht: CADDY_EMAIL=you@example.com
+      # - CADDY_EMAIL=you@example.com
+    restart: unless-stopped
+
+volumes:
+  caddy_data:
+  caddy_config:
+  # tokens_data:

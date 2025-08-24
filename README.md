@@ -70,6 +70,63 @@ TRANSLATOR_FORCE_HF=true
 
 ---
 
+## 🐳 Deployment (Docker + Caddy)
+
+- Services: `server` (Node.js Backend, Port `3001`) und `caddy` (Reverse Proxy + TLS auf `80/443`).
+- Konfig: Nur noch `caddy/Caddyfile` (Docker‑Variante). Host‑Caddy wird nicht mehr genutzt.
+- Compose: siehe `docker-compose.yml` mit Healthcheck und `depends_on: service_healthy`.
+
+### Voraussetzungen
+
+- Docker Engine + Docker Compose Plugin (v2)
+- DNS: `A/AAAA` für `shoutout.angilina.art` zeigt auf den Server
+- Firewall/Ports: `80` und `443` offen; kein anderer Dienst belegt sie
+
+### Konfiguration
+
+- Domain: in `caddy/Caddyfile` prüfen/anpassen (`shoutout.angilina.art`)
+- E‑Mail (empfohlen) für ACME/Let’s Encrypt: in `docker-compose.yml` unter `caddy.environment` `CADDY_EMAIL=you@example.com` setzen
+- Server‑Secrets: `server/.env` (z. B. `ADMIN_SECRET`, `INVITE_CODES`, `ALLOW_NO_AUTH=false`)
+
+### Starten
+
+```bash
+docker compose up -d --build
+docker compose ps
+```
+
+### Verifizieren
+
+- Container‑Status: `docker ps`
+- Logs: `docker logs server --tail 50` und `docker logs caddy --tail 50`
+- Health intern (im Compose‑Netz):
+  - `docker exec shoutout-caddy-1 wget -qO- http://server:3001/health`
+- Health extern (über Caddy/HTTPS):
+  - `https://shoutout.angilina.art/health` → `{"ok":true}`
+
+### Betrieb
+
+- Neu bauen nach Codeänderung: `docker compose up -d --build`
+- Neustart: `docker compose restart`
+- Stoppen: `docker compose down`
+- Daten/Volumes:
+  - Caddy: `caddy_data`, `caddy_config` (Zertifikate/Konfig‑Cache)
+  - Server: `./server/logs` und `./server/config` gemountet (Logs, `tokens.json`)
+
+### Host‑Caddy deaktivieren (falls früher installiert)
+
+```bash
+sudo systemctl stop caddy
+sudo systemctl disable caddy
+sudo systemctl status caddy
+```
+
+Hinweise
+- Wenn die Zertifikatsausstellung fehlschlägt: DNS prüfen, Ports 80/443 freimachen, ggf. `CADDY_EMAIL` setzen.
+- Lokales Debuggen ohne TLS: Entweder intern testen (`docker exec ... /health`) oder in Caddy temporär `:80` ohne Domain konfigurieren.
+
+---
+
 ## 🏗️ Architektur
 
 ```
