@@ -8,7 +8,7 @@ const cors = require("cors");
 const morgan = require("morgan");
 const rateLimit = require("express-rate-limit");
 const Joi = require("joi");
-const { WebSocketServer } = require("ws");
+const { WebSocketServer, WebSocket } = require("ws");
 const winston = require("winston");
 require("winston-daily-rotate-file");
 const { spawn } = require("child_process");
