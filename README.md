@@ -22,6 +22,7 @@
 - 🌙 **Do Not Disturb** - Störungsfreie Arbeitszeiten
 - 🚀 **Autostart** - Startet automatisch beim Systemstart
 - 🎨 **Cursor Theme + Glass Effects** - Moderne, elegante UI
+- Translator Interface - simple Übersetzung DE-ENG und zurück
 
 ---
 
@@ -84,7 +85,7 @@ TRANSLATOR_FORCE_HF=true
 
 ### Konfiguration
 
-- Domain: in `caddy/Caddyfile` prüfen/anpassen (`shoutout.angilina.art`)
+- Domain: in `caddy/Caddyfile` prüfen/anpassen (`shoutout.yourdomain.art`)
 - E‑Mail (empfohlen) für ACME/Let’s Encrypt: in `docker-compose.yml` unter `caddy.environment` `CADDY_EMAIL=you@example.com` setzen
 - Server‑Secrets: `server/.env` (z. B. `ADMIN_SECRET`, `INVITE_CODES`, `ALLOW_NO_AUTH=false`)
 
@@ -122,6 +123,7 @@ sudo systemctl status caddy
 ```
 
 Hinweise
+
 - Wenn die Zertifikatsausstellung fehlschlägt: DNS prüfen, Ports 80/443 freimachen, ggf. `CADDY_EMAIL` setzen.
 - Lokales Debuggen ohne TLS: Entweder intern testen (`docker exec ... /health`) oder in Caddy temporär `:80` ohne Domain konfigurieren.
 
@@ -241,6 +243,7 @@ TRANSLATOR_PROVIDER=ct2
 ```
 
 Notes
+
 - Invite aktiv: Broadcast-/Admin-APIs akzeptieren nur gültige Tokens (bzw. `ADMIN_SECRET` für Admin‑APIs). WS nutzt bevorzugt `Authorization: Bearer <token>` im Handshake.
 - Invite inaktiv (keine Codes, keine Tokens): Fallback auf `BROADCAST_SECRET` bzw. optional `WS_TOKEN`. Für Produktion `ALLOW_NO_AUTH=false` lassen.
 
