@@ -13,6 +13,8 @@ services:
     volumes:
       - ./server/logs:/app/logs
       - ./server/config:/app/config
+      - ./server/models:/app/models
+      - ./server/.venv:/app/.venv
       # Optional: persist tokens.json separately
       # - tokens_data:/app/config
     expose:
