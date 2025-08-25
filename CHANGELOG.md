@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## IDEAS
+
+- color for privat/personal toasts, change them to see the difference to "generel dms"
+
 ## Unreleased
 
 - fix(client): eliminate macOS ghosting/phantom of toasts on Apple Silicon (transparent Electron window + backdrop-filter). Added compositing hints (`translateZ(0)`, `backface-visibility: hidden`, `will-change`, `contain: paint`) and a short fade-out before removal to force clean repaints. Docs updated in README Troubleshooting.
@@ -54,11 +58,14 @@ All notable changes to this project will be documented in this file.
 - ops(git): `server/config/.gitignore` ignores `tokens.json` so issued tokens are never committed.
 
 Notes & Compatibility
+
 - If no invite codes are configured and there are no issued tokens, the server falls back to the previous single-secret behavior (`BROADCAST_SECRET` / `WS_TOKEN`). Set `ALLOW_NO_AUTH=false` in production.
 - Token store format changed from array-of-strings to array-of-objects with `createdAt`. Existing files are auto-upgraded when the server persists the token store.
 
 How to Test Locally
+
 - Server setup
+
   - In `server/.env` set:
     - `INVITE_CODES=supersecret1,supersecret2`
     - `ADMIN_SECRET=super-admin-123`
@@ -66,23 +73,28 @@ How to Test Locally
   - Start the server. Verify health at `GET /health`.
 
 - Invite/token issuance
+
   - `curl -X POST http://localhost:3001/invite -H 'content-type: application/json' -d '{"inviteCode":"supersecret1"}'`
   - Response includes `{ "token": "..." }`; `server/config/tokens.json` will have `{ token, createdAt }` entries.
 
 - Auth on /broadcast
+
   - `curl -X POST http://localhost:3001/broadcast -H "Authorization: Bearer <token>" -H 'content-type: application/json' -d '{"type":"toast","message":"Hi"}'`
   - Expect `{ ok: true, sent: N }` if clients are connected.
 
 - WebSocket auth
+
   - Start the Electron client. On first run it asks for an invite code. Enter `supersecret1`.
   - After success, the client auto-connects WS with `Authorization: Bearer <token>` and can receive messages.
 
 - Admin API
+
   - List tokens: `curl -H 'Authorization: Bearer super-admin-123' http://localhost:3001/tokens`
   - Revoke (by prefix or full token): `curl -X DELETE -H 'Authorization: Bearer super-admin-123' http://localhost:3001/revoke/<prefix-or-token>`
   - Response includes `{ revoked, closed }` and logs: `Revoked token <prefix> by admin` and `Closed X WS connection(s) ...`.
 
 - Admin Dashboard (HTML)
+
   - Visit `http://localhost:3001/admin?secret=super-admin-123`.
   - The table lists tokens with prefix + createdAt. Click “Revoke” to delete. Upon success, the row is removed and an alert shows how many connections were closed.
 

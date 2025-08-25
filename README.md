@@ -30,11 +30,9 @@
 
 ## 🚀 Quick Start
 
-### 📥 Download (Coming Soon!)
+### 📥 Download / Client
 
-- **macOS**: `Shoutout.dmg` (Intel + Apple Silicon)
-- **Windows**: `Shoutout-Setup.exe`
-- **Linux**: `shoutout.AppImage`
+You have to build your own version but you can use the pre-build build.yml in .github.
 
 ### 🔧 Für Entwickler
 
