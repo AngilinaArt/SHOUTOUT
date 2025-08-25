@@ -5,8 +5,15 @@ All notable changes to this project will be documented in this file.
 ## IDEAS
 
 - color for privat/personal toasts, change them to see the difference to "generel dms"
+- notification after invite tokin that software runs in tray
+- token valid until ...
+- Documentation and Screenshots for readme
+- smaller Logo for git logo representation README.md
+- security check
 
-## Unreleased
+## UNRELEASED
+
+## RELEASE all included to V1.0.2_1
 
 - fix(client): eliminate macOS ghosting/phantom of toasts on Apple Silicon (transparent Electron window + backdrop-filter). Added compositing hints (`translateZ(0)`, `backface-visibility: hidden`, `will-change`, `contain: paint`) and a short fade-out before removal to force clean repaints. Docs updated in README Troubleshooting.
 
