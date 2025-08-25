@@ -48,3 +48,6 @@ DEVELOPER_NOTES.md
 
 # Caddy (do not commit production file with hostnames/secrets)
 caddy/Caddyfile
+
+#Gemini
+GEMINI.MD
