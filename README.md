@@ -1,6 +1,8 @@
 # 🐹 Shoutout - Desktop Notification System
 
-![Shoutout Logo](client/assets/logo/SHOUTOUT_LOGO.png)
+<p align="center">
+  <img src=".github/assets/SHOUTOUT_LOGO.png" alt="Shoutout Logo" width="200">
+</p>
 
 > **Ein zauberhaftes Desktop-Notification-System mit Hamster-Overlays, Toast-Nachrichten und Emoji-Reactions!** ✨
 
@@ -298,21 +300,44 @@ npm run build:linux
 
 ## 📱 Screenshots
 
-### 🐹 Hamster Overlay
-
-![Hamster Overlay](docs/screenshots/hamster-overlay.png)
-
-### 💬 Toast Messages
-
-![Toast Messages](docs/screenshots/toast-messages.png)
-
-### 👥 Online User List
-
-![User List](docs/screenshots/user-list.png)
-
-### 🎨 Send Toast Window
-
-![Send Toast](docs/screenshots/send-toast.png)
+<table width="100%" border="0">
+ <tr>
+    <td align="center"><strong>Messages & Reactions</strong></td>
+    <td align="center"><strong>User List & Menu</strong></td>
+ </tr>
+ <tr>
+    <td align="center"><img src=".github/assets/RM_SHOW_MESSAGES.png" alt="Showing Messages" width="400"></td>
+    <td align="center"><img src=".github/assets/RM_ONLINE_USER.png" alt="Online User List" width="400"></td>
+ </tr>
+  <tr>
+    <td align="center"><img src=".github/assets/RM_REACTION.png" alt="Reactions" width="400"></td>
+    <td align="center"><img src=".github/assets/RM_MENU_TRAY.png" alt="Tray Menu" width="400"></td>
+ </tr>
+  <tr>
+    <td align="center"><strong>Admin & Translate</strong></td>
+    <td align="center"><strong>Special Hamsters & Toasts</strong></td>
+ </tr>
+  <tr>
+    <td align="center"><img src=".github/assets/RM_ADMIN_UI.png" alt="Admin UI" width="400"></td>
+    <td align="center"><img src=".github/assets/RM_KAFFEE.png" alt="Coffee Hamster" width="400"></td>
+ </tr>
+   <tr>
+    <td align="center"><img src=".github/assets/RM_TRANSLATE.png" alt="Translate UI" width="400"></td>
+    <td align="center"><img src=".github/assets/RM_TOAST_ALL.png" alt="Toast for All" width="400"></td>
+ </tr>
+  <tr>
+    <td align="center"><strong>Login & Invite</strong></td>
+    <td align="center"><strong>Spoiler & Info</strong></td>
+ </tr>
+  <tr>
+    <td align="center"><img src=".github/assets/RM_ADMIN_UI_LOGIN.png" alt="Admin Login" width="400"></td>
+    <td align="center"><img src=".github/assets/RM_SPOILER_MESSAGE.png" alt="Spoiler Message" width="400"></td>
+ </tr>
+   <tr>
+    <td align="center"><img src=".github/assets/RM_INVITE_SECRET.png" alt="Invite Secret" width="400"></td>
+    <td align="center"><img src=".github/assets/RM_MENU_TRAY_INFO.png" alt="Tray Info" width="400"></td>
+ </tr>
+</table>
 
 ---
 
