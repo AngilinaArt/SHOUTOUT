@@ -32,30 +32,51 @@ function showUserList(users, durationMs = 15000) {
     const onlineUsers = users.filter((user) => user.status === "online");
     const userCount = onlineUsers.length;
 
-    wrapper.innerHTML = `
-      <div class="userlist-header">
-        <span class="userlist-icon">👥</span>
-        <span>Online Users</span>
-        <span class="userlist-count">${userCount}</span>
-      </div>
-      <div class="userlist-content">
-        ${
-          userCount === 0
-            ? '<div class="empty-state">Keine User online</div>'
-            : onlineUsers
-                .map(
-                  (user) => `
-              <div class="user-item">
-                <span class="user-status ${user.status}"></span>
-                <span class="user-name">${user.name}</span>
-                <button class="user-message-btn" data-user-id="${user.id}" data-user-name="${user.name}" title="Send Message to ${user.name}">💬</button>
-              </div>
-           `
-                )
-                .join("")
-        }
-      </div>
-    `;
+    const header = document.createElement("div");
+    header.className = "userlist-header";
+    const icon = document.createElement("span");
+    icon.className = "userlist-icon";
+    icon.textContent = "👥";
+    const title = document.createElement("span");
+    title.textContent = "Online Users";
+    const count = document.createElement("span");
+    count.className = "userlist-count";
+    count.textContent = String(userCount);
+    header.appendChild(icon);
+    header.appendChild(title);
+    header.appendChild(count);
+
+    const content = document.createElement("div");
+    content.className = "userlist-content";
+    if (userCount === 0) {
+      const empty = document.createElement("div");
+      empty.className = "empty-state";
+      empty.textContent = "Keine User online";
+      content.appendChild(empty);
+    } else {
+      for (const u of onlineUsers) {
+        const row = document.createElement("div");
+        row.className = "user-item";
+        const statusDot = document.createElement("span");
+        statusDot.className = `user-status ${u.status}`;
+        const nameEl = document.createElement("span");
+        nameEl.className = "user-name";
+        nameEl.textContent = String(u.name ?? "");
+        const btn = document.createElement("button");
+        btn.className = "user-message-btn";
+        btn.setAttribute("data-user-id", String(u.id ?? ""));
+        btn.setAttribute("data-user-name", String(u.name ?? ""));
+        btn.title = `Send Message to ${String(u.name ?? "")}`;
+        btn.textContent = "💬";
+        row.appendChild(statusDot);
+        row.appendChild(nameEl);
+        row.appendChild(btn);
+        content.appendChild(row);
+      }
+    }
+
+    wrapper.appendChild(header);
+    wrapper.appendChild(content);
 
     userlistContainer.appendChild(wrapper);
     userListOverlay = wrapper;

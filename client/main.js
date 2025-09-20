@@ -34,6 +34,40 @@ const WebSocket = require("ws");
 const http = require("http");
 const https = require("https");
 
+// Determine whether to open DevTools automatically (development convenience)
+const SHOULD_OPEN_DEVTOOLS = (() => {
+  try {
+    const raw = process.env.OPEN_DEVTOOLS;
+    if (raw != null) {
+      const env = String(raw).toLowerCase();
+      if (["1", "true", "yes", "on"].includes(env)) return true;
+      if (["0", "false", "no", "off"].includes(env)) return false;
+    }
+  } catch (_) {}
+  try {
+    // Open in dev by default when not packaged
+    return process.env.NODE_ENV !== "production" && !app.isPackaged;
+  } catch (_) {
+    return false;
+  }
+})();
+
+function maybeOpenDevTools(win, label) {
+  try {
+    if (!SHOULD_OPEN_DEVTOOLS) return;
+    if (!win || win.isDestroyed()) return;
+    // Open after load to ensure proper context
+    win.webContents.once("did-finish-load", () => {
+      try {
+        win.webContents.openDevTools({ mode: "detach" });
+        console.log(`🔧 DevTools opened for ${label || "window"}`);
+      } catch (error) {
+        console.error(`❌ Failed to open DevTools for ${label || "window"}:`, error);
+      }
+    });
+  } catch (_) {}
+}
+
 function fetchImageAsDataUrl(imageUrl) {
   return new Promise((resolve) => {
     try {
@@ -142,15 +176,8 @@ function createOverlayWindow() {
 
   console.log(`✅ Overlay window created and shown`);
 
-  // DevTools für das Overlay-Fenster (DEAKTIVIERT - war für Debugging aktiviert)
-  // overlayWindow.webContents.once("did-finish-load", () => {
-  //   try {
-  //     overlayWindow.webContents.openDevTools({ mode: "detach" });
-  //     console.log(`🔧 DevTools opened for overlay after load`);
-  //   } catch (error) {
-  //     console.error(`❌ Failed to open DevTools:`, error);
-  //   }
-  // });
+  // Open DevTools for overlay if enabled
+  maybeOpenDevTools(overlayWindow, "overlay");
 
   // Event-Listener für das Laden
   overlayWindow.webContents.once("did-finish-load", () => {
@@ -209,10 +236,8 @@ function createStatusWindow() {
     // Positioniere das Status-Overlay oben rechts
     positionStatusWindow();
 
-    // DevTools für das Status-Fenster deaktiviert
-    // if (process.env.NODE_ENV === "development" || !app.isPackaged) {
-    //   statusWindow.webContents.openDevTools({ mode: "detach" });
-    // }
+    // Open DevTools for status if enabled
+    maybeOpenDevTools(statusWindow, "status");
 
     console.log(`✅ Status window created and shown`);
 
@@ -308,7 +333,8 @@ function createReactionWindow() {
       }
     );
 
-    // DevTools removed - no longer needed for debugging
+    // Open DevTools for reaction if enabled
+    maybeOpenDevTools(reactionWindow, "reaction");
 
     console.log(`✅ Reaction window created successfully`);
   } catch (error) {
@@ -429,6 +455,9 @@ function createUserListWindow() {
     positionUserListWindow();
 
     console.log(`✅ User list window created`);
+
+    // Open DevTools for user list if enabled
+    maybeOpenDevTools(userListWindow, "userlist");
 
     // Event-Listener für das Laden
     userListWindow.webContents.once("did-finish-load", () => {
@@ -1775,7 +1804,18 @@ function showAboutWindow() {
     },
   });
 
-  aboutWin.loadFile(path.join(__dirname, "renderer", "about.html"));
+  try {
+    const pkg = require(path.join(__dirname, "package.json"));
+    const ver = pkg?.version || "Unknown";
+    aboutWin.loadFile(path.join(__dirname, "renderer", "about.html"), {
+      query: { v: String(ver) },
+    });
+  } catch (_) {
+    aboutWin.loadFile(path.join(__dirname, "renderer", "about.html"));
+  }
+
+  // Open DevTools for about window if enabled
+  maybeOpenDevTools(aboutWin, "about");
 
   // Handle close
   aboutWin.on("closed", () => {
@@ -1839,6 +1879,24 @@ function openNamePrompt() {
   ipcMain.once("name-submit", onSubmit);
   ipcMain.once("name-cancel", onCancel);
 }
+
+// About info provider (IPC) – serves package.json version reliably in dev/prod
+ipcMain.handle("get-about-info", () => {
+  try {
+    const pkgPath = path.join(__dirname, "package.json");
+    console.log("[about] get-about-info invoked. __dirname=", __dirname);
+    console.log("[about] Resolving client package.json at:", pkgPath);
+    const pkg = require(pkgPath);
+    console.log("[about] Loaded package.json version=", pkg?.version, "name=", pkg?.name);
+    return {
+      name: pkg?.name || "Shoutout",
+      version: pkg?.version || "Unknown",
+    };
+  } catch (e) {
+    console.error("[about] Failed to load package.json for about info:", e && e.stack ? e.stack : e);
+    return { name: "Shoutout", version: "Unknown" };
+  }
+});
 
 async function logoutAndRestart() {
   try {
@@ -2143,7 +2201,10 @@ ipcMain.handle("load-users", async () => {
   try {
     // Use SERVER_URL for API calls
     const serverUrl = process.env.SERVER_URL || "http://localhost:3001";
-    const response = await fetch(`${serverUrl}/users`);
+    const bearer = authToken || loadStoredToken();
+    const response = await fetch(`${serverUrl}/users`, {
+      headers: bearer ? { Authorization: `Bearer ${bearer}` } : undefined,
+    });
     if (response.ok) {
       const data = await response.json();
       return data.users || [];
@@ -2159,7 +2220,10 @@ ipcMain.handle("refresh-users", async () => {
   try {
     // Use SERVER_URL for API calls
     const serverUrl = process.env.SERVER_URL || "http://localhost:3001";
-    const response = await fetch(`${serverUrl}/users`);
+    const bearer = authToken || loadStoredToken();
+    const response = await fetch(`${serverUrl}/users`, {
+      headers: bearer ? { Authorization: `Bearer ${bearer}` } : undefined,
+    });
     if (response.ok) {
       const data = await response.json();
       return data.users || [];
@@ -2236,7 +2300,10 @@ async function fetchOnlineUsers() {
     // Hole aktuelle User-Liste vom Server
     // Use SERVER_URL for API calls
     const serverUrl = process.env.SERVER_URL || "http://localhost:3001";
-    const response = await fetch(`${serverUrl}/users`);
+    const bearer = authToken || loadStoredToken();
+    const response = await fetch(`${serverUrl}/users`, {
+      headers: bearer ? { Authorization: `Bearer ${bearer}` } : undefined,
+    });
 
     if (!response.ok) {
       throw new Error(`Failed to fetch users: ${response.status}`);
@@ -2400,9 +2467,10 @@ function openTranslateWindow() {
 ipcMain.handle("translate", async (_evt, { text, direction, formatMode }) => {
   try {
     const serverUrl = process.env.SERVER_URL || "http://localhost:3001";
+    const bearer = authToken || loadStoredToken();
     const resp = await fetch(`${serverUrl}/translate`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: Object.assign({ "Content-Type": "application/json" }, bearer ? { Authorization: `Bearer ${bearer}` } : {}),
       body: JSON.stringify({ text, direction, formatMode }),
     });
     const data = await resp.json();

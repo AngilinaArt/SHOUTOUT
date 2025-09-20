@@ -64,6 +64,7 @@ function processHamsterQueue() {
 // Render-Funktion: Zeichnet alle Toasts basierend auf dem State neu
 function renderToasts() {
   console.log('🎨 Rendering all toasts...', toasts);
+  const escapeHtml = (s) => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
   // Robusteres Leeren des Containers
   while (toastContainer.firstChild) {
     toastContainer.removeChild(toastContainer.firstChild);
@@ -92,15 +93,16 @@ function renderToasts() {
     let senderHtml = '';
     if (toast.sender) {
       if (toast.recipientInfo) {
-        senderHtml = `<div class="sender">${toast.sender} <span class="recipient-info">(${toast.recipientInfo})</span></div>`;
+        senderHtml = `<div class="sender">${escapeHtml(toast.sender)} <span class="recipient-info">(${escapeHtml(toast.recipientInfo)})</span></div>`;
       } else {
-        senderHtml = `<div class="sender">${toast.sender}</div>`;
+        senderHtml = `<div class="sender">${escapeHtml(toast.sender)}</div>`;
       }
     }
 
+    const safeMsg = escapeHtml(toast.message);
     const textHtml = toast.spoiler && !toast.revealed
-      ? `<div class="text"><div class="text-content spoiler-content">${toast.message}</div><div class="spoiler-cover" role="button" tabindex="0" aria-label="Spoiler anzeigen" title="Zum Anzeigen klicken">✨ Zum Anzeigen klicken</div></div>`
-      : `<div class="text"><div class="text-content">${toast.message}</div></div>`;
+      ? `<div class="text"><div class="text-content spoiler-content">${safeMsg}</div><div class="spoiler-cover" role="button" tabindex="0" aria-label="Spoiler anzeigen" title="Zum Anzeigen klicken">✨ Zum Anzeigen klicken</div></div>`
+      : `<div class="text"><div class="text-content">${safeMsg}</div></div>`;
 
     toastDiv.innerHTML = `
       <div class="bubble">
@@ -212,7 +214,7 @@ function createSuccessMessage(message, durationMs) {
 
     const newSuccessToast = {
         id: successId,
-        message: `<div class="success-bubble"><div class="success-icon">✅</div><div class="success-text">${message}</div></div>`,
+        message: `<div class="success-bubble"><div class="success-icon">✅</div><div class="success-text">${String(message ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\"/g, '&quot;').replace(/'/g, '&#39;')}</div></div>`,
         severity: 'success-message', // Spezielle Klasse für das Styling
     };
 

@@ -248,61 +248,115 @@
         console.log("🔍 Available window properties:", Object.keys(window));
 
         try {
-          if (!window.about) {
-            console.error("❌ window.about is not available!");
-            console.log("💡 Loading fallback data...");
+          // If version passed via query string from main, set immediately
+          try {
+            const params = new URLSearchParams(window.location.search);
+            const verFromQuery = params.get('v');
+            if (verFromQuery) {
+              console.log('🔎 Version from query param v=', verFromQuery);
+              setVersion(verFromQuery);
+            }
+          } catch (_) {}
 
-            // Fallback data if preload doesn't work
-            const fallbackInfo = {
-              version: "0.1.0",
-              description:
-                "A fun and interactive shoutout application for sending hamsters and messages",
-              authors: [
-                "Angilina - Main Developer & UI/UX Designer",
-                "Claude Sonnet 4 - AI Assistant & Code Contributor",
-                "OpenAI GPT - AI Assistant & Code Contributor",
-              ],
-              features: [
-                "🐹 Interactive Hamster Animations",
-                "💬 Real-time Toast Messages",
-                "👥 Online User Management",
-                "🌐 Local Translation (DE↔EN)",
-                "🎨 Beautiful Cursor-style Theme",
-                "🔧 Professional Logging System",
-                "🚀 Cross-platform Desktop App",
-              ],
-              technologies: [
-                "Electron - Desktop Framework",
-                "Node.js - Backend Runtime",
-                "WebSockets - Real-time Communication",
-                "Winston - Professional Logging",
-                "HuggingFace Transformers + MarianMT (OPUS-MT) - Local NMT",
-                "PyTorch Runtime (CPU) + SentencePiece",
-                "Glassmorphism - Modern UI Design",
-              ],
-              attributions: [
-                "Helsinki-NLP/opus-mt-de-en, opus-mt-en-de (OPUS-MT) — CC-BY-4.0",
-                "HuggingFace Transformers — Apache-2.0",
-                "PyTorch — BSD-style license",
-                "SentencePiece — Apache-2.0",
-              ],
-            };
+          // Render static content immediately (no waiting)
+          const fallbackInfo = {
+            version: "Unknown",
+            description:
+              "A fun and interactive shoutout application for sending hamsters and messages",
+            authors: [
+              "Angilina - Main Developer & UI/UX Designer",
+              "Claude Sonnet 4 - AI Assistant & Code Contributor",
+              "OpenAI GPT - AI Assistant & Code Contributor",
+            ],
+            features: [
+              "🐹 Interactive Hamster Animations",
+              "💬 Real-time Toast Messages",
+              "👥 Online User Management",
+              "🌐 Local Translation (DE↔EN)",
+              "🎨 Beautiful Cursor-style Theme",
+              "🔧 Professional Logging System",
+              "🚀 Cross-platform Desktop App",
+            ],
+            technologies: [
+              "Electron - Desktop Framework",
+              "Node.js - Backend Runtime",
+              "WebSockets - Real-time Communication",
+              "Winston - Professional Logging",
+              "HuggingFace Transformers + MarianMT (OPUS-MT) - Local NMT",
+              "PyTorch Runtime (CPU) + SentencePiece",
+              "Glassmorphism - Modern UI Design",
+            ],
+            attributions: [
+              "Helsinki-NLP/opus-mt-de-en, opus-mt-en-de (OPUS-MT) — CC-BY-4.0",
+              "HuggingFace Transformers — Apache-2.0",
+              "PyTorch — BSD-style license",
+              "SentencePiece — Apache-2.0",
+            ],
+          };
+          loadContent(fallbackInfo);
 
-            loadContent(fallbackInfo);
+          // Prefer constant from preload for immediate availability
+          if (window.aboutInfo) {
+            console.log("✅ Using aboutInfo from preload", window.aboutInfo);
+            setVersion(window.aboutInfo.version);
             return;
           }
 
-          console.log("✅ window.about found:", window.about);
+          // Also listen for a one-shot event emitted by preload
+          window.addEventListener('about-ready', (ev) => {
+            try {
+              console.log('📨 about-ready event received', ev.detail);
+              if (ev && ev.detail && ev.detail.version) setVersion(ev.detail.version);
+            } catch (e) { console.error('❌ Failed to handle about-ready', e); }
+          }, { once: true });
+
+          if (window.aboutInfo) {
+            console.log("✅ Using aboutInfo from preload", window.aboutInfo);
+            loadContent(window.aboutInfo);
+            return;
+          }
+
+          // Wait briefly for the bridge to attach
+          if (!window.about || !window.about.getAppInfo) {
+            console.warn("⚠️ about bridge not ready – retrying...");
+            let tries = 0;
+            const maxTries = 20;
+            const timer = setInterval(() => {
+              tries++;
+              if (window.aboutInfo) {
+                clearInterval(timer);
+                console.log("📋 App info received (aboutInfo, delayed):", window.aboutInfo);
+                setVersion(window.aboutInfo.version);
+              } else if (window.about && window.about.getAppInfo) {
+                clearInterval(timer);
+                const ai = window.about.getAppInfo();
+                console.log("📋 App info received (delayed):", ai);
+                setVersion(ai.version);
+              } else if (tries >= maxTries) {
+                clearInterval(timer);
+                console.error("❌ about bridge not available after retries");
+              }
+            }, 250);
+            return;
+          }
 
           const appInfo = window.about.getAppInfo();
           console.log("📋 App info received:", appInfo);
-          loadContent(appInfo);
+          setVersion(appInfo.version);
         } catch (error) {
           console.error("❌ Failed to load app info:", error);
           const versionEl = document.getElementById("version");
           if (versionEl) versionEl.textContent = "Version Unknown";
         }
       });
+
+      function setVersion(v){
+        const versionEl = document.getElementById("version");
+        if (versionEl) {
+          versionEl.textContent = `Version ${v || 'Unknown'}`;
+          console.log("✅ Version updated to:", v);
+        }
+      }
 
       function loadContent(appInfo) {
         const versionEl = document.getElementById("version");

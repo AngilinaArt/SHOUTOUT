@@ -20,10 +20,17 @@ function showStatusMessage(message, type = "success", durationMs = 4000) {
   wrapper.id = messageId;
   wrapper.className = cssClass;
 
-  wrapper.innerHTML = `
-    <div class="status-icon">${icon}</div>
-    <div class="status-text">${message}</div>
-  `;
+  const iconEl = document.createElement("div");
+  iconEl.className = "status-icon";
+  iconEl.textContent = icon;
+
+  const textEl = document.createElement("div");
+  textEl.className = "status-text";
+  // Avoid HTML injection: use textContent
+  textEl.textContent = String(message ?? "");
+
+  wrapper.appendChild(iconEl);
+  wrapper.appendChild(textEl);
 
   statusContainer.appendChild(wrapper);
 

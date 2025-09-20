@@ -60,6 +60,8 @@ if (!fs.existsSync(logsDir)) {
 
 const app = express();
 const server = http.createServer(app);
+// Hinter Proxy (Caddy) echte Client-IP aus X-Forwarded-For nutzen
+try { app.set("trust proxy", true); } catch (_) {}
 
 const PORT = Number(process.env.PORT || 3001);
 const BROADCAST_SECRET = process.env.BROADCAST_SECRET || "change-me";
@@ -129,6 +131,29 @@ const broadcastLimiter = rateLimit({
   max: 10,
   standardHeaders: true,
   legacyHeaders: false,
+});
+
+// Rate limiting for users listing
+const usersLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 60,
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Rate limiting for translate (heavy) – keyed by token if available, else IP
+const translateLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 12,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => {
+    try {
+      const auth = String(req.header("authorization") || "");
+      if (auth.startsWith("Bearer ")) return auth.slice("Bearer ".length).trim();
+    } catch (_) {}
+    return req.ip;
+  },
 });
 
 // WS server
@@ -750,7 +775,14 @@ async function runProviderTranslate(text, from, to) {
         let err = "";
         proc.stdout.on("data", (d) => (out += d.toString()));
         proc.stderr.on("data", (d) => (err += d.toString()));
+        // Hard timeout to avoid runaway jobs
+        const maxMs = 15000; // 15s cap
+        const timer = setTimeout(() => {
+          try { proc.kill("SIGKILL"); } catch (_) {}
+          return resolve({ ok: false, reason: "timeout", translated: text });
+        }, maxMs);
         proc.on("close", () => {
+          try { clearTimeout(timer); } catch (_) {}
           try {
             const parsed = JSON.parse(out || "{}");
             if (parsed && parsed.translated) {
@@ -889,6 +921,16 @@ function isAuthorized(req) {
     }
   }
   return true;
+}
+
+// Read-only authorization: require a valid Bearer token but do not enforce owner binding
+function isAuthorizedRead(req) {
+  // Allow all if explicitly configured for development
+  if (ALLOW_NO_AUTH) return true;
+  const auth = String(req.header("authorization") || "");
+  if (!auth.startsWith("Bearer ")) return false;
+  const token = auth.slice("Bearer ".length).trim();
+  return isTokenValid(token);
 }
 
 function logBroadcast(req, eventType) {
@@ -1194,7 +1236,7 @@ app.get("/admin", (req, res) => {
       <div id="login" class="login hidden">
         <div class="muted mb-8">Admin-Secret eingeben</div>
         <div class="row">
-          <input id="secret" type="password" placeholder="z. B. super-admin-123" autocomplete="off" />
+          <input id="secret" type="password" placeholder="Passwort" autocomplete="off" />
           <button id="loginBtn" class="btn-blue">Login</button>
         </div>
         <div id="err" class="error"></div>
@@ -1511,15 +1553,17 @@ app.get("/api/hamsters/:id/image", (req, res) => {
 });
 
 // Neue Endpoints für User-Management
-app.get("/users", (req, res) => {
+app.get("/users", usersLimiter, (req, res) => {
+  if (!isAuthorizedRead(req)) return res.status(401).json({ error: "Unauthorized" });
   const activeUsers = Array.from(clients)
     .filter((ws) => ws.readyState === ws.OPEN && ws.user?.name)
     .map((ws) => ({
       id: ws.user?.id || ws.user?.name,
       name: ws.user?.name,
-      displayName: `${ws.user?.name} (${ws.user?.ip})`,
+      // Do not expose IP in public list
+      displayName: ws.user?.name,
       status: ws.user?.status || "online",
-      ip: ws.user?.ip || "unknown",
+      // no ip field in public response
       lastSeen: ws.user?.lastSeen || new Date().toISOString(),
       connectedAt: ws.user?.connectedAt || new Date().toISOString(),
     }));
@@ -1531,7 +1575,8 @@ app.get("/users", (req, res) => {
   });
 });
 
-app.get("/users/:userId", (req, res) => {
+app.get("/users/:userId", usersLimiter, (req, res) => {
+  if (!isAuthorizedRead(req)) return res.status(401).json({ error: "Unauthorized" });
   const userId = req.params.userId;
   const user = Array.from(clients).find(
     (ws) =>
@@ -1547,6 +1592,7 @@ app.get("/users/:userId", (req, res) => {
     id: user.user?.id || user.user?.name,
     name: user.user?.name,
     status: user.user?.status || "online",
+    // do not expose IP in public detail
     lastSeen: user.user?.lastSeen || new Date().toISOString(),
   });
 });
@@ -1663,16 +1709,28 @@ server.listen(PORT, () => {
 });
 
 // Translation API (optional)
-app.post("/translate", express.json({ limit: "1mb" }), async (req, res) => {
+app.post("/translate", translateLimiter, express.json({ limit: "128kb" }), async (req, res) => {
   try {
+    if (!isAuthorizedRead(req)) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
     if (!TRANSLATOR_ENABLED) {
       return res.status(503).json({ error: "translator_disabled" });
     }
-    const { text, direction = "auto", formatMode = "auto" } = req.body || {};
-    if (!text || typeof text !== "string" || text.trim().length === 0) {
-      return res.status(400).json({ error: "invalid_text" });
-    }
-    const result = await translatePipeline({ text, direction, formatMode });
+    // Validate payload strictly
+    const translateSchema = Joi.object({
+      text: Joi.string().min(1).max(8000).required(),
+      direction: Joi.string().valid("auto", "de->en", "en->de").default("auto"),
+      formatMode: Joi.string().valid("auto", "plain", "email").default("auto"),
+    }).required();
+    const { error, value } = translateSchema.validate(req.body || {}, { stripUnknown: true });
+    if (error) return res.status(400).json({ error: "invalid_payload" });
+
+    const result = await translatePipeline({
+      text: value.text,
+      direction: value.direction,
+      formatMode: value.formatMode,
+    });
     const ok = typeof result.ok === "boolean" ? result.ok : true;
     if (!ok) {
       logger.warn("Translation fallback", {

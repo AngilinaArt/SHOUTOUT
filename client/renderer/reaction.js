@@ -60,14 +60,21 @@ function showReactionFeedback(fromUser, reaction, durationMs = 3000) {
   wrapper.id = reactionId;
   wrapper.className = `reaction-feedback ${reaction}`;
 
-  wrapper.innerHTML = `
-    <div class="reaction-animation" id="animation-${reactionId}">
-      <!-- Falling emojis will be added here -->
-    </div>
-    <div class="reaction-text">
-      <strong>${fromUser}</strong> ${config.text}
-    </div>
-  `;
+  const anim = document.createElement("div");
+  anim.className = "reaction-animation";
+  anim.id = `animation-${reactionId}`;
+
+  const text = document.createElement("div");
+  text.className = "reaction-text";
+  const strong = document.createElement("strong");
+  // Avoid HTML injection
+  strong.textContent = String(fromUser ?? "");
+  const tail = document.createTextNode(" " + config.text);
+  text.appendChild(strong);
+  text.appendChild(tail);
+
+  wrapper.appendChild(anim);
+  wrapper.appendChild(text);
 
   // Add to the END of the container (newest at bottom)
   reactionContainer.appendChild(wrapper);
