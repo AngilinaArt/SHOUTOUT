@@ -4,12 +4,15 @@ All notable changes to this project will be documented in this file.
 
 ## IDEAS
 
-- color for privat/personal toasts, change them to see the difference to "generel dms"
+- mini game implementieren
+- kleine Soundeffekte die nicht nervig sind
+- das Tray mit den Usern eventuell ausklappbar gestalten, damit das Fenster kleiner wird?
+
 - notification after invite tokin that software runs in tray
 - token valid until ...
 - Rechtschreibprüfung für Translator bzw. "Aufweichung" damit auch fehlerhafte Texte einen Übersetzungsvorschlag erhalten
 - Design nochmal checken, auf "einheitlichkeit"
-- die Toasts sollten farblich besser unterschieden werden, eventuell die Hintergrundfarbe anpassen an gewählte Farbe, eventuell schon beim Schreiben
+
 - Untersütztung für Discord Bot, derzeit noch nicht implementiert
 
 ## UNRELEASED
@@ -19,6 +22,8 @@ All notable changes to this project will be documented in this file.
 - Documentation and Screenshots for readme
 - smaller Logo for git logo representation README.md
 - security check
+- die Toasts sollten farblich besser unterschieden werden, eventuell die Hintergrundfarbe anpassen an gewählte Farbe, eventuell schon beim Schreiben
+- color for privat/personal toasts, change them to see the difference to "generel dms"
 
 ## RELEASE all included to V1.0.2_1
 
