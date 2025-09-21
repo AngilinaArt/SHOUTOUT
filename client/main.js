@@ -1790,7 +1790,7 @@ function buildTrayMenu() {
 function showAboutWindow() {
   const aboutWin = new BrowserWindow({
     width: 980,
-    height: 1100,
+    height: 980,
     resizable: false,
     modal: true,
     frame: true,
