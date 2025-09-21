@@ -814,11 +814,22 @@
           selectedValues.length === 0 || selectedValues.includes("all")
             ? "all"
             : selectedValues;
+        // Menschliche Ziel-Beschreibung für Statusmeldung
+        let targetLabel = "alle";
+        if (targetPayload !== "all") {
+          const selectedOpts = Array.from(targetEl.selectedOptions);
+          if (selectedOpts.length === 1) {
+            targetLabel = selectedOpts[0].getAttribute('data-display-name') || selectedOpts[0].textContent || '1 Empfänger';
+          } else if (selectedOpts.length > 1) {
+            targetLabel = `${selectedOpts.length} Empfänger`;
+          }
+        }
         window.compose.submit({
           message: messageEl.value,
           severity: getSeverity(),
           spoiler: !!spoilerEl.checked,
           target: targetPayload,
+          targetLabel,
         });
       });
       $("cancel").addEventListener("click", () => window.compose.cancel());

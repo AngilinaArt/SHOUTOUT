@@ -631,7 +631,7 @@ function disableOverlayMouseEvents() {
   overlayWindow.setIgnoreMouseEvents(true);
 }
 
-function showSuccessMessage(target) {
+function showSuccessMessage(target, labelOverride = null) {
   console.log(`🔍 showSuccessMessage called with target: ${target}`);
 
   if (!statusWindow || statusWindow.isDestroyed()) {
@@ -645,14 +645,24 @@ function showSuccessMessage(target) {
     webContents: !!statusWindow.webContents,
   });
 
-  // Empfänger-Text generieren
+  // Empfänger-Text generieren (ohne technische IDs/IPs anzuzeigen)
   let recipientText = "alle";
-  if (target && target !== "all") {
-    // Falls es eine UUID ist, extrahiere den Namen
-    if (target.includes("-::ffff:")) {
-      recipientText = target.split("-::ffff:")[0];
-    } else {
-      recipientText = target;
+  if (typeof labelOverride === 'string' && labelOverride.trim()) {
+    recipientText = labelOverride.trim();
+  } else {
+    try {
+      if (target && target !== "all") {
+        if (Array.isArray(target)) {
+          recipientText = target.length === 1 ? "1 Empfänger" : `${target.length} Empfänger`;
+        } else {
+          const raw = String(target || "");
+          // Heuristik: Wenn es nach ID/IP/UUID aussieht, nicht anzeigen
+          const looksLikeId = /[:]|::|[0-9a-fA-F-]{8,}/.test(raw);
+          recipientText = looksLikeId ? "1 Empfänger" : raw;
+        }
+      }
+    } catch (_) {
+      recipientText = "Empfänger";
     }
   }
 
@@ -1515,6 +1525,7 @@ function openToastPrompt(targetUser = null) {
       : "blue";
     const duration = 3000; // Fixed duration (not used anymore since toasts are permanent)
     const target = payload?.target || "all";
+    const targetLabel = typeof payload?.targetLabel === 'string' ? payload.targetLabel : null;
     const spoiler = Boolean(payload?.spoiler);
 
     if (ws && ws.readyState === ws.OPEN && message) {
@@ -1532,7 +1543,7 @@ function openToastPrompt(targetUser = null) {
 
       // Bestätigung anzeigen - mit kurzer Verzögerung damit das Overlay bereit ist
       setTimeout(() => {
-        showSuccessMessage(target);
+        showSuccessMessage(target, targetLabel);
       }, 100);
     } else if (message) {
       // Kein Versand ohne WS-Verbindung
