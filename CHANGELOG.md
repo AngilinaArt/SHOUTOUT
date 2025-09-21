@@ -7,11 +7,17 @@ All notable changes to this project will be documented in this file.
 - color for privat/personal toasts, change them to see the difference to "generel dms"
 - notification after invite tokin that software runs in tray
 - token valid until ...
+- Rechtschreibprüfung für Translator bzw. "Aufweichung" damit auch fehlerhafte Texte einen Übersetzungsvorschlag erhalten
+- Design nochmal checken, auf "einheitlichkeit"
+- die Toasts sollten farblich besser unterschieden werden, eventuell die Hintergrundfarbe anpassen an gewählte Farbe, eventuell schon beim Schreiben
+
+## UNRELEASED
+
+## RELEASE all included to V1.0.3
+
 - Documentation and Screenshots for readme
 - smaller Logo for git logo representation README.md
 - security check
-
-## UNRELEASED
 
 ## RELEASE all included to V1.0.2_1
 

@@ -1805,10 +1805,9 @@ function showAboutWindow() {
   });
 
   try {
-    const pkg = require(path.join(__dirname, "package.json"));
-    const ver = pkg?.version || "Unknown";
+    const ver = String(app.getVersion() || "Unknown");
     aboutWin.loadFile(path.join(__dirname, "renderer", "about.html"), {
-      query: { v: String(ver) },
+      query: { v: ver },
     });
   } catch (_) {
     aboutWin.loadFile(path.join(__dirname, "renderer", "about.html"));
@@ -1883,17 +1882,13 @@ function openNamePrompt() {
 // About info provider (IPC) – serves package.json version reliably in dev/prod
 ipcMain.handle("get-about-info", () => {
   try {
-    const pkgPath = path.join(__dirname, "package.json");
-    console.log("[about] get-about-info invoked. __dirname=", __dirname);
-    console.log("[about] Resolving client package.json at:", pkgPath);
-    const pkg = require(pkgPath);
-    console.log("[about] Loaded package.json version=", pkg?.version, "name=", pkg?.name);
-    return {
-      name: pkg?.name || "Shoutout",
-      version: pkg?.version || "Unknown",
-    };
+    if (process.env.DEBUG_ABOUT) console.log("[about] get-about-info invoked. __dirname=", __dirname);
+    const name = (typeof app.getName === "function" && app.getName()) || "Shoutout";
+    const version = (typeof app.getVersion === "function" && app.getVersion()) || "Unknown";
+    if (process.env.DEBUG_ABOUT) console.log("[about] Using Electron app metadata:", { name, version });
+    return { name, version };
   } catch (e) {
-    console.error("[about] Failed to load package.json for about info:", e && e.stack ? e.stack : e);
+    console.error("[about] Failed to resolve app metadata for about info:", e && e.stack ? e.stack : e);
     return { name: "Shoutout", version: "Unknown" };
   }
 });

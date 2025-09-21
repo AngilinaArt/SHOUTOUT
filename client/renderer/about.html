@@ -244,8 +244,7 @@
     <script>
       // Load app information when page loads
       document.addEventListener("DOMContentLoaded", async () => {
-        console.log("🚀 About page loaded, trying to get app info...");
-        console.log("🔍 Available window properties:", Object.keys(window));
+        // Keep logs minimal in renderer; detailed logs live in preload when DEBUG_ABOUT is set
 
         try {
           // If version passed via query string from main, set immediately
@@ -253,96 +252,74 @@
             const params = new URLSearchParams(window.location.search);
             const verFromQuery = params.get('v');
             if (verFromQuery) {
-              console.log('🔎 Version from query param v=', verFromQuery);
               setVersion(verFromQuery);
             }
           } catch (_) {}
-
-          // Render static content immediately (no waiting)
-          const fallbackInfo = {
-            version: "Unknown",
-            description:
-              "A fun and interactive shoutout application for sending hamsters and messages",
-            authors: [
-              "Angilina - Main Developer & UI/UX Designer",
-              "Claude Sonnet 4 - AI Assistant & Code Contributor",
-              "OpenAI GPT - AI Assistant & Code Contributor",
-            ],
-            features: [
-              "🐹 Interactive Hamster Animations",
-              "💬 Real-time Toast Messages",
-              "👥 Online User Management",
-              "🌐 Local Translation (DE↔EN)",
-              "🎨 Beautiful Cursor-style Theme",
-              "🔧 Professional Logging System",
-              "🚀 Cross-platform Desktop App",
-            ],
-            technologies: [
-              "Electron - Desktop Framework",
-              "Node.js - Backend Runtime",
-              "WebSockets - Real-time Communication",
-              "Winston - Professional Logging",
-              "HuggingFace Transformers + MarianMT (OPUS-MT) - Local NMT",
-              "PyTorch Runtime (CPU) + SentencePiece",
-              "Glassmorphism - Modern UI Design",
-            ],
-            attributions: [
-              "Helsinki-NLP/opus-mt-de-en, opus-mt-en-de (OPUS-MT) — CC-BY-4.0",
-              "HuggingFace Transformers — Apache-2.0",
-              "PyTorch — BSD-style license",
-              "SentencePiece — Apache-2.0",
-            ],
-          };
-          loadContent(fallbackInfo);
-
-          // Prefer constant from preload for immediate availability
-          if (window.aboutInfo) {
-            console.log("✅ Using aboutInfo from preload", window.aboutInfo);
-            setVersion(window.aboutInfo.version);
-            return;
-          }
+          // Use central data exposed by preload when available; UI populates on about-ready event below
 
           // Also listen for a one-shot event emitted by preload
           window.addEventListener('about-ready', (ev) => {
             try {
-              console.log('📨 about-ready event received', ev.detail);
-              if (ev && ev.detail && ev.detail.version) setVersion(ev.detail.version);
+              if (ev && ev.detail) {
+                if (ev.detail.version) setVersion(ev.detail.version);
+                loadContent(ev.detail);
+              }
             } catch (e) { console.error('❌ Failed to handle about-ready', e); }
           }, { once: true });
+
+          // Prefer constant from preload for immediate availability, but don't exit early
+          if (window.aboutInfo) {
+            setVersion(window.aboutInfo.version);
+            loadContent(window.aboutInfo);
+            // If still unknown, poll briefly for the preload IPC update
+            if (!window.aboutInfo.version || window.aboutInfo.version === 'Unknown') {
+              let tries = 0;
+              const maxTries = 20;
+              const t = setInterval(() => {
+                tries++;
+                const v = window.aboutInfo && window.aboutInfo.version;
+                if (v && v !== 'Unknown') {
+                  clearInterval(t);
+                  setVersion(v);
+                } else if (tries >= maxTries) {
+                  clearInterval(t);
+                  // Silent timeout; keep existing text
+                }
+              }, 250);
+            }
+          }
 
           if (window.aboutInfo) {
             console.log("✅ Using aboutInfo from preload", window.aboutInfo);
             loadContent(window.aboutInfo);
-            return;
           }
 
           // Wait briefly for the bridge to attach
           if (!window.about || !window.about.getAppInfo) {
-            console.warn("⚠️ about bridge not ready – retrying...");
             let tries = 0;
             const maxTries = 20;
             const timer = setInterval(() => {
               tries++;
               if (window.aboutInfo) {
                 clearInterval(timer);
-                console.log("📋 App info received (aboutInfo, delayed):", window.aboutInfo);
                 setVersion(window.aboutInfo.version);
+                loadContent(window.aboutInfo);
               } else if (window.about && window.about.getAppInfo) {
                 clearInterval(timer);
                 const ai = window.about.getAppInfo();
-                console.log("📋 App info received (delayed):", ai);
                 setVersion(ai.version);
+                loadContent(ai);
               } else if (tries >= maxTries) {
                 clearInterval(timer);
-                console.error("❌ about bridge not available after retries");
+                // Give up quietly; placeholders remain
               }
             }, 250);
             return;
           }
 
           const appInfo = window.about.getAppInfo();
-          console.log("📋 App info received:", appInfo);
           setVersion(appInfo.version);
+          loadContent(appInfo);
         } catch (error) {
           console.error("❌ Failed to load app info:", error);
           const versionEl = document.getElementById("version");
@@ -352,23 +329,23 @@
 
       function setVersion(v){
         const versionEl = document.getElementById("version");
-        if (versionEl) {
-          versionEl.textContent = `Version ${v || 'Unknown'}`;
-          console.log("✅ Version updated to:", v);
-        }
+        if (versionEl) versionEl.textContent = `Version ${v || 'Unknown'}`;
       }
 
       function loadContent(appInfo) {
         const versionEl = document.getElementById("version");
-        if (versionEl) {
-          versionEl.textContent = `Version ${appInfo.version}`;
-          console.log("✅ Version updated to:", appInfo.version);
+        if (versionEl) versionEl.textContent = `Version ${appInfo.version || 'Unknown'}`;
+
+        const nameEls = document.getElementsByClassName("app-name");
+        if (nameEls && nameEls[0] && appInfo.name) {
+          nameEls[0].textContent = appInfo.name;
+          try { document.title = `About ${appInfo.name}`; } catch(_) {}
         }
 
         const descEl = document.getElementById("description");
         if (descEl) {
           descEl.textContent = appInfo.description;
-          console.log("✅ Description updated");
+          // no-op
         }
 
         const authorsContainer = document.getElementById("authors");
@@ -383,7 +360,7 @@
           `
             )
             .join("");
-          console.log("✅ Authors populated:", appInfo.authors.length);
+          // no-op
         }
 
         const featuresContainer = document.getElementById("features");
@@ -391,7 +368,7 @@
           featuresContainer.innerHTML = appInfo.features
             .map((feature) => `<li>${feature}</li>`)
             .join("");
-          console.log("✅ Features populated:", appInfo.features.length);
+          // no-op
         }
 
         const technologiesContainer = document.getElementById("technologies");
@@ -399,10 +376,7 @@
           technologiesContainer.innerHTML = appInfo.technologies
             .map((tech) => `<li>${tech}</li>`)
             .join("");
-          console.log(
-            "✅ Technologies populated:",
-            appInfo.technologies.length
-          );
+          // no-op
         }
 
         const attributionsContainer = document.getElementById("attributions");
@@ -410,10 +384,8 @@
           attributionsContainer.innerHTML = appInfo.attributions
             .map((item) => `<li>${item}</li>`)
             .join("");
-          console.log("✅ Attributions populated:", appInfo.attributions.length);
+          // no-op
         }
-
-        console.log("🎉 All content loaded successfully!");
       }
     </script>
   </body>

@@ -52,3 +52,6 @@ caddy/Caddyfile
 
 #Gemini
 GEMINI.MD
+
+# General
+GITHUB_SECRETS.md
