@@ -6,9 +6,7 @@
 
 > **Ein zauberhaftes Desktop-Notification-System mit Hamster-Overlays, Toast-Nachrichten und Emoji-Reactions!** ✨
 
-[![Status](https://img.shields.io/badge/Status-Produktionsreif-brightgreen.svg)](https://github.com/yourusername/shoutout)
-[![Platform](https://img.shields.io/badge/Platform-macOS%20%7C%20Windows%20%7C%20Linux-blue.svg)](https://github.com/yourusername/shoutout)
-[![License](https://img.shields.io/badge/License-MIT-green.svg)](https://github.com/yourusername/shoutout)
+[![Platform](https://img.shields.io/badge/Platform-macOS%20%7C%20Windows%20%7C%20Linux-blue.svg)](#)
 
 ## 🎯 Was ist Shoutout?
 
@@ -32,9 +30,9 @@
 
 ## 🚀 Quick Start
 
-### 📥 Download / Client
+### 📥 Client Build (kurz)
 
-You have to build your own version but you can use the pre-build build.yml in .github.
+Baue den Client selbst lokal oder nutze das GitHub Actions Workflow `.github/workflows/build.yml` (liefert DMG/EXE). Für Actions müssen `PROD_WS_URL` und `PROD_SERVER_URL` als Secrets gesetzt sein.
 
 ### 🔧 Für Entwickler
 
@@ -52,24 +50,16 @@ cd ../client && npm install
 npm run dev
 ```
 
-### 🌐 Übersetzung (optional, lokal)
+### 🌐 Übersetzung (serverseitig, optional)
 
-1. Python-Abhängigkeiten installieren (HF‑Modus):
+Die Übersetzung läuft serverseitig. Wenn aktiviert, spawnt der Node‑Server ein Python‑Script (`server/src/translate/ct2_translator.py`) und nutzt Marian/HuggingFace lokal (kein Internet zur Laufzeit nötig). Aktivierung in `server/.env`:
 
-```bash
-pip install transformers torch sentencepiece
 ```
-
-2. Übersetzer aktivieren (HF erzwingen):
-
-```bash
-# server/.env
 TRANSLATOR_ENABLED=true
 TRANSLATOR_PROVIDER=ct2
-TRANSLATOR_FORCE_HF=true
+# optional: TRANSLATOR_PY=./src/translate/ct2_translator.py
+# Modelle: CT2_MODEL_DE_EN, CT2_MODEL_EN_DE → Pfade unter /app/models
 ```
-
-3. App starten und im Tray „🌐 Translate…“ öffnen.
 
 ---
 
@@ -234,14 +224,12 @@ BROADCAST_SECRET=your-super-secret-token-123
 # Optional separates Legacy-WS-Token (Query ?token=)
 WS_TOKEN=
 
-# Optional: Local translation (offline)
-TRANSLATOR_ENABLED=true
+# Translation (optional, serverseitig)
+TRANSLATOR_ENABLED=false
 TRANSLATOR_PROVIDER=ct2
-# Optional override of script path
 # TRANSLATOR_PY=./src/translate/ct2_translator.py
-# CTranslate2 model paths
-# CT2_MODEL_DE_EN=/absolute/path/to/ct2_models/de-en
-# CT2_MODEL_EN_DE=/absolute/path/to/ct2_models/en-de
+# CT2_MODEL_DE_EN=/absolute/path/to/server/models/ct2/de-en
+# CT2_MODEL_EN_DE=/absolute/path/to/server/models/ct2/en-de
 ```
 
 Notes
@@ -267,7 +255,10 @@ HUB_SECRET=
 ```bash
 WS_URL=ws://localhost:3001/ws
 SERVER_URL=http://localhost:3001
-# Kein WS_TOKEN mehr erforderlich – der Client holt per Invite-Code einen Token
+# DevTools-Optionen (für Tests)
+# OPEN_DEVTOOLS=true  # DevTools automatisch öffnen
+# DEBUG_ABOUT=1       # Detail-Logs für About-Fenster
+# Kein WS_TOKEN erforderlich – Token via Invite
 ```
 
 ### 🏗️ Build & Distribution
@@ -412,6 +403,12 @@ open "/Applications/Shoutout.app"
 
 ## 🔧 Technische Details
 
+### 🔑 Admin UI
+
+- URL: `https://<dein-host>/admin` (hinter Caddy) oder `http://localhost:3001/admin` direkt am Server
+- Login: ADMIN_SECRET im Eingabefeld; die UI sendet es als Bearer‑Token
+- Funktionen: Tokens auflisten, Token widerrufen, Owner neu zuordnen
+
 ### 🏗️ Tech Stack
 
 - **Frontend**: Electron, HTML5, CSS3, Vanilla JavaScript
@@ -419,7 +416,7 @@ open "/Applications/Shoutout.app"
 - **Logging**: Winston, Daily Rotation
 - **Build**: electron-builder, npm scripts
 - **Styling**: CSS Grid, Flexbox, Glass Effects, Animations
-- **Translation (optional, offline)**: CTranslate2 + SentencePiece + OPUS-MT (DE↔EN)
+- **Translation (optional, serverseitig)**: Python‑Stub + HuggingFace Marian (OPUS‑MT), optional CTranslate2
 
 ### 📁 Projektstruktur (aktuell)
 
@@ -501,7 +498,7 @@ shoutout/
 // Body:
 // {
 //   text: "Freitext oder E-Mail-Inhalt",
-//   direction: "auto" | "de-en" | "en-de",
+//   direction: "auto" | "de->en" | "en->de",
 //   formatMode: "auto" | "email" | "plain"
 // }
 // Response: { ok, from, to, format, translated }
@@ -633,13 +630,9 @@ Hinweis: Der eingebaute Fix erzwingt ein sauberes Repaint über `translateZ(0)`,
 
 ### 🔍 Debug-Modus
 
-```bash
-# DevTools aktivieren
-# In client/main.js: overlayWindow.openDevTools()
-
-# Logs anzeigen
-tail -f /tmp/server.log
-```
+- DevTools: `client/.env` → `OPEN_DEVTOOLS=true`
+- About-Logs: `client/.env` → `DEBUG_ABOUT=1`
+- Server-Logs: `docker compose logs -f server` (oder `cd server && npm start` im Dev)
 
 ---
 
@@ -689,12 +682,6 @@ npm run test:bot
 
 ---
 
-## 📄 License
-
-**MIT License** - Siehe [LICENSE](LICENSE) für Details.◊
-
----
-
 ## 🙏 Danksagungen
 
 - **Electron Team** - Für das fantastische Framework
@@ -714,6 +701,29 @@ npm run test:bot
 
 **Made with ❤️ and 🐹 by the Shoutout Team Angilina und Cursor AI Claude und GPT**
 
-**Letzte Aktualisierung**: August 2025
-**Version**: 1.0.0  
+**Letzte Aktualisierung**: September 2025
+**Version**: 1.0.3  
 **Status**: 🟢 Produktionsreif
+# 🧭 Self‑Hosting Quick Start
+
+1) Server vorbereiten
+- `cp server/env.example server/.env` und Werte setzen:
+  - `ADMIN_SECRET`, `INVITE_CODES`, `ALLOW_NO_AUTH=false`
+  - optional Übersetzer: `TRANSLATOR_ENABLED=true`, Modelle unter `server/models`
+- Starten: `docker compose up -d --build`
+
+2) Invite Codes
+- Entweder in `server/.env` (`INVITE_CODES=code1,code2`) oder `server/config/invites.json` (Array) hinterlegen.
+
+3) Client konfigurieren
+- `client/.env` anlegen:
+  - `WS_URL=ws://<dein-host>/ws`
+  - `SERVER_URL=http://<dein-host>` (oder `https://` hinter Caddy)
+  - optional: `OPEN_DEVTOOLS=true` für Tests
+
+4) Client starten/bauen
+- Dev: `cd client && npm start`
+- Build: `npm run build:mac|build:win|build:linux`
+
+5) Erster Start
+- Client zeigt „Invite‑Code eingeben“. Code eingeben → Token wird lokal gespeichert → Verbindung steht.

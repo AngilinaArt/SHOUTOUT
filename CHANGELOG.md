@@ -10,6 +10,7 @@ All notable changes to this project will be documented in this file.
 - Rechtschreibprüfung für Translator bzw. "Aufweichung" damit auch fehlerhafte Texte einen Übersetzungsvorschlag erhalten
 - Design nochmal checken, auf "einheitlichkeit"
 - die Toasts sollten farblich besser unterschieden werden, eventuell die Hintergrundfarbe anpassen an gewählte Farbe, eventuell schon beim Schreiben
+- Untersütztung für Discord Bot, derzeit noch nicht implementiert
 
 ## UNRELEASED
 
