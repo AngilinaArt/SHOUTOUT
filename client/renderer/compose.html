@@ -207,6 +207,30 @@
         color: var(--muted);
         margin-top: 6px;
       }
+      /* Broadcast indicators */
+      .broadcast-tag {
+        display: none;
+        position: absolute;
+        top: -12px;
+        left: 8px;
+        background: rgba(245, 158, 11, 0.15);
+        color: #fbbf24;
+        border: 1px solid rgba(245, 158, 11, 0.35);
+        padding: 4px 10px;
+        border-radius: 999px;
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: .2px;
+        box-shadow: 0 2px 8px rgba(0,0,0,.2);
+      }
+      .broadcast-active #broadcastTag { display: inline-flex; }
+
+      @keyframes glowPulse {
+        0% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.5); }
+        100% { box-shadow: 0 0 0 6px rgba(245, 158, 11, 0); }
+      }
+      .glow-once { animation: glowPulse 650ms ease-out 1; }
+      .btn-warn { border-color: rgba(245,158,11,.6) !important; }
       .actions {
         display: flex;
         justify-content: flex-end;
@@ -437,6 +461,7 @@
     <div class="wrap">
       <div class="header">Send Toast</div>
       <div class="field compose-bubble severity-blue" id="composeField">
+        <div id="broadcastTag" class="broadcast-tag hidden" aria-hidden="true">📣 An alle</div>
         <div class="toolbar">
           <button
             type="button"
@@ -528,6 +553,34 @@
       // User-Management
       let users = [];
       let currentUser = null;
+      let onlineCount = 0;
+
+      function isBroadcast() {
+        const selected = Array.from(targetEl.selectedOptions).map(o => o.value);
+        return selected.length === 0 || selected.includes('all');
+      }
+
+      function updateBroadcastUI({ flash = false } = {}) {
+        const active = isBroadcast();
+        document.body.classList.toggle('broadcast-active', active);
+        // Button label
+        sendBtn.textContent = active ? 'AN ALLE SENDEN' : 'SENDEN';
+        // Placeholder
+        messageEl.placeholder = active
+          ? 'Deine Nachricht… (wird an alle gesendet)'
+          : 'Deine Nachricht… (Enter = senden)';
+        // Chip text
+        const tag = document.getElementById('broadcastTag');
+        if (tag) { tag.textContent = onlineCount > 0 ? `📣 An alle (${onlineCount})` : '📣 An alle'; }
+        // Subtle glow
+        if (flash && active) {
+          [sendBtn, document.getElementById('composeField')].forEach(el => {
+            if (!el) return;
+            el.classList.add('glow-once');
+            setTimeout(() => el.classList.remove('glow-once'), 700);
+          });
+        }
+      }
 
       async function loadUsers() {
         try {
@@ -584,7 +637,8 @@
         const otherUsers = users.filter(
           (user) => !currentUser || user.name !== currentUser
         );
-        userCountEl.textContent = `${otherUsers.length} User online • Mehrfachauswahl: Cmd/Ctrl-Klick`;
+        onlineCount = otherUsers.length;
+        userCountEl.textContent = `${onlineCount} User online • Mehrfachauswahl: Cmd/Ctrl-Klick`;
 
         // Entferne Loading-Option
         const loadingOption = targetEl.querySelector('option[value="loading"]');
@@ -610,6 +664,8 @@
         // WICHTIG: Nach dem User-Loading versuchen, den Target User zu setzen
         console.log(`🎯 Dropdown updated, trying to set target user again...`);
         setTimeout(() => trySetTargetUser(), 100);
+        // Initial broadcast UI state
+        updateBroadcastUI();
       }
 
       // User beim Laden der Seite laden
@@ -622,6 +678,7 @@
       }, 100);
 
       // Nach User-Auswahl automatisch zurück zum Nachrichtenfeld
+      // and update broadcast UI cues
       targetEl.addEventListener("change", () => {
         // Wenn "all" zusammen mit anderen gewählt wurde, entferne "all"
         const selected = Array.from(targetEl.selectedOptions).map((o) => o.value);
@@ -637,6 +694,7 @@
         }
         messageEl.focus();
         console.log(`🎯 Target changed, focus back to message field`);
+        try { updateBroadcastUI && updateBroadcastUI({ flash: true }); } catch(_) {}
       });
 
       // Refresh-Button
@@ -935,6 +993,7 @@
             } else {
               targetEl.selectedIndex = i;
             }
+            try { updateBroadcastUI && updateBroadcastUI({ flash: true }); } catch(_) {}
             pendingTargetUser = null; // Erfolgreich gesetzt
             return;
           }
