@@ -133,12 +133,12 @@
         background: rgba(139, 92, 246, 0.2);
         transform: scale(1.1);
       }
+      /* Remove heavy focus effect to keep broadcast tag unobstructed */
       .field:focus-within {
-        outline: 2px solid #afc6f3; /* Cursor accent color */
-        outline-offset: 0;
-        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4),
-          0 0 0 4px rgba(175, 198, 243, 0.2); /* Stärkerer Fokus-Glaseffekt */
-        backdrop-filter: blur(16px); /* Stärkerer Blur bei Fokus */
+        outline: none;
+        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3),
+          0 0 0 1px rgba(175, 198, 243, 0.1);
+        backdrop-filter: blur(12px);
       }
       textarea {
         width: 100%;
@@ -208,10 +208,11 @@
         margin-top: 6px;
       }
       /* Broadcast indicators */
+      .compose-field-wrap { position: relative; }
       .broadcast-tag {
         display: none;
         position: absolute;
-        top: -12px;
+        top: -12px; /* original floating position above the field */
         left: 8px;
         background: rgba(245, 158, 11, 0.15);
         color: #fbbf24;
@@ -222,6 +223,8 @@
         font-weight: 700;
         letter-spacing: .2px;
         box-shadow: 0 2px 8px rgba(0,0,0,.2);
+        z-index: 9999; /* stay above focus rings/shadows */
+        pointer-events: none;
       }
       .broadcast-active #broadcastTag { display: inline-flex; }
 
@@ -460,9 +463,9 @@
   <body>
     <div class="wrap">
       <div class="header">Send Toast</div>
-      <div class="field compose-bubble severity-blue" id="composeField">
-        <div id="broadcastTag" class="broadcast-tag hidden" aria-hidden="true">📣 An alle</div>
-        <div class="toolbar">
+      <div class="compose-field-wrap">
+        <div class="field compose-bubble severity-blue" id="composeField">
+          <div class="toolbar">
           <button
             type="button"
             id="emojiBtn"
@@ -488,6 +491,8 @@
             <span class="spoiler-text">Nachricht spoilern</span>
           </label>
         </div>
+        </div>
+        <div id="broadcastTag" class="broadcast-tag hidden" aria-hidden="true">📣 An alle</div>
       </div>
 
       <!-- Farben direkt unter dem Eingabefeld -->
