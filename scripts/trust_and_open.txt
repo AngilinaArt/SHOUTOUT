@@ -1,0 +1,8 @@
+# 1. Quarantäne-Flag entfernen
+xattr -dr com.apple.quarantine "/Applications/Shoutout.app"
+
+# 2. Ad-hoc signieren
+codesign --force --deep --sign - "/Applications/Shoutout.app"
+
+# 3. App starten
+open "/Applications/Shoutout.app"
