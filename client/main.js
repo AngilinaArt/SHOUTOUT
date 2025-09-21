@@ -1429,17 +1429,17 @@ function openToastPrompt(targetUser = null) {
 
   // Zielbreite/-höhe: genug Platz für Multi-Select (8 Zeilen) ohne Scrollbar
   const desiredWidth = 660;
-  const desiredHeight = 980; // Mehr Höhe für Multi-Select + große Spoiler-Option
+  const desiredHeight = 780; // Kompakter: weniger Leerraum nach unten
   const margin = 100; // Abstand zu Displayrändern
 
   const width = work ? Math.min(Math.max(desiredWidth, 600), Math.max(600, work.width - margin)) : desiredWidth;
-  const height = work ? Math.min(Math.max(desiredHeight, 820), Math.max(820, work.height - margin)) : desiredHeight;
+  const height = work ? Math.min(Math.max(desiredHeight, 740), Math.max(740, work.height - margin)) : desiredHeight;
 
   const composeWin = new BrowserWindow({
     width,
     height,
     minWidth: 600,
-    minHeight: 820,
+    minHeight: 740,
     useContentSize: true, // width/height beziehen sich auf den Inhalt (nicht Rahmen)
     center: true,
     resizable: true,
@@ -2430,10 +2430,11 @@ function openTranslateWindow() {
     work = disp?.workArea || null;
   } catch (_) {}
   const margin = 80;
-  const desiredWidth = 1100;
-  const desiredHeight = 1000;
-  const width = work ? Math.min(Math.max(desiredWidth, 900), Math.max(900, work.width - margin)) : desiredWidth;
-  const height = work ? Math.min(Math.max(desiredHeight, 860), Math.max(860, work.height - margin)) : desiredHeight;
+  // Match compose window sizing
+  const desiredWidth = 660;
+  const desiredHeight = 780;
+  const width = work ? Math.min(Math.max(desiredWidth, 600), Math.max(600, work.width - margin)) : desiredWidth;
+  const height = work ? Math.min(Math.max(desiredHeight, 740), Math.max(740, work.height - margin)) : desiredHeight;
 
   translateWindow = new BrowserWindow({
     width,
@@ -2441,6 +2442,8 @@ function openTranslateWindow() {
     useContentSize: true,
     center: true,
     resizable: true,
+    minWidth: 600,
+    minHeight: 740,
     modal: false,
     frame: true,
     alwaysOnTop: false,

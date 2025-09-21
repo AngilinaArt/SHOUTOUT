@@ -322,13 +322,33 @@
         border-bottom: 6px solid transparent;
       }
       /* Severity accent like overlay */
-      .severity-blue.compose-bubble { background: rgba(29,33,40,0.85); border-left: 3px solid #3b82f6; }
+      .severity-blue.compose-bubble {
+        background:
+          linear-gradient(135deg, rgba(59,130,246,0.14), rgba(59,130,246,0) 60%),
+          rgba(29,33,40,0.85);
+        border-left: 3px solid #3b82f6;
+      }
       .severity-blue.compose-bubble:after { border-left: 6px solid rgba(29,33,40,0.85); }
-      .severity-green.compose-bubble { background: rgba(29,33,40,0.85); border-left: 3px solid #10b981; }
+      .severity-green.compose-bubble {
+        background:
+          linear-gradient(135deg, rgba(16,185,129,0.14), rgba(16,185,129,0) 60%),
+          rgba(29,33,40,0.85);
+        border-left: 3px solid #10b981;
+      }
       .severity-green.compose-bubble:after { border-left: 6px solid rgba(29,33,40,0.85); }
-      .severity-pink.compose-bubble { background: rgba(29,33,40,0.85); border-left: 3px solid #ec4899; }
+      .severity-pink.compose-bubble {
+        background:
+          linear-gradient(135deg, rgba(236,72,153,0.16), rgba(236,72,153,0) 60%),
+          rgba(29,33,40,0.85);
+        border-left: 3px solid #ec4899;
+      }
       .severity-pink.compose-bubble:after { border-left: 6px solid rgba(29,33,40,0.85); }
-      .severity-red.compose-bubble { background: rgba(29,33,40,0.85); border-left: 3px solid #ef4444; }
+      .severity-red.compose-bubble {
+        background:
+          linear-gradient(135deg, rgba(239,68,68,0.16), rgba(239,68,68,0) 60%),
+          rgba(29,33,40,0.85);
+        border-left: 3px solid #ef4444;
+      }
       .severity-red.compose-bubble:after { border-left: 6px solid rgba(29,33,40,0.85); }
 
       /* Toast-like actions/buttons */
@@ -386,23 +406,28 @@
       /* User-Auswahl Styles */
       .target-select {
         width: 100%;
-        background: rgba(29, 33, 40, 0.7); /* Cursor dark background */
-        backdrop-filter: blur(10px); /* Glaseffekt */
-        border: 1px solid rgba(175, 198, 243, 0.2); /* Cursor accent border */
-        border-radius: 12px; /* Konsistente Rundungen */
-        padding: 12px 14px; /* Etwas mehr Padding */
-        color: #afc6f3; /* Cursor text color */
-        font-size: 14px;
+        background: rgba(29, 33, 40, 0.55); /* dezenter */
+        backdrop-filter: blur(8px);
+        border: 1px solid rgba(175, 198, 243, 0.18);
+        border-radius: 12px;
+        padding: 8px 10px; /* kompakter */
+        color: #afc6f3;
+        font-size: 13px; /* eine Spur kleiner */
+        line-height: 1.2;
         font-family: inherit;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2); /* Subtiler Schatten */
+        box-shadow: 0 3px 10px rgba(0, 0, 0, 0.18);
         transition: all 0.2s ease;
+        outline: none;
+        appearance: none;
       }
 
       /* Windows-spezifische Dropdown-Styles */
       .target-select option {
         background: #1e1b4b !important;
         color: #e2e8f0 !important;
-        padding: 8px 12px;
+        padding: 6px 10px;
+        border-radius: 8px; /* weicher, soweit unterstützt */
+        background-clip: padding-box;
       }
 
       /* Hover-Effekt für Optionen */
@@ -417,9 +442,16 @@
 
       /* Selected Option */
       .target-select option:checked {
-        background: #8b5cf6 !important;
+        background: rgba(139, 92, 246, 0.28) !important; /* weicher */
         color: #ffffff !important;
+        border: 1px solid rgba(139, 92, 246, 0.38);
       }
+
+      /* Schlanker Scrollbar für die Auswahl */
+      .target-select::-webkit-scrollbar { width: 6px; }
+      .target-select::-webkit-scrollbar-track { background: rgba(0,0,0,0.15); border-radius: 8px; }
+      .target-select::-webkit-scrollbar-thumb { background: rgba(139,92,246,0.35); border-radius: 8px; }
+      .target-select::-webkit-scrollbar-thumb:hover { background: rgba(139,92,246,0.5); }
 
       .refresh-link {
         cursor: pointer;
@@ -521,7 +553,7 @@
           id="target"
           class="target-select"
           multiple
-          size="8">
+          size="3">
           <option value="all">👥 Alle User</option>
           <option
             value="loading"
@@ -761,6 +793,15 @@
               .querySelectorAll(".pill")
               .forEach((x) => x.classList.remove("active"));
             target.classList.add("active");
+            // Apply severity to compose bubble immediately on load
+            try {
+              const composeField = document.getElementById('composeField');
+              if (composeField) {
+                ['severity-blue','severity-green','severity-pink','severity-red','severity-info','severity-success','severity-warn','severity-critical']
+                  .forEach(cls => composeField.classList.remove(cls));
+                composeField.classList.add(`severity-${sev}`);
+              }
+            } catch (_) {}
           }
         }
       } catch (_) {}
