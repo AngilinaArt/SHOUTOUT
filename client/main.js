@@ -29,6 +29,8 @@ const {
   dialog,
 } = require("electron");
 app.commandLine.appendSwitch("enable-features", "UseOzonePlatform");
+// Allow autoplay of audio without explicit user gesture (for broadcast sounds)
+try { app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required'); } catch (_) {}
 const WebSocket = require("ws");
 // Simple HTTP(S) binary fetch helper (avoids CORS/CORP and node-fetch quirks)
 const http = require("http");
@@ -108,6 +110,12 @@ function fetchImageAsDataUrl(imageUrl) {
 const WS_URL = process.env.WS_URL || "ws://localhost:3001/ws";
 const WS_TOKEN = process.env.WS_TOKEN || ""; // legacy fallback
 const SERVER_URL = process.env.SERVER_URL || "http://localhost:3001";
+// Default display duration for hamster overlays (ms); can be overridden via env
+const HAMSTER_DEFAULT_DURATION_MS = (() => {
+  const raw = process.env.HAMSTER_DURATION_MS || process.env.DEFAULT_HAMSTER_DURATION_MS;
+  const n = raw != null ? Number(raw) : NaN;
+  return Number.isFinite(n) && n >= 300 ? Math.floor(n) : 5000;
+})();
 const { safeStorage } = require("electron");
 
 let tray = null;
@@ -122,6 +130,7 @@ let ws = null;
 let wsStatus = "disconnected"; // "connected", "connecting", "disconnected"
 let displayName = null;
 let availableHamsters = []; // Dynamically loaded hamster variants
+let availableSounds = []; // Array of { filename, url }
 let wsConnectToken = 0;
 let lastSeverity = "blue";
 let userListUpdateTimer = null;
@@ -131,6 +140,9 @@ let isLoggingOut = false; // Prevent double-invocations of logout
 let isInviteOpen = false; // Prevent multiple invite prompts
 let userId = null; // Stable user identifier
 let deviceId = null; // Stable device identifier
+let overlayPosition = "top-right"; // "top-right" | "center"
+let notificationSoundEnabled = true;
+let notificationVolume = 1.0; // 0.0 - 1.0
 
 function createOverlayWindow() {
   console.log(`🏗️ Creating overlay window...`);
@@ -173,6 +185,7 @@ function createOverlayWindow() {
   // Mouse-Events standardmäßig ignorieren (click-through), nur bei aktiven Toasts aktivieren
   overlayWindow.setIgnoreMouseEvents(true);
   overlayWindow.showInactive();
+  try { overlayWindow.webContents.setAudioMuted(false); } catch (_) {}
 
   console.log(`✅ Overlay window created and shown`);
 
@@ -182,6 +195,24 @@ function createOverlayWindow() {
   // Event-Listener für das Laden
   overlayWindow.webContents.once("did-finish-load", () => {
     console.log(`🎯 Overlay window finished loading`);
+    try {
+      const soundMsg = `${SERVER_URL}/assets/sounds/icq-message.wav`;
+      const soundHam = `${SERVER_URL}/assets/sounds/short-bang.mp3`;
+      const soundClick = `${SERVER_URL}/assets/sounds/short.mp3`;
+      overlayWindow.webContents.send("preload-sound", soundMsg);
+      overlayWindow.webContents.send("preload-sound", soundHam);
+      overlayWindow.webContents.send("preload-sound", soundClick);
+      overlayWindow.webContents.send("default-click-sound", soundClick);
+      // Inform renderer about current overlay position class
+      try { overlayWindow.webContents.send("overlay-position", overlayPosition); } catch (_) {}
+      // Preload known broadcast sounds for low-latency playback
+      try {
+        for (const s of availableSounds) {
+          overlayWindow.webContents.send("preload-sound", s.url || `${SERVER_URL}/assets/api-sounds/${s}`);
+        }
+        overlayWindow.webContents.send("preload-image", `${SERVER_URL}/assets/others/speaker.png`);
+      } catch (_) {}
+    } catch (_) {}
     // Repositioniere das Reaction-Window nach dem Toast-Overlay laden
     setTimeout(() => {
       positionReactionWindow();
@@ -248,7 +279,7 @@ function createStatusWindow() {
       // Repositioniere das Toast-Overlay, damit es unter dem Status-Overlay ist
       if (overlayWindow && !overlayWindow.isDestroyed()) {
         console.log(`🔧 Repositioning toast overlay below status`);
-        positionOverlayTopRight();
+        positionOverlayByMode();
       }
     });
 
@@ -366,10 +397,12 @@ function positionStatusWindow() {
   }
 
   const work = target.workArea;
-  const x = Math.floor(work.x + work.width - currentBounds.width - margin);
+  const x = overlayPosition === "center"
+    ? Math.floor(work.x + (work.width - currentBounds.width) / 2)
+    : Math.floor(work.x + work.width - currentBounds.width - margin);
   const y = Math.floor(work.y + margin); // Status-Overlay ganz oben
 
-  console.log(`🔧 Status window positioned at top: x=${x}, y=${y}`);
+  console.log(`🔧 Status window positioned at top (${overlayPosition}): x=${x}, y=${y}`);
   statusWindow.setPosition(x, y);
 }
 
@@ -396,7 +429,9 @@ function positionReactionWindow() {
   }
 
   const work = target.workArea;
-  const x = Math.floor(work.x + work.width - currentBounds.width - margin);
+  const x = overlayPosition === "center"
+    ? Math.floor(work.x + (work.width - currentBounds.width) / 2)
+    : Math.floor(work.x + work.width - currentBounds.width - margin);
 
   // Reaction-Overlay ganz unten positionieren (unter Toast-Overlay)
   let y = Math.floor(work.y + margin);
@@ -462,6 +497,11 @@ function createUserListWindow() {
     // Event-Listener für das Laden
     userListWindow.webContents.once("did-finish-load", () => {
       console.log(`🎯 User list window finished loading`);
+      try {
+        const soundClick = `${SERVER_URL}/assets/sounds/short.mp3`;
+        userListWindow.webContents.send("preload-sound", soundClick);
+        userListWindow.webContents.send("default-click-sound", soundClick);
+      } catch (_) {}
     });
 
     userListWindow.webContents.on(
@@ -542,6 +582,43 @@ function positionOverlayTopRight() {
   overlayWindow.setPosition(x, y);
 }
 
+function positionOverlayCentered() {
+  if (!overlayWindow || overlayWindow.isDestroyed()) return;
+  const margin = 20;
+  const gap = 10; // Abstand zwischen Status und Toast
+  const currentBounds = overlayWindow.getBounds();
+
+  let target = screen.getPrimaryDisplay();
+  try {
+    const pt = screen.getCursorScreenPoint();
+    target = screen.getDisplayNearestPoint(pt) || target;
+  } catch (_) {}
+
+  const work = target.workArea;
+  const x = Math.floor(work.x + (work.width - currentBounds.width) / 2);
+
+  // Toast-Overlay unter dem Status-Overlay (zentriert) positionieren
+  let y = Math.floor(work.y + margin);
+
+  if (statusWindow && !statusWindow.isDestroyed()) {
+    const statusBounds = statusWindow.getBounds();
+    const statusHeight = statusBounds.height;
+    y = Math.floor(work.y + margin + statusHeight + gap);
+    console.log(
+      `🔧 [center] Toast positioned below status: statusHeight=${statusHeight}, y=${y}`
+    );
+  } else {
+    console.log(`🔧 [center] Toast positioned at top (no status): y=${y}`);
+  }
+
+  overlayWindow.setPosition(x, y);
+}
+
+function positionOverlayByMode() {
+  if (overlayPosition === "center") return positionOverlayCentered();
+  return positionOverlayTopRight();
+}
+
 async function showHamster(variant, durationMs, sender) {
   console.log(
     `🐹 showHamster: variant=${variant}, durationMs=${durationMs}, sender=${sender}`
@@ -558,7 +635,9 @@ async function showHamster(variant, durationMs, sender) {
     overlayWindow.webContents.getTitle() !== ""
   ) {
     console.log(`📍 Positioning overlay`);
-    positionOverlayTopRight();
+    try { positionStatusWindow(); } catch (_) {}
+    try { positionOverlayByMode(); } catch (_) {}
+    try { positionReactionWindow(); } catch (_) {}
 
     // Fetch image as data URL to completely bypass CORS/CORP
     const serverUrl = process.env.SERVER_URL || "http://localhost:3001";
@@ -579,6 +658,9 @@ async function showHamster(variant, durationMs, sender) {
       durationMs,
       url: finalImageUrl, // null = renderer will use generic icon
       sender,
+      soundUrl: `${SERVER_URL}/assets/sounds/short-bang.mp3`,
+      defaultSoundUrl: `${SERVER_URL}/assets/sounds/icq-message.wav`,
+      sound: { enabled: Boolean(notificationSoundEnabled), volume: Number(notificationVolume) || 0 },
     };
     console.log(
       `📤 Sending show-hamster IPC with ${
@@ -613,6 +695,7 @@ function showToast(
   // Mouse-Events aktivieren wenn Toast angezeigt wird (für Buttons)
   overlayWindow.setIgnoreMouseEvents(false);
 
+  const soundUrl = `${SERVER_URL}/assets/sounds/icq-message.wav`;
   overlayWindow.webContents.send("show-toast", {
     message,
     severity,
@@ -621,7 +704,22 @@ function showToast(
     recipientInfo,
     senderId,
     spoiler: Boolean(spoiler),
+    soundUrl,
+    sound: { enabled: Boolean(notificationSoundEnabled), volume: Number(notificationVolume) || 0 },
   });
+}
+
+function playSound(soundUrl, volume = 1.0, senderName = null) {
+  if (!overlayWindow || overlayWindow.isDestroyed()) return;
+  try {
+    console.log(`🎼 Sending play-sound IPC to overlay:`, { soundUrl, volume });
+    overlayWindow.webContents.send("play-sound", {
+      soundUrl: String(soundUrl || ""),
+      volume: Math.max(0, Math.min(1, Number(volume) || 0)),
+      iconUrl: `${SERVER_URL}/assets/others/speaker.png`,
+      sender: senderName ? String(senderName) : undefined,
+    });
+  } catch (_) {}
 }
 
 // Funktion um Mouse-Events wieder zu deaktivieren wenn keine Toasts mehr da sind
@@ -714,6 +812,37 @@ function showStatus(type, message, durationMs = 3000) {
   } catch (_) {}
 }
 
+// Refresh hamster variants from the server (or local fallback) and rebuild UI
+async function refreshHamstersAndUI() {
+  try {
+    const beforeH = Array.isArray(availableHamsters) ? availableHamsters.slice().join("|") : "";
+    const beforeS = Array.isArray(availableSounds) ? availableSounds.slice().join("|") : "";
+    await loadHamstersFromServer();
+    await loadSoundsFromServer();
+    const afterH = Array.isArray(availableHamsters) ? availableHamsters.slice().join("|") : "";
+    const afterS = Array.isArray(availableSounds) ? availableSounds.slice().join("|") : "";
+    // Only update bindings/menu if something actually changed (either)
+    if (beforeH !== afterH || beforeS !== afterS) {
+      try { registerHotkey(); } catch (_) {}
+      try { buildTrayMenu(); } catch (_) {}
+      console.log(
+        `🔁 Assets refreshed after connect: ${availableHamsters.length} hamsters, ${availableSounds.length} sounds`
+      );
+      // Preload sounds in overlay for low-latency playback
+      try {
+        if (overlayWindow && !overlayWindow.isDestroyed()) {
+          for (const s of availableSounds) {
+            const u = s && s.url ? s.url : `${SERVER_URL}/assets/api-sounds/${s}`;
+            overlayWindow.webContents.send("preload-sound", u);
+          }
+        }
+      } catch (_) {}
+    }
+  } catch (e) {
+    console.error("❌ Failed to refresh hamsters after connect:", e);
+  }
+}
+
 function connectWebSocket() {
   const token = ++wsConnectToken;
   const url = new URL(WS_URL);
@@ -741,6 +870,9 @@ function connectWebSocket() {
       updateTrayMenu();
       console.log("📝 Calling updateServerName...");
       updateServerName(); // Sende aktuellen Namen beim Verbinden
+      // After a successful connection, try to refresh hamsters so the tray submenu
+      // "Send pic to all" is populated even if initial load happened before network was ready.
+      refreshHamstersAndUI();
     });
     ws.on("message", (data) => {
       console.log(
@@ -762,7 +894,7 @@ function connectWebSocket() {
           );
           showHamster(
             event.variant || "default",
-            event.duration || 3000,
+            event.duration || HAMSTER_DEFAULT_DURATION_MS,
             event.sender
           );
         } else if (event.type === "toast") {
@@ -778,6 +910,11 @@ function connectWebSocket() {
             event.senderId,
             event.spoiler
           );
+        } else if (event.type === "sound") {
+          const u = String(event.url || "");
+          const vol = Number(event.volume);
+          console.log(`🔊 Playing broadcast sound: ${u}`);
+          playSound(u, Number.isFinite(vol) ? vol : (Number(notificationVolume) || 1.0), event.sender || null);
         } else if (event.type === "user-status") {
           console.log(`👤 User status: ${event.user} is ${event.status}`);
           showUserStatusMessage(event.user, event.status, event.message);
@@ -1256,6 +1393,52 @@ async function scanLocalHamsters() {
   );
 }
 
+async function loadSoundsFromServer() {
+  try {
+    const serverUrl = process.env.SERVER_URL || "http://localhost:3001";
+    const response = await fetch(`${serverUrl}/api/sounds`);
+    if (!response.ok) {
+      throw new Error(`Server responded with ${response.status}: ${response.statusText}`);
+    }
+    const data = await response.json();
+    const sounds = Array.isArray(data.sounds) ? data.sounds : [];
+    availableSounds = sounds
+      .map((s) => ({ filename: String(s.filename), url: `${SERVER_URL}${String(s.url)}` }))
+      .filter((s) => s.filename && s.url);
+    console.log(`🔊 Loaded ${availableSounds.length} sounds from server:`, availableSounds.map(s=>s.filename));
+    return sounds;
+  } catch (error) {
+    console.error("❌ Error loading sounds from server:", error);
+    try {
+      console.log("🔄 Falling back to local api-sounds assets...");
+      await scanLocalSounds();
+    } catch (fallbackError) {
+      console.error("❌ Local sounds fallback also failed:", fallbackError);
+      availableSounds = [];
+    }
+    return [];
+  }
+}
+
+async function scanLocalSounds() {
+  const fs = require("fs");
+  const allowed = new Set([".mp3", ".wav", ".ogg", ".m4a"]);
+  let base = path.join(__dirname, "assets", "api-sounds");
+  if (!fs.existsSync(base)) base = path.join(process.resourcesPath, "assets", "api-sounds");
+  if (!fs.existsSync(base)) base = path.join(process.cwd(), "assets", "api-sounds");
+  if (!fs.existsSync(base)) {
+    console.log("❌ api-sounds directory not found in any location");
+    availableSounds = [];
+    return;
+  }
+  console.log(`🔍 Found local api-sounds directory: ${base}`);
+  const files = fs.readdirSync(base);
+  availableSounds = files
+    .filter((f) => allowed.has(path.extname(f).toLowerCase()))
+    .sort();
+  console.log(`🔄 Found ${availableSounds.length} local sounds:`, availableSounds);
+}
+
 function registerHotkey() {
   // First, unregister all existing shortcuts
   globalShortcut.unregisterAll();
@@ -1263,7 +1446,7 @@ function registerHotkey() {
   const bindings = [
     {
       acc: "CommandOrControl+Alt+H",
-      run: () => sendHamsterUpstream("default", 1500),
+      run: () => sendHamsterUpstream("default", HAMSTER_DEFAULT_DURATION_MS),
     },
     { acc: "CommandOrControl+Alt+T", run: () => openToastPrompt() },
   ];
@@ -1278,7 +1461,7 @@ function registerHotkey() {
 
     bindings.push({
       acc: `CommandOrControl+Alt+${key}`,
-      run: () => sendHamsterUpstream(hamster, 1500),
+      run: () => sendHamsterUpstream(hamster, HAMSTER_DEFAULT_DURATION_MS),
     });
 
     console.log(`Registered hotkey ⌘⌥${key} for hamster: ${hamster}`);
@@ -1303,6 +1486,67 @@ function registerHotkey() {
       console.error(`Failed to register hotkey ${acc}:`, error);
     }
   }
+}
+
+function setOverlayPositionMode(mode) {
+  const next = mode === "center" ? "center" : "top-right";
+  overlayPosition = next;
+  try { updateSettings({ overlayPosition: next }); } catch (_) {}
+  try { repositionAll(); } catch (_) {
+    try {
+      positionStatusWindow();
+      positionOverlayByMode();
+      positionReactionWindow();
+    } catch (_) {}
+  }
+  try { buildTrayMenu(); } catch (_) {}
+  // Notify overlay renderer to update layout class
+  try { if (overlayWindow && !overlayWindow.isDestroyed()) overlayWindow.webContents.send("overlay-position", overlayPosition); } catch (_) {}
+}
+
+function repositionAll() {
+  try { positionStatusWindow(); } catch (_) {}
+  try { positionOverlayByMode(); } catch (_) {}
+  try { positionReactionWindow(); } catch (_) {}
+  try { positionUserListWindow(); } catch (_) {}
+}
+
+async function maybePromptAutostart() {
+  try {
+    if (!(process.platform === "darwin" || process.platform === "win32")) return;
+    const settings = readSettings() || {};
+    if (settings.autostartPromptDismissed) return;
+    try {
+      const s = app.getLoginItemSettings();
+      if (s?.openAtLogin) return;
+      if (s?.wasOpenedAtLogin) return;
+    } catch (_) {}
+    if (autostartEnabled === true) return;
+
+    const res = await dialog.showMessageBox({
+      type: "question",
+      buttons: ["Aktivieren", "Nicht jetzt", "Nicht mehr fragen"],
+      defaultId: 0,
+      cancelId: 1,
+      title: "Autostart aktivieren?",
+      message: "Autostart ist nicht aktiviert.",
+      detail:
+        "Möchtest du Autostart aktivieren, damit Shoutout beim Systemstart automatisch startet?",
+      normalizeAccessKeys: true,
+    });
+    if (res.response === 0) {
+      try {
+        updateAutostartStatus(true);
+        showStatus("success", "Autostart wurde aktiviert", 3000);
+        buildTrayMenu();
+      } catch (e) {
+        console.error("Failed to enable autostart via prompt:", e);
+        showStatus("error", "Autostart konnte nicht aktiviert werden", 4000);
+      }
+    } else if (res.response === 2) {
+      try { updateSettings({ autostartPromptDismissed: true }); } catch (_) {}
+    }
+  } catch (_) {}
 }
 
 // Prevent multiple instances
@@ -1353,6 +1597,15 @@ app.whenReady().then(() => {
   ipcMain.handle("disable-overlay-mouse-events", async () => {
     disableOverlayMouseEvents();
   });
+  // IPC-Handler um Mouse-Events zu aktivieren (für klickbare Overlays wie Sound-Stop)
+  ipcMain.handle("enable-overlay-mouse-events", async () => {
+    try {
+      if (overlayWindow && !overlayWindow.isDestroyed()) {
+        console.log(`🖱️ Enabling overlay mouse events (click-through disabled)`);
+        overlayWindow.setIgnoreMouseEvents(false);
+      }
+    } catch (_) {}
+  });
 
   createOverlayWindow();
   createTray();
@@ -1367,6 +1620,7 @@ app.whenReady().then(() => {
     .then(() => {
       connectWebSocket();
       buildTrayMenu();
+      setTimeout(() => { maybePromptAutostart(); }, 400);
     })
     .catch((error) => {
       console.error("❌ Failed to initialize hamsters:", error);
@@ -1377,15 +1631,17 @@ app.whenReady().then(() => {
         .then(() => {
           connectWebSocket();
           buildTrayMenu();
+          setTimeout(() => { maybePromptAutostart(); }, 400);
         });
     });
 
-  // Position overlay top-right on primary display
-  positionOverlayTopRight();
+  // Position all overlays according to mode
+  try { repositionAll(); } catch (_) { try { positionOverlayByMode(); } catch (_) {} }
   try {
-    screen.on("display-added", positionOverlayTopRight);
-    screen.on("display-removed", positionOverlayTopRight);
-    screen.on("display-metrics-changed", positionOverlayTopRight);
+    const onDisplayChange = () => { try { repositionAll(); } catch (_) {} };
+    screen.on("display-added", onDisplayChange);
+    screen.on("display-removed", onDisplayChange);
+    screen.on("display-metrics-changed", onDisplayChange);
   } catch (_) {}
 });
 
@@ -1399,6 +1655,8 @@ app.on("before-quit", () => {
 });
 
 // Simple sender helpers
+const ENABLE_LOCAL_HAMSTER_ECHO = false; // play/render locally in addition to server echo
+
 function sendHamsterUpstream(variant, durationMs) {
   console.log(
     `🐹 sendHamsterUpstream: variant=${variant}, durationMs=${durationMs}`
@@ -1421,9 +1679,45 @@ function sendHamsterUpstream(variant, durationMs) {
     return;
   }
 
-  // Local echo for the sender (only when actually sent)
-  console.log(`👁️ Showing local hamster echo`);
-  showHamster(variant, durationMs, displayName);
+  // Local echo disabled to avoid double playback; rely on server echo instead
+  if (ENABLE_LOCAL_HAMSTER_ECHO) {
+    console.log(`👁️ Showing local hamster echo`);
+    showHamster(variant, durationMs, displayName);
+  }
+}
+
+function sendSoundUpstream(soundRef) {
+  try {
+    let url = String(soundRef || "");
+    if (!/^https?:\/\//i.test(url)) {
+      // treat as filename, build absolute URL
+      url = `${SERVER_URL}/assets/api-sounds/${encodeURIComponent(url)}`;
+    }
+    if (ws && ws.readyState === ws.OPEN) {
+      const payload = {
+        type: "sound",
+        url,
+        volume: Number(notificationVolume) || 1.0,
+        sender: displayName || "unknown",
+      };
+      console.log(`📤 Sending sound to server:`, payload);
+      ws.send(JSON.stringify(payload));
+    } else {
+      console.log(`❌ WebSocket not ready, cannot send sound`);
+      showStatus("warning", "Nicht verbunden – bitte Token eingeben", 3000);
+      return;
+    }
+    // Local echo so sender also hears it (respect DND)
+    try {
+      if (!doNotDisturb) {
+        playSound(url, Number(notificationVolume) || 1.0, displayName || null);
+      } else {
+        console.log("🚫 DND active locally, skipping local echo for sound");
+      }
+    } catch (_) {}
+  } catch (e) {
+    console.error(`❌ Failed to send sound:`, e);
+  }
 }
 
 function openToastPrompt(targetUser = null) {
@@ -1718,6 +2012,47 @@ function buildTrayMenu() {
     },
     { type: "separator" },
 
+    // Notification sound
+    {
+      label: "🔊 Notification Sound",
+      type: "checkbox",
+      checked: notificationSoundEnabled,
+      click: (item) => {
+        notificationSoundEnabled = Boolean(item.checked);
+        updateSettings({ notificationSoundEnabled });
+      },
+    },
+    {
+      label: "🔈 Volume",
+      submenu: [
+        { label: "100%", type: "radio", checked: notificationVolume >= 0.95, click: () => { notificationVolume = 1.0; updateSettings({ notificationVolume }); } },
+        { label: "70%", type: "radio", checked: notificationVolume >= 0.65 && notificationVolume < 0.95, click: () => { notificationVolume = 0.7; updateSettings({ notificationVolume }); } },
+        { label: "40%", type: "radio", checked: notificationVolume >= 0.35 && notificationVolume < 0.65, click: () => { notificationVolume = 0.4; updateSettings({ notificationVolume }); } },
+        { label: "0% (Mute)", type: "radio", checked: notificationVolume < 0.05, click: () => { notificationVolume = 0.0; updateSettings({ notificationVolume }); } },
+      ],
+    },
+    { type: "separator" },
+
+    // Position Mode
+    {
+      label: "📐 Position",
+      submenu: [
+        {
+          label: "Top right",
+          type: "radio",
+          checked: overlayPosition !== "center",
+          click: () => setOverlayPositionMode("top-right"),
+        },
+        {
+          label: "Center (top)",
+          type: "radio",
+          checked: overlayPosition === "center",
+          click: () => setOverlayPositionMode("center"),
+        },
+      ],
+    },
+    { type: "separator" },
+
     // Hamsters (pic broadcast)
     { label: "🐹 Send pic to all", enabled: false },
     // Hamster direkt als Hauptmenü-Items
@@ -1730,7 +2065,7 @@ function buildTrayMenu() {
             enabled: isActive,
             click: () => {
               console.log(`🖱️ Tray menu clicked for hamster: ${hamster}`);
-              sendHamsterUpstream(hamster, 1500);
+              sendHamsterUpstream(hamster, HAMSTER_DEFAULT_DURATION_MS);
             },
           };
         })
@@ -1739,6 +2074,21 @@ function buildTrayMenu() {
             label: "  No hamsters found",
             enabled: false,
           },
+        ]),
+    { type: "separator" },
+    // Sounds (sound broadcast)
+    { label: "🔊 Send sound to all", enabled: false },
+    ...(availableSounds.length > 0
+      ? availableSounds.map((snd) => ({
+          label: `  ${snd.filename}`,
+          enabled: isActive,
+          click: () => {
+            console.log(`🖱️ Tray menu clicked for sound: ${snd.filename}`);
+            sendSoundUpstream(snd.url);
+          },
+        }))
+      : [
+          { label: "  No sounds found", enabled: false },
         ]),
     { type: "separator" },
 
@@ -2033,11 +2383,14 @@ function openInvitePrompt() {
     try { if (userListWindow && !userListWindow.isDestroyed()) userListWindow.hide(); } catch (_) {}
 
     const inviteOpts = {
-      width: 580,
-      height: 420,
+      width: 640,
+      height: 560,
       useContentSize: true,
-      resizable: false,
+      resizable: true,
+      minimizable: false,
+      maximizable: false,
       modal: true,
+      center: true,
       frame: true,
       alwaysOnTop: true,
       transparent: true,
@@ -2082,6 +2435,18 @@ function openInvitePrompt() {
           authToken = String(data.token);
           persistToken(authToken);
           try { win.close(); } catch (_) {}
+          try { ipcMain.removeListener("invite-submit", onSubmit); } catch (_) {}
+          try { ipcMain.removeListener("invite-cancel", onCancel); } catch (_) {}
+          // Freundlicher Hinweis: App läuft im Tray / in der Menüleiste
+          try {
+            setTimeout(() => {
+              const isMac = process.platform === 'darwin';
+              const hint = isMac
+                ? 'Bereit! Die App läuft oben in der Menüleiste. Klicke das 🐹-Icon für Optionen.'
+                : 'Bereit! Die App läuft unten rechts im Infobereich (Tray). Klicke das 🐹-Icon für Optionen.';
+              showStatus('info', hint, 6500);
+            }, 450);
+          } catch (_) {}
           resolve(true);
         } else {
           try { win.webContents.send("invite-error", { message: "Ungültige Server-Antwort" }); } catch (_) {}
@@ -2093,12 +2458,15 @@ function openInvitePrompt() {
 
     const onCancel = () => {
       try { ipcMain.removeListener("invite-submit", onSubmit); } catch (_) {}
+      try { ipcMain.removeListener("invite-cancel", onCancel); } catch (_) {}
       try { win.close(); } catch (_) {}
-      resolve(false);
+      // Beende die App vollständig, wie gewünscht
+      try { app.quit(); } catch (_) { try { app.exit(0); } catch (_) {} }
     };
 
-    ipcMain.once("invite-submit", onSubmit);
-    ipcMain.once("invite-cancel", onCancel);
+    // Mehrfachversuche erlauben: Listener bis zum Schließen aktiv lassen
+    ipcMain.on("invite-submit", onSubmit);
+    ipcMain.on("invite-cancel", onCancel);
 
     win.on("closed", () => {
       try { ipcMain.removeListener("invite-submit", onSubmit); } catch (_) {}
@@ -2159,6 +2527,17 @@ async function ensureDisplayName() {
     }
     if (settings.autostartEnabled !== undefined) {
       autostartEnabled = Boolean(settings.autostartEnabled);
+    }
+    if (settings.overlayPosition) {
+      const pos = String(settings.overlayPosition);
+      if (pos === "center" || pos === "top-right") overlayPosition = pos;
+    }
+    if (settings.notificationSoundEnabled !== undefined) {
+      notificationSoundEnabled = Boolean(settings.notificationSoundEnabled);
+    }
+    if (typeof settings.notificationVolume === "number") {
+      const v = settings.notificationVolume;
+      if (Number.isFinite(v)) notificationVolume = Math.max(0, Math.min(1, v));
     }
   }
   if (!displayName) {

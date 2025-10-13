@@ -2,6 +2,81 @@
 const userlistContainer = document.getElementById("userlist-container");
 let userListOverlay = null;
 let hideTimeout = null;
+let defaultClickSoundUrl = null;
+const audioCache = new Map();
+let audioCtx = null;
+let gainNode = null;
+const preloadedBuffers = new Map();
+
+function ensureAudioContext() {
+  try {
+    if (!audioCtx) {
+      const Ctx = window.AudioContext || window.webkitAudioContext;
+      if (!Ctx) return null;
+      audioCtx = new Ctx({ latencyHint: 'interactive' });
+      gainNode = audioCtx.createGain();
+      gainNode.connect(audioCtx.destination);
+    }
+    return audioCtx;
+  } catch (_) {
+    return null;
+  }
+}
+
+async function preloadWebAudio(url) {
+  try {
+    const ctx = ensureAudioContext();
+    if (!ctx || !url) return;
+    const res = await fetch(url, { cache: 'force-cache' });
+    const ab = await res.arrayBuffer();
+    const buf = await ctx.decodeAudioData(ab);
+    preloadedBuffers.set(url, buf);
+  } catch (_) { /* noop */ }
+}
+
+function getOrCreateAudio(url) {
+  if (!url) return null;
+  let a = audioCache.get(url);
+  if (!a) {
+    try {
+      a = new Audio(url);
+      a.preload = 'auto';
+      a.load();
+      audioCache.set(url, a);
+    } catch (_) { return null; }
+  }
+  return a;
+}
+
+function playClickFeedback(customUrl) {
+  const url = customUrl || defaultClickSoundUrl;
+  if (!url) return;
+  try {
+    const ctx = ensureAudioContext();
+    const buf = preloadedBuffers.get(url);
+    if (ctx && buf) {
+      try { if (ctx.state === 'suspended') ctx.resume().catch(()=>{}); } catch(_) {}
+      const src = ctx.createBufferSource();
+      src.buffer = buf;
+      try { gainNode.gain.value = 1.0; } catch(_) {}
+      src.connect(gainNode);
+      src.start(0);
+    } else {
+      const base = getOrCreateAudio(url);
+      if (base) {
+        if (!base.paused && !base.ended) {
+          const clone = base.cloneNode(true);
+          clone.volume = 1.0;
+          clone.play().catch(() => {});
+        } else {
+          base.volume = 1.0;
+          try { base.currentTime = 0; } catch (_) {}
+          base.play().catch(() => {});
+        }
+      }
+    }
+  } catch (_) {}
+}
 
 // Funktion zum Anzeigen der User-Liste
 function showUserList(users, durationMs = 15000) {
@@ -117,9 +192,17 @@ function showUserList(users, durationMs = 15000) {
         hideUserList();
       });
 
-      // Test: Auch mousedown event hinzufügen
-      btn.addEventListener("mousedown", (e) => {
-        console.log(`🖱️ MOUSEDOWN on button!`, e);
+      // Low-latency sound on pointerdown
+      btn.addEventListener("pointerdown", (e) => {
+        try {
+          const ctx = ensureAudioContext();
+          if (ctx && ctx.state === 'suspended') ctx.resume().catch(()=>{});
+        } catch(_) {}
+        try {
+          const holder = btn.closest('[data-sound-url]');
+          const custom = holder ? holder.getAttribute('data-sound-url') : null;
+          playClickFeedback(custom || null);
+        } catch (_) {}
       });
     });
 
@@ -157,6 +240,13 @@ function hideUserList() {
     hideTimeout = null;
   }
 }
+
+// Prime/resume audio context on first user gesture to avoid initial lag
+try {
+  window.addEventListener('pointerdown', function primeCtxOnce() {
+    try { const ctx = ensureAudioContext(); if (ctx && ctx.state === 'suspended') ctx.resume().catch(()=>{}); } catch(_) {}
+  }, { capture: true, once: true });
+} catch (_) {}
 
 // TODO: Funktion zum Updaten der User-Liste (auskommentiert - für Auto-Update, war überflüssig)
 /*
@@ -262,6 +352,13 @@ if (window.userlistAPI) {
   window.userlistAPI.hideUserList = () => {
     return hideUserList();
   };
+  if (window.userlistAPI.onDefaultClickSound) {
+    window.userlistAPI.onDefaultClickSound((url) => {
+      defaultClickSoundUrl = url;
+      try { preloadWebAudio(url); } catch (_) {}
+      try { getOrCreateAudio(url); } catch (_) {}
+    });
+  }
 } else {
   console.error(`❌ window.userlistAPI not available from preload!`);
 }

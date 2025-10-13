@@ -22,6 +22,73 @@ body {
   right: 0;
 }
 
+/* Center mode: place hamster/toast centered at top */
+body.pos-center #hamster,
+body.pos-center #toast {
+  left: 50%;
+  right: auto;
+  transform: translateX(-50%);
+}
+
+#sound-indicator {
+  position: absolute;
+  top: 56px; /* moved down so sender label above stays visible */
+  right: 6px;
+  opacity: 0.95;
+  filter: drop-shadow(0 2px 6px rgba(0,0,0,0.4));
+  transition: opacity 120ms ease, transform 120ms ease;
+  pointer-events: auto; /* clickable to cancel */
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+  z-index: 10;
+}
+#sound-indicator.hidden { display: none; }
+#sound-indicator img {
+  width: 226px;
+  height: 206px;
+  object-fit: contain;
+  animation: pop 150ms ease-out, wobble 1200ms ease-in-out infinite;
+  transform-origin: 50% 80%;
+  cursor: pointer;
+}
+
+.sound-sender {
+  position: absolute;
+  right: 0;
+  top: -32px; /* position above the speaker image */
+  background: rgba(0,0,0,0.65);
+  color: #fff;
+  font-size: 16px;
+  font-weight: 600;
+  padding: 6px 10px;
+  border-radius: 10px;
+  max-width: 320px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+}
+.sound-sender.hidden { display: none; }
+
+#sound-cancel-btn {
+  appearance: none;
+  -webkit-appearance: none;
+  border: 1px solid rgba(175, 198, 243, 0.35);
+  background: rgba(29, 33, 40, 0.75);
+  color: #afc6f3;
+  font-size: 16px;
+  font-weight: 600;
+  padding: 10px 14px;
+  border-radius: 12px;
+  cursor: pointer;
+  backdrop-filter: blur(8px);
+  min-width: 100px;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.25);
+}
+#sound-cancel-btn:hover { background: rgba(29,33,40,0.9); transform: translateY(-1px); }
+
 /* (reverted) */
 
 #hamster.hidden,
@@ -35,6 +102,8 @@ body {
   object-fit: contain;
   animation: pop 150ms ease-out, wobble 1200ms ease-in-out infinite;
 }
+
+/* (close button removed) */
 
 #hamster .badge {
   position: absolute;

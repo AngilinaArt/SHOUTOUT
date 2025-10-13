@@ -673,7 +673,15 @@ const toastSchema = Joi.object({
   sender: Joi.string().min(1).max(64).optional(),
 }).required();
 
-const eventSchema = Joi.alternatives().try(hamsterSchema, toastSchema);
+const soundSchema = Joi.object({
+  type: Joi.string().valid("sound").required(),
+  url: Joi.string().uri({ allowRelative: true }).required(),
+  volume: Joi.number().min(0).max(1).default(1),
+  target: Joi.alternatives().try(Joi.string(), Joi.array().items(Joi.string())).optional(),
+  sender: Joi.string().min(1).max(64).optional(),
+}).required();
+
+const eventSchema = Joi.alternatives().try(hamsterSchema, toastSchema, soundSchema);
 
 // Helpers
 
@@ -1549,6 +1557,109 @@ app.get("/api/hamsters/:id/image", (req, res) => {
   } catch (error) {
     console.error("Error serving hamster image:", error);
     res.status(500).json({ error: "Failed to serve hamster image" });
+  }
+});
+
+// Static sounds (e.g., notification audio)
+app.get("/assets/sounds/:file", (req, res) => {
+  try {
+    const file = String(req.params.file || "").replace(/[^a-zA-Z0-9_.\-]/g, "");
+    if (!file) return res.status(400).json({ error: "invalid_file" });
+    const soundsDir = path.join(__dirname, "..", "assets", "sounds");
+    const soundPath = path.join(soundsDir, file);
+    if (!fs.existsSync(soundPath)) return res.status(404).json({ error: "not_found" });
+
+    const ext = path.extname(file).toLowerCase();
+    const contentType =
+      {
+        ".wav": "audio/wav",
+        ".mp3": "audio/mpeg",
+        ".ogg": "audio/ogg",
+        ".m4a": "audio/mp4",
+      }[ext] || "application/octet-stream";
+
+    res.setHeader("Content-Type", contentType);
+    res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
+    res.setHeader("Cache-Control", "public, max-age=3600");
+    fs.createReadStream(soundPath).pipe(res);
+  } catch (error) {
+    console.error("Error serving sound:", error);
+    res.status(500).json({ error: "Failed to serve sound" });
+  }
+});
+
+// API Sounds listing (dynamic, from assets/api-sounds)
+app.get("/api/sounds", (req, res) => {
+  try {
+    const dir = path.join(__dirname, "..", "assets", "api-sounds");
+    if (!fs.existsSync(dir)) return res.json({ sounds: [], count: 0 });
+    const files = fs.readdirSync(dir);
+    const allowed = new Set([".mp3", ".wav", ".ogg", ".m4a"]);
+    const sounds = files
+      .filter((f) => allowed.has(path.extname(f).toLowerCase()))
+      .map((file) => ({
+        id: path.parse(file).name,
+        filename: file,
+        url: `/assets/api-sounds/${encodeURIComponent(file)}`,
+        type: path.extname(file).substring(1).toLowerCase(),
+      }))
+      .sort((a, b) => a.filename.localeCompare(b.filename));
+    res.json({ sounds, count: sounds.length, timestamp: new Date().toISOString() });
+  } catch (error) {
+    console.error("Error loading api sounds:", error);
+    res.status(500).json({ error: "Failed to load sounds" });
+  }
+});
+
+// Serve files from assets/api-sounds
+app.get("/assets/api-sounds/:file", (req, res) => {
+  try {
+    const file = path.basename(String(req.params.file || ""));
+    if (!file) return res.status(400).json({ error: "invalid_file" });
+    const dir = path.join(__dirname, "..", "assets", "api-sounds");
+    const filePath = path.join(dir, file);
+    if (!fs.existsSync(filePath)) return res.status(404).json({ error: "not_found" });
+    const ext = path.extname(file).toLowerCase();
+    const contentType = ({
+      ".wav": "audio/wav",
+      ".mp3": "audio/mpeg",
+      ".ogg": "audio/ogg",
+      ".m4a": "audio/mp4",
+    })[ext] || "application/octet-stream";
+    res.setHeader("Content-Type", contentType);
+    res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
+    res.setHeader("Cache-Control", "public, max-age=3600");
+    fs.createReadStream(filePath).pipe(res);
+  } catch (error) {
+    console.error("Error serving api sound:", error);
+    res.status(500).json({ error: "Failed to serve api sound" });
+  }
+});
+
+// Serve misc images from assets/others (e.g., speaker icon)
+app.get("/assets/others/:file", (req, res) => {
+  try {
+    const file = String(req.params.file || "").replace(/[^a-zA-Z0-9_.\-]/g, "");
+    if (!file) return res.status(400).json({ error: "invalid_file" });
+    const dir = path.join(__dirname, "..", "assets", "others");
+    const filePath = path.join(dir, file);
+    if (!fs.existsSync(filePath)) return res.status(404).json({ error: "not_found" });
+    const ext = path.extname(file).toLowerCase();
+    const contentType = ({
+      ".png": "image/png",
+      ".jpg": "image/jpeg",
+      ".jpeg": "image/jpeg",
+      ".gif": "image/gif",
+      ".webp": "image/webp",
+      ".svg": "image/svg+xml",
+    })[ext] || "application/octet-stream";
+    res.setHeader("Content-Type", contentType);
+    res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
+    res.setHeader("Cache-Control", "public, max-age=3600");
+    fs.createReadStream(filePath).pipe(res);
+  } catch (error) {
+    console.error("Error serving other asset:", error);
+    res.status(500).json({ error: "Failed to serve other asset" });
   }
 });
 

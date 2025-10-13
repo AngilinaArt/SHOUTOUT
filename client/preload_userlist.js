@@ -21,6 +21,20 @@ contextBridge.exposeInMainWorld("userlistAPI", {
     console.log(`🔧 preload_userlist.js: notifyHidden called`);
     ipcRenderer.invoke("userlist-hidden");
   },
+  onPreloadSound: (handler) => {
+    try {
+      ipcRenderer.on("preload-sound", (_, url) => {
+        try { handler(url); } catch (_) {}
+      });
+    } catch (_) {}
+  },
+  onDefaultClickSound: (handler) => {
+    try {
+      ipcRenderer.on("default-click-sound", (_, url) => {
+        try { handler(url); } catch (_) {}
+      });
+    } catch (_) {}
+  },
 });
 
 // IPC-Handler für User-List-Nachrichten - ruft direkt die userlist.js Funktionen auf

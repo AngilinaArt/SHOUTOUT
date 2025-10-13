@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'self'; img-src 'self' file: data: http: https:; style-src 'self' 'unsafe-inline'; script-src 'self';" />
+      content="default-src 'self'; img-src 'self' file: data: http: https:; media-src 'self' file: data: http: https:; connect-src 'self' file: http: https:; style-src 'self' 'unsafe-inline'; script-src 'self';" />
     <title>Shoutout – Overlay</title>
     <link
       rel="stylesheet"
@@ -25,6 +25,11 @@
       <div
         id="toast"
         class="hidden">
+      </div>
+      <div id="sound-indicator" class="hidden" aria-hidden="true">
+        <img id="sound-indicator-img" alt="app sound" />
+        <div id="sound-sender" class="sound-sender hidden"></div>
+        <button id="sound-cancel-btn" title="Stop">✖ Stop</button>
       </div>
     </div>
     <!-- <script src="overlay.js"></script> -->

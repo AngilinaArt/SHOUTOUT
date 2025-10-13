@@ -142,6 +142,11 @@
       });
       cancelEl.addEventListener('click', () => api.cancel());
       codeEl.addEventListener('keydown', (e) => { if (e.key === 'Enter') okEl.click(); });
+      // Global shortcuts: Enter = OK, Esc = Abbrechen (Quit)
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') { e.preventDefault(); api.cancel(); }
+        else if (e.key === 'Enter') { e.preventDefault(); okEl.click(); }
+      });
       setTimeout(() => codeEl.focus(), 50);
     </script>
   </body>

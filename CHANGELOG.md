@@ -17,6 +17,74 @@ All notable changes to this project will be documented in this file.
 
 ## UNRELEASED
 
+- change(client/hamster-sound): Hamster‑Hinweiston auf `short-bang.mp3` umgestellt
+  (vorab geladen; ersetzt `windows-xp-error-sound.mp3`).
+
+- feature(client/click-sound): Einheitlicher Klick‑Sound `short.mp3` für Overlays
+  (Toasts, Userlist) mit Override via `data-sound-url`. Preload (WebAudio/HTMLAudio),
+  niedrige Latenz über `pointerdown` + Auto‑Resume des AudioContext.
+
+- feature(client/send-sound): Neue Rubrik „🔊 Send sound to all“ im Tray. Broadcast
+  von Sounds als WS‑Event `type: "sound"` inkl. Lautstärke. Überlagerung zeigt ein
+  wackelndes Speaker‑Icon mit „✖ Stop“. Respektiert DND (keine lokale/remote Wiedergabe
+  bei aktivem DND). Sendername wird angezeigt („von NAME“).
+
+- feature(server/api-sounds): Dynamische Soundliste ab `server/assets/api-sounds`
+  via `GET /api/sounds`. Neue Static‑Routes: `GET /assets/api-sounds/:file` (unterstützt
+  Leerzeichen/URL‑Encoding) und `GET /assets/others/:file` (z. B. `speaker.png`).
+  Client lädt die Liste, zeigt Dateinamen im Tray und nutzt die vom Server gelieferten URLs.
+
+- improvement(client/sound-playback): Broadcast‑Sounds laufen robust über HTMLAudio
+  (statt WebAudio‑Buffer). Autoplay erlaubt (`autoplay-policy=no-user-gesture-required`),
+  Overlay‑Audio explizit unmuted. Deduplizierung doppelter Sound‑Events (lokal + WS)
+  innerhalb 600 ms. Beep‑Fallback entfernt. Dauer‑Timer entfernt (Icon bleibt bis `ended`/Stop).
+
+- feature(client/sound-stop): Expliziter Stop‑Button unter dem Speaker‑Icon (größer,
+  besser klickbar). Overlay‑Click‑through wird beim Start des Sounds deaktiviert und
+  nach Stop/Ende wieder aktiviert.
+
+- improvement(client/overlay-position): Renderer erhält `overlay-position` (IPC) und
+  setzt `body.pos-center`, wodurch Hamster/Toasts oben zentriert erscheinen. Speaker‑Icon
+  neu bei `top: 56px`, damit „von NAME“ nicht abgeschnitten wird.
+
+- improvement(client/invite-ux): Invite‑Fenster vergrößert (640×560), mehrfache
+  Versuche möglich (OK nach Fehlversuch), Enter=OK, Esc=Abbrechen (beendet App).
+  Nach erfolgreichem Invite kurzer Hinweis, dass die App als Tray/Menüleisten‑Icon läuft.
+
+
+- fix(client/autostart): Nach erfolgreicher WS-Verbindung werden die Hamster-Varianten
+  erneut vom Server geladen und Tray/Hotkeys bei Änderungen aktualisiert. Dadurch
+  wird die „🐹 Send pic to all“-Liste nach Autostart korrekt befüllt, auch wenn der
+  erste `/api/hamsters`-Fetch beim Systemstart (Netz/Server noch nicht bereit) fehlgeschlagen ist.
+
+- improvement(client/hamster-duration): Standard-Anzeigedauer für Hamster erhöht
+  (5000 ms). Dauer ist nun per `HAMSTER_DURATION_MS` (oder `DEFAULT_HAMSTER_DURATION_MS`)
+  in der Client-Umgebung konfigurierbar. Hotkeys/Tray verwenden diese Dauer standardmäßig.
+
+<!-- Reverted: client/hamster-close (× button) due to macOS glitching -->
+
+- feature(client/overlay-position): Umschaltbare Bildschirmposition für Overlays
+  (Hamster/Toasts/Reactions). Neuer Tray-Menüpunkt „📐 Position“ mit Optionen
+  „Top right“ (Standard) und „Center (top)“. Einstellung wird in `shoutout-user.json`
+  als `overlayPosition` gespeichert und bei Display-Änderungen angewendet.
+
+- improvement(client/autostart-prompt): Beim manuellen Start (nicht via Autostart)
+  Hinweis-Dialog, falls Autostart nicht aktiviert ist. Optionen: „Aktivieren“,
+  „Nicht jetzt“, „Nicht mehr fragen“. Aktivierung setzt System-Login-Item (macOS/Windows)
+  und aktualisiert das Tray. (- Autostart vorschlag beim Laden)
+
+- feature(notify-sound): Beim Empfang von Nachrichten (Toasts) wird ein ICQ‑Sound
+  abgespielt (`/assets/sounds/icq-message.wav`). Renderer erlaubt nun Audio via CSP
+  (`media-src`). Server liefert Sounds unter `/assets/sounds/:file` mit passenden
+  Content‑Types.
+
+- improvement(hamster-sound): Beim Senden/Empfangen eines Hamster‑Pics wird ein
+  eigener Sound abgespielt (`windows-xp-error.wav`). Beide Sounds werden beim Start
+  vorab geladen/decodiert (Web Audio) für minimale Latenz. Tray bietet Schalter und
+  Lautstärke‑Regler (100/70/40/0%).
+  - Sender‑Doppelsound behoben: lokaler Hamster‑Echo wurde deaktiviert, stattdessen
+    wird die Server‑Echo‑Nachricht gerendert (einmaliger Sound pro Hamster).
+
 ## RELEASE all included to V1.0.3
 
 - Documentation and Screenshots for readme

@@ -92,7 +92,7 @@ if (window.overlayScriptLoaded) {
         hideHamster();
         hamsterActive = false;
         processHamsterQueue();
-      }, Math.max(300, durationMs || 3000));
+      }, Math.max(300, durationMs || 5000));
     }
 
     function processHamsterQueue() {
@@ -102,6 +102,8 @@ if (window.overlayScriptLoaded) {
       hamsterActive = true;
       showHamsterQueued(next);
     }
+
+    // (close button removed)
 
     // Hamster Handler - NUR EINMAL REGISTRIEREN
     if (!window.hamsterHandlerRegistered) {

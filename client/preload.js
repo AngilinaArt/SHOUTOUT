@@ -17,6 +17,13 @@ contextBridge.exposeInMainWorld("shoutout", {
       handler(payload);
     });
   },
+  onSound: (handler) => {
+    console.log(`🔧 preload.js: onSound handler registered`);
+    ipcRenderer.on("play-sound", (_, payload) => {
+      console.log(`📨 preload.js: play-sound IPC received:`, payload);
+      handler(payload);
+    });
+  },
   onSuccess: (handler) => {
     console.log(
       `🔧 preload.js: onSuccess handler registered with:`,
@@ -45,6 +52,34 @@ contextBridge.exposeInMainWorld("shoutout", {
       }
     });
   },
+  onPreloadSound: (handler) => {
+    try {
+      ipcRenderer.on("preload-sound", (_, url) => {
+        try { handler(url); } catch (_) {}
+      });
+    } catch (_) {}
+  },
+  onOverlayPosition: (handler) => {
+    try {
+      ipcRenderer.on("overlay-position", (_e, mode) => {
+        try { handler(mode); } catch (_) {}
+      });
+    } catch (_) {}
+  },
+  onPreloadImage: (handler) => {
+    try {
+      ipcRenderer.on("preload-image", (_, url) => {
+        try { handler(url); } catch (_) {}
+      });
+    } catch (_) {}
+  },
+  onDefaultClickSound: (handler) => {
+    try {
+      ipcRenderer.on("default-click-sound", (_, url) => {
+        try { handler(url); } catch (_) {}
+      });
+    } catch (_) {}
+  },
   openToastPrompt: (targetUser) =>
     ipcRenderer.invoke("open-toast-prompt", targetUser),
 
@@ -59,6 +94,10 @@ contextBridge.exposeInMainWorld("shoutout", {
   disableMouseEvents: () => {
     console.log(`🖱️ preload.js: disableMouseEvents called`);
     return ipcRenderer.invoke("disable-overlay-mouse-events");
+  },
+  enableMouseEvents: () => {
+    console.log(`🖱️ preload.js: enableMouseEvents called`);
+    return ipcRenderer.invoke("enable-overlay-mouse-events");
   },
 });
 
