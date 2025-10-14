@@ -213,6 +213,8 @@ function createOverlayWindow() {
         overlayWindow.webContents.send("preload-image", `${SERVER_URL}/assets/others/speaker.png`);
       } catch (_) {}
     } catch (_) {}
+    // Ensure audio is unmuted for this window
+    try { overlayWindow.webContents.setAudioMuted(false); } catch (_) {}
     // Repositioniere das Reaction-Window nach dem Toast-Overlay laden
     setTimeout(() => {
       positionReactionWindow();
@@ -347,13 +349,24 @@ function createReactionWindow() {
     console.log(`✅ Reaction window created and shown`);
 
     // Event-Listener für das Laden
-    reactionWindow.webContents.once("did-finish-load", () => {
-      console.log(`🎯 Reaction window finished loading`);
-      // Repositioniere das Reaction-Window nach dem Laden
-      setTimeout(() => {
-        positionReactionWindow();
-      }, 100);
-    });
+  reactionWindow.webContents.once("did-finish-load", () => {
+    console.log(`🎯 Reaction window finished loading`);
+    try { reactionWindow.webContents.setAudioMuted(false); } catch (_) {}
+    // Repositioniere das Reaction-Window nach dem Laden
+    setTimeout(() => {
+      positionReactionWindow();
+    }, 100);
+
+    // Provide reaction sound URLs to the renderer and allow it to preload
+    try {
+      const twinkle = `${SERVER_URL}/assets/sounds/magical-twinkle.mp3`;
+      const ding = `${SERVER_URL}/assets/sounds/ding.mp3`;
+      reactionWindow.webContents.send("reaction-sounds", {
+        heart: twinkle,
+        other: ding,
+      });
+    } catch (_) {}
+  });
 
     reactionWindow.webContents.on(
       "did-fail-load",
@@ -495,14 +508,15 @@ function createUserListWindow() {
     maybeOpenDevTools(userListWindow, "userlist");
 
     // Event-Listener für das Laden
-    userListWindow.webContents.once("did-finish-load", () => {
-      console.log(`🎯 User list window finished loading`);
-      try {
-        const soundClick = `${SERVER_URL}/assets/sounds/short.mp3`;
-        userListWindow.webContents.send("preload-sound", soundClick);
-        userListWindow.webContents.send("default-click-sound", soundClick);
-      } catch (_) {}
-    });
+  userListWindow.webContents.once("did-finish-load", () => {
+    console.log(`🎯 User list window finished loading`);
+    try {
+      const soundClick = `${SERVER_URL}/assets/sounds/short.mp3`;
+      userListWindow.webContents.send("preload-sound", soundClick);
+      userListWindow.webContents.send("default-click-sound", soundClick);
+    } catch (_) {}
+    try { userListWindow.webContents.setAudioMuted(false); } catch (_) {}
+  });
 
     userListWindow.webContents.on(
       "did-fail-load",

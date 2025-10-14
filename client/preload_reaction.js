@@ -21,4 +21,15 @@ ipcRenderer.on("show-reaction", (_, payload) => {
   );
 });
 
+// Send reaction sound URLs to the renderer (for preload and playback)
+ipcRenderer.on("reaction-sounds", (_evt, sounds) => {
+  try {
+    window.dispatchEvent(
+      new CustomEvent("reaction-sounds", { detail: sounds || {} })
+    );
+  } catch (e) {
+    console.error("❌ preload_reaction.js: failed to dispatch reaction-sounds:", e);
+  }
+});
+
 console.log(`🔧 preload_reaction.js: Loaded successfully`);

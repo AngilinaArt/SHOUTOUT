@@ -2,6 +2,9 @@
 const reactionContainer = document.getElementById("reaction-container");
 let reactionCounter = 0;
 const MAX_REACTION_STACK = 5; // Maximum number of reactions to show at once
+// Simple audio cache for reaction pings
+const audioCache = new Map(); // key -> HTMLAudioElement
+let reactionSounds = { heart: null, other: null };
 
 // Reaction-Konfiguration
 const REACTION_CONFIG = {
@@ -82,6 +85,28 @@ function showReactionFeedback(fromUser, reaction, durationMs = 3000) {
   // Starte die Emoji-Animation sofort
   startEmojiAnimation(reactionId, config.emoji);
 
+  // Play subtle sound depending on reaction type (love → twinkle; others → ding)
+  try {
+    const url = reaction === 'love' ? (reactionSounds.heart || null) : (reactionSounds.other || null);
+    if (url) {
+      let a = audioCache.get(url);
+      if (!a) {
+        a = new Audio(url);
+        try { a.preload = 'auto'; } catch(_) {}
+        try { a.autoplay = false; } catch(_) {}
+        try { a.muted = false; } catch(_) {}
+        try { a.crossOrigin = 'anonymous'; } catch(_) {}
+        try { a.setAttribute('playsinline','true'); } catch(_) {}
+        a.load();
+        audioCache.set(url, a);
+      }
+      const el = a.paused || a.ended ? a : a.cloneNode(true);
+      try { el.volume = 1.0; } catch(_) {}
+      try { el.currentTime = 0; } catch(_) {}
+      el.play().catch(()=>{});
+    }
+  } catch (_) {}
+
   console.log(`💖 Reaction feedback displayed: ${fromUser} ${reaction}`);
 
   // Nach der angegebenen Zeit ausblenden (individual timer for each reaction)
@@ -158,6 +183,26 @@ window.addEventListener("reaction-message", (event) => {
   } else {
     console.error(`❌ reaction.js: Invalid payload:`, payload);
   }
+});
+
+// Receive sound URLs from preload and prepare audio elements
+window.addEventListener('reaction-sounds', (e) => {
+  try {
+    const d = e && e.detail ? e.detail : {};
+    reactionSounds.heart = typeof d.heart === 'string' ? d.heart : null;
+    reactionSounds.other = typeof d.other === 'string' ? d.other : null;
+    // Preload both to minimize latency
+    for (const u of [reactionSounds.heart, reactionSounds.other]) {
+      if (u && !audioCache.has(u)) {
+        try {
+          const a = new Audio(u);
+          a.preload = 'auto';
+          a.load();
+          audioCache.set(u, a);
+        } catch(_) {}
+      }
+    }
+  } catch (_) {}
 });
 
 // Debug: Teste die Reaction-Funktionalität sofort (disabled)
