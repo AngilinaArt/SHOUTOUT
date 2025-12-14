@@ -1747,17 +1747,23 @@ function openToastPrompt(targetUser = null) {
 
   // Zielbreite/-höhe: genug Platz für Multi-Select (8 Zeilen) ohne Scrollbar
   const desiredWidth = 660;
-  const desiredHeight = 780; // Kompakter: weniger Leerraum nach unten
+  const desiredHeight = 780; // Ausgeklappt: komfortable Höhe
   const margin = 100; // Abstand zu Displayrändern
 
   const width = work ? Math.min(Math.max(desiredWidth, 600), Math.max(600, work.width - margin)) : desiredWidth;
-  const height = work ? Math.min(Math.max(desiredHeight, 740), Math.max(740, work.height - margin)) : desiredHeight;
+  const MIN_COMPOSE_HEIGHT = 620; // Eingeklappt: kompakter
+  const height = work
+    ? Math.min(
+        Math.max(desiredHeight, MIN_COMPOSE_HEIGHT),
+        Math.max(MIN_COMPOSE_HEIGHT, work.height - margin)
+      )
+    : desiredHeight;
 
   const composeWin = new BrowserWindow({
     width,
     height,
     minWidth: 600,
-    minHeight: 740,
+    minHeight: MIN_COMPOSE_HEIGHT,
     useContentSize: true, // width/height beziehen sich auf den Inhalt (nicht Rahmen)
     center: true,
     resizable: true,
@@ -1772,6 +1778,28 @@ function openToastPrompt(targetUser = null) {
       nodeIntegration: false,
     },
   });
+
+  // Dynamische Größenänderung (vom Renderer initiiert)
+  const onResize = (_evt, { height }) => {
+    try {
+      if (!composeWin || composeWin.isDestroyed()) return;
+      // Clamp Höhe an Display und Mindestgröße
+      const bounds = composeWin.getBounds();
+      const contentSize = composeWin.getContentSize();
+      const currentWidth = contentSize?.[0] || bounds.width;
+      const disp = screen.getPrimaryDisplay();
+      const workArea = disp?.workArea || { height: 1200 };
+      const marginY = 100;
+      const MIN_H = MIN_COMPOSE_HEIGHT;
+      const MAX_H = Math.max(MIN_H, (workArea.height - marginY));
+      let h = Number(height) || MIN_H;
+      h = Math.min(Math.max(h, MIN_H), MAX_H);
+      composeWin.setContentSize(currentWidth, h, true);
+    } catch (e) {
+      console.warn('⚠️ compose-resize failed:', e);
+    }
+  };
+  ipcMain.on('compose-resize', onResize);
 
   console.log(`📁 Loading compose.html...`);
   // URL-Parameter für targetUser hinzufügen
@@ -1888,6 +1916,7 @@ function openToastPrompt(targetUser = null) {
     try {
       ipcMain.removeListener("compose-toast-submit", onSubmit);
       ipcMain.removeListener("compose-toast-cancel", onCancel);
+      ipcMain.removeListener('compose-resize', onResize);
     } catch (_) {}
   });
 }

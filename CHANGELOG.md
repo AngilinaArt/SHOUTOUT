@@ -5,10 +5,6 @@ All notable changes to this project will be documented in this file.
 ## IDEAS
 
 - mini game implementieren
-- kleine Soundeffekte die nicht nervig sind
-- das Tray mit den Usern eventuell ausklappbar gestalten, damit das Fenster kleiner wird?
-
-- notification after invite tokin that software runs in tray
 - token valid until ...
 - Rechtschreibprüfung für Translator bzw. "Aufweichung" damit auch fehlerhafte Texte einen Übersetzungsvorschlag erhalten
 - Design nochmal checken, auf "einheitlichkeit"
@@ -16,6 +12,8 @@ All notable changes to this project will be documented in this file.
 - Untersütztung für Discord Bot, derzeit noch nicht implementiert
 
 ## UNRELEASED
+
+- das Tray mit den Usern eventuell ausklappbar gestalten, damit das Fenster kleiner wird?
 
 - change(client/hamster-sound): Hamster‑Hinweiston auf `short-bang.mp3` umgestellt
   (vorab geladen; ersetzt `windows-xp-error-sound.mp3`).
@@ -50,7 +48,6 @@ All notable changes to this project will be documented in this file.
 - improvement(client/invite-ux): Invite‑Fenster vergrößert (640×560), mehrfache
   Versuche möglich (OK nach Fehlversuch), Enter=OK, Esc=Abbrechen (beendet App).
   Nach erfolgreichem Invite kurzer Hinweis, dass die App als Tray/Menüleisten‑Icon läuft.
-
 
 - fix(client/autostart): Nach erfolgreicher WS-Verbindung werden die Hamster-Varianten
   erneut vom Server geladen und Tray/Hotkeys bei Änderungen aktualisiert. Dadurch
@@ -87,6 +84,8 @@ All notable changes to this project will be documented in this file.
 
 ## RELEASE all included to V1.0.3
 
+- kleine Soundeffekte die nicht nervig sind
+- notification after invite tokin that software runs in tray
 - Documentation and Screenshots for readme
 - smaller Logo for git logo representation README.md
 - security check

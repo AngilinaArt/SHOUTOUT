@@ -486,10 +486,124 @@
       /* Secondary bubble styling for recipient block */
       .compose-bubble.secondary {
         padding: 10px 12px;
-        background: rgba(29, 33, 40, 0.72);
+        background: rgba(29, 33, 40, 0.85); /* match text window base */
         box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(175, 198, 243, 0.12);
         border-left: 2px solid rgba(175, 198, 243, 0.24);
       }
+
+      /* Match primary bubble severity tint for secondary */
+      .severity-blue.compose-bubble.secondary {
+        background:
+          linear-gradient(135deg, rgba(59,130,246,0.14), rgba(59,130,246,0) 60%),
+          rgba(29,33,40,0.85);
+        border-left: 2px solid #3b82f6;
+      }
+      .severity-green.compose-bubble.secondary {
+        background:
+          linear-gradient(135deg, rgba(16,185,129,0.14), rgba(16,185,129,0) 60%),
+          rgba(29,33,40,0.85);
+        border-left: 2px solid #10b981;
+      }
+      .severity-pink.compose-bubble.secondary {
+        background:
+          linear-gradient(135deg, rgba(236,72,153,0.16), rgba(236,72,153,0) 60%),
+          rgba(29,33,40,0.85);
+        border-left: 2px solid #ec4899;
+      }
+      .severity-red.compose-bubble.secondary {
+        background:
+          linear-gradient(135deg, rgba(239,68,68,0.16), rgba(239,68,68,0) 60%),
+          rgba(29,33,40,0.85);
+        border-left: 2px solid #ef4444;
+      }
+      .severity-info.compose-bubble.secondary {
+        background:
+          linear-gradient(135deg, rgba(59,130,246,0.12), rgba(59,130,246,0) 60%),
+          rgba(29,33,40,0.85);
+        border-left: 2px solid #3b82f6;
+      }
+      .severity-success.compose-bubble.secondary {
+        background:
+          linear-gradient(135deg, rgba(16,185,129,0.12), rgba(16,185,129,0) 60%),
+          rgba(29,33,40,0.85);
+        border-left: 2px solid #10b981;
+      }
+      .severity-warn.compose-bubble.secondary {
+        background:
+          linear-gradient(135deg, rgba(245,158,11,0.16), rgba(245,158,11,0) 60%),
+          rgba(29,33,40,0.85);
+        border-left: 2px solid #f59e0b;
+      }
+      .severity-critical.compose-bubble.secondary {
+        background:
+          linear-gradient(135deg, rgba(239,68,68,0.18), rgba(239,68,68,0) 60%),
+          rgba(29,33,40,0.85);
+        border-left: 2px solid #ef4444;
+      }
+
+      /* Collapsible recipient block */
+      .collapsible {
+        position: relative;
+      }
+      .collapsible-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        cursor: pointer;
+        user-select: none;
+        padding: 6px 6px;
+        border-radius: 10px;
+        background: rgba(29, 33, 40, 0.45);
+        border: 1px solid rgba(175, 198, 243, 0.18);
+        box-shadow: 0 2px 8px rgba(0,0,0,0.18), inset 0 0 0 1px rgba(175,198,243,0.06);
+        transition: all .15s ease;
+      }
+      .collapsible-header:hover {
+        background: rgba(29,33,40,0.6);
+        border-color: rgba(175,198,243,0.26);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.22), inset 0 0 0 1px rgba(175,198,243,0.08);
+      }
+      .collapsible-header button {
+        all: unset;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        cursor: pointer;
+        color: #afc6f3;
+      }
+      .collapsible-header button:focus-visible {
+        outline: 2px solid rgba(175, 198, 243, 0.6);
+        outline-offset: 2px;
+        border-radius: 8px;
+      }
+      .collapsible-header .title {
+        font-size: 12px;
+        color: var(--muted);
+        letter-spacing: .2px;
+      }
+      .collapsible-header .summary {
+        font-size: 12px;
+        color: var(--muted);
+        opacity: .9;
+      }
+      .chev {
+        width: 20px;
+        height: 20px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        transition: transform .15s ease;
+        transform: rotate(90deg);
+        opacity: 0.95;
+      }
+      .chev svg { width: 100%; height: 100%; display: block; }
+      .collapsed .chev {
+        transform: rotate(0deg);
+      }
+      .collapsible-body { margin-top: 10px; }
+      .collapsed .collapsible-body { display: none; }
+      .collapsed.compose-bubble.secondary { padding: 8px 10px; }
     </style>
   </head>
   <body>
@@ -546,28 +660,40 @@
         <button class="btn-primary toast-btn toast-reply" id="send" disabled>SENDEN</button>
       </div>
 
-      <!-- Neue User-Auswahl in kleiner Bubble -->
-      <div class="field compose-bubble secondary">
-        <div class="label">Empfänger</div>
-        <select
-          id="target"
-          class="target-select"
-          multiple
-          size="3">
-          <option value="all">👥 Alle User</option>
-          <option
-            value="loading"
-            disabled>
-            🔄 Lade User...
-          </option>
-        </select>
-        <div class="meta">
-          <span id="userCount">0 User online • Mehrfachauswahl: Cmd/Ctrl-Klick</span>
-          <span
-            id="refreshUsers"
-            class="refresh-link"
-            >🔄 Aktualisieren</span
-          >
+      <!-- Neue User-Auswahl in kleiner Bubble (jetzt ausklappbar) -->
+      <div id="recipientsCard" class="field compose-bubble secondary collapsible collapsed">
+        <div id="recipientsHeader" class="collapsible-header">
+          <button id="recipientsToggle" aria-expanded="false" aria-controls="recipientsBody" title="Empfänger ein-/ausklappen">
+            <span class="chev" aria-hidden="true">
+              <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+                <path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6z" fill="currentColor"/>
+              </svg>
+            </span>
+            <span class="title">Empfänger</span>
+          </button>
+          <div id="recipientSummary" class="summary">Alle</div>
+        </div>
+        <div id="recipientsBody" class="collapsible-body">
+          <select
+            id="target"
+            class="target-select"
+            multiple
+            size="3">
+            <option value="all">👥 Alle User</option>
+            <option
+              value="loading"
+              disabled>
+              🔄 Lade User...
+            </option>
+          </select>
+          <div class="meta">
+            <span id="userCount">0 User online • Mehrfachauswahl: Cmd/Ctrl-Klick</span>
+            <span
+              id="refreshUsers"
+              class="refresh-link"
+              >🔄 Aktualisieren</span
+            >
+          </div>
         </div>
       </div>
 
@@ -586,6 +712,78 @@
       const userCountEl = $("userCount");
       const refreshUsersEl = $("refreshUsers");
       const spoilerEl = $("spoiler");
+      const recipientsCard = document.getElementById('recipientsCard');
+      const recipientsHeader = document.getElementById('recipientsHeader');
+      const recipientsToggle = document.getElementById('recipientsToggle');
+      const recipientSummary = document.getElementById('recipientSummary');
+      const COLLAPSED_H = 620;
+      const EXPANDED_H = 780;
+
+      function setRecipientsCollapsed(collapsed) {
+        try {
+          recipientsCard.classList.toggle('collapsed', !!collapsed);
+          recipientsToggle.setAttribute('aria-expanded', String(!collapsed));
+        } catch (_) {}
+      }
+
+      function updateRecipientSummary() {
+        try {
+          const selected = Array.from(targetEl.selectedOptions).map(o => o.value);
+          const online = typeof onlineCount === 'number' ? onlineCount : 0;
+          let text = '';
+          if (selected.includes('all') || selected.length === 0) {
+            text = 'Alle';
+          } else if (selected.length === 1) {
+            const opt = targetEl.selectedOptions[0];
+            text = opt.getAttribute('data-display-name') || opt.textContent || '1 ausgewählt';
+          } else {
+            text = `${selected.length} ausgewählt`;
+          }
+          recipientSummary.textContent = `${text} • ${online} online`;
+        } catch (_) {}
+      }
+
+      // init collapsed state (default collapsed)
+      try {
+        const saved = localStorage.getItem('compose.recipientsCollapsed');
+        const initialCollapsed = saved === null ? true : (saved === 'true');
+        setRecipientsCollapsed(initialCollapsed);
+      } catch (_) {}
+      // apply current severity class from active pill to recipients on load
+      try {
+        const active = pills.querySelector('.pill.active');
+        const sev = active ? (active.getAttribute('data-sev') || 'blue') : 'blue';
+        if (recipientsCard) {
+          ['severity-blue','severity-green','severity-pink','severity-red','severity-info','severity-success','severity-warn','severity-critical']
+            .forEach(cls => recipientsCard.classList.remove(cls));
+          recipientsCard.classList.add(`severity-${sev}`);
+        }
+      } catch (_) {}
+      updateRecipientSummary();
+      // initial window size to collapsed/expanded
+      try {
+        if (typeof window.compose?.resizeWindow === 'function') {
+          const isCollapsed = recipientsCard.classList.contains('collapsed');
+          window.compose.resizeWindow(isCollapsed ? COLLAPSED_H : EXPANDED_H);
+        }
+      } catch (_) {}
+
+      function toggleRecipients() {
+        const nowCollapsed = recipientsCard.classList.contains('collapsed');
+        setRecipientsCollapsed(!nowCollapsed);
+        try { localStorage.setItem('compose.recipientsCollapsed', String(!nowCollapsed)); } catch (_) {}
+        try {
+          if (typeof window.compose?.resizeWindow === 'function') {
+            window.compose.resizeWindow(nowCollapsed ? EXPANDED_H : COLLAPSED_H);
+          }
+        } catch (_) {}
+      }
+      recipientsToggle.addEventListener('click', (e) => { e.stopPropagation(); toggleRecipients(); });
+      recipientsHeader.addEventListener('click', (e) => {
+        if (!e.target.closest('#recipientsToggle')) {
+          toggleRecipients();
+        }
+      });
 
       // User-Management
       let users = [];
@@ -676,6 +874,7 @@
         );
         onlineCount = otherUsers.length;
         userCountEl.textContent = `${onlineCount} User online • Mehrfachauswahl: Cmd/Ctrl-Klick`;
+        updateRecipientSummary();
 
         // Entferne Loading-Option
         const loadingOption = targetEl.querySelector('option[value="loading"]');
@@ -732,6 +931,7 @@
         messageEl.focus();
         console.log(`🎯 Target changed, focus back to message field`);
         try { updateBroadcastUI && updateBroadcastUI({ flash: true }); } catch(_) {}
+        updateRecipientSummary();
       });
 
       // Refresh-Button
@@ -771,6 +971,12 @@
             const sev = p.getAttribute('data-sev') || 'blue';
             composeField.classList.add(`severity-${sev}`);
           }
+          if (recipientsCard) {
+            ['severity-blue','severity-green','severity-pink','severity-red','severity-info','severity-success','severity-warn','severity-critical']
+              .forEach(cls => recipientsCard.classList.remove(cls));
+            const sev = p.getAttribute('data-sev') || 'blue';
+            recipientsCard.classList.add(`severity-${sev}`);
+          }
         } catch (_) {}
         validate();
       });
@@ -800,6 +1006,11 @@
                 ['severity-blue','severity-green','severity-pink','severity-red','severity-info','severity-success','severity-warn','severity-critical']
                   .forEach(cls => composeField.classList.remove(cls));
                 composeField.classList.add(`severity-${sev}`);
+              }
+              if (recipientsCard) {
+                ['severity-blue','severity-green','severity-pink','severity-red','severity-info','severity-success','severity-warn','severity-critical']
+                  .forEach(cls => recipientsCard.classList.remove(cls));
+                recipientsCard.classList.add(`severity-${sev}`);
               }
             } catch (_) {}
           }
@@ -1052,6 +1263,15 @@
             }
             try { updateBroadcastUI && updateBroadcastUI({ flash: true }); } catch(_) {}
             pendingTargetUser = null; // Erfolgreich gesetzt
+            // Expand recipients when a specific target is preselected
+            try {
+              const isAll = option.value === 'all';
+              if (!isAll) {
+                setRecipientsCollapsed(false);
+                localStorage.setItem('compose.recipientsCollapsed', 'false');
+                updateRecipientSummary();
+              }
+            } catch (_) {}
             return;
           }
         }

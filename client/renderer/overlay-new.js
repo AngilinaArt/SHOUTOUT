@@ -224,10 +224,10 @@ function renderToasts() {
 
     toastDiv.innerHTML = `
       <div class="bubble">
+        <button class="toast-close" aria-label="Schließen" title="Schließen">✕</button>
         ${senderHtml}
         ${textHtml}
         <div class="toast-actions">
-          <button class="toast-btn toast-ok">OK</button>
           <button class="toast-btn toast-reply">REPLY</button>
         </div>
         <div class="toast-reactions">
@@ -263,7 +263,7 @@ toastContainer.addEventListener('click', function(event) {
     }
   }
 
-  if (action.contains('toast-ok')) {
+  if (action.contains('toast-close') || action.contains('toast-ok')) {
     console.log(`✅ OK clicked for toast: ${toastId}`);
     // Sanft ausblenden, um sauberes Repaint zu erzwingen
     toastItem.classList.add('removing');

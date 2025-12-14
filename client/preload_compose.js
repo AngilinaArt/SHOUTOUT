@@ -4,6 +4,8 @@ try {
   contextBridge.exposeInMainWorld("compose", {
     submit: (payload) => ipcRenderer.send("compose-toast-submit", payload),
     cancel: () => ipcRenderer.send("compose-toast-cancel"),
+    // Fenstergröße dynamisch anpassen (Höhe in Content-Pixeln)
+    resizeWindow: (height) => ipcRenderer.send("compose-resize", { height }),
     // Neue User-Management Funktionen
     loadUsers: () => ipcRenderer.invoke("load-users"),
     refreshUsers: () => ipcRenderer.invoke("refresh-users"),

@@ -60,13 +60,33 @@ if (!fs.existsSync(logsDir)) {
 
 const app = express();
 const server = http.createServer(app);
-// Hinter Proxy (Caddy) echte Client-IP aus X-Forwarded-For nutzen
-try { app.set("trust proxy", true); } catch (_) {}
+// Hinter Proxy (Caddy) echte Client-IP aus X-Forwarded-For nutzen – sicher konfigurierbar
+// Hinweis: express-rate-limit verbietet 'true'; nutze stattdessen eine Zahl (Anzahl Proxies) oder einen Named-Trust
+// Werte: false | 1 | 'loopback' | '127.0.0.1' | 'uniquelocal' | Subnet etc.
+(() => {
+  try {
+    const raw = String(process.env.TRUST_PROXY ?? '').trim();
+    let val;
+    if (!raw) {
+      // Default: in Production 1 Hop (z. B. Caddy), sonst nur loopback
+      val = process.env.NODE_ENV === 'production' ? 1 : 'loopback';
+    } else if (/^(false|off|0)$/i.test(raw)) {
+      val = false;
+    } else if (/^\d+$/.test(raw)) {
+      val = Number(raw);
+    } else {
+      // accept strings like 'loopback', '127.0.0.1', 'uniquelocal'
+      val = raw;
+    }
+    app.set('trust proxy', val);
+  } catch (_) {}
+})();
 
 const PORT = Number(process.env.PORT || 3001);
 const BROADCAST_SECRET = process.env.BROADCAST_SECRET || "change-me";
 const WS_TOKEN = process.env.WS_TOKEN || null; // Optional separate WS token (legacy)
 const ADMIN_SECRET = process.env.ADMIN_SECRET || null; // Admin API secret for token management
+const INVITE_ENABLED = String(process.env.INVITE_ENABLED || "true") === "true";
 const INVITE_CODES = String(process.env.INVITE_CODES || "")
   .split(",")
   .map((s) => s.trim())
@@ -74,6 +94,8 @@ const INVITE_CODES = String(process.env.INVITE_CODES || "")
 const ALLOW_NO_AUTH = String(process.env.ALLOW_NO_AUTH || "false") === "true";
 const TRANSLATOR_ENABLED = String(process.env.TRANSLATOR_ENABLED || "false") === "true";
 const TRANSLATOR_PROVIDER = String(process.env.TRANSLATOR_PROVIDER || "none");
+// If enabled, pre-clean input and auto-fallback direction when detection is unsure
+const TRANSLATOR_AUTOFIX = String(process.env.TRANSLATOR_AUTOFIX || "true") === "true";
 const TRANSLATOR_SCRIPT = process.env.TRANSLATOR_PY || path.join(__dirname, "translate", "ct2_translator.py");
 // Prefer the project venv Python to ensure required packages are available
 const VENV_PY = path.join(__dirname, "..", ".venv", "bin", "python3");
@@ -228,8 +250,9 @@ function generateToken() {
 }
 
 function hasInviteSystemEnabled() {
-  // Invite system is considered enabled if any invite code is configured
-  // or if there are already issued tokens present.
+  // Invite system can be force-disabled via env.
+  if (!INVITE_ENABLED) return false;
+  // Consider enabled if any invite code is configured or tokens exist.
   return INVITE_CODES.length > 0 || issuedTokens.size > 0;
 }
 
@@ -818,9 +841,79 @@ async function runProviderTranslate(text, from, to) {
   return { ok: false, reason: "unknown_provider", translated: text };
 }
 
+// --- Translation helpers (lightweight normalization + fallback) ---
+function normalizeForTranslate(raw) {
+  try {
+    let t = String(raw || "");
+    // unify whitespace
+    t = t.replace(/[\t\f\v\u00A0]+/g, " ");
+    t = t.replace(/\s{2,}/g, " ");
+    // normalize quotes/dashes
+    t = t.replace(/[“”«»]/g, '"').replace(/[‘’‚‛]/g, "'");
+    t = t.replace(/[–—]/g, "-");
+    // collapse excessive punctuation (!!! -> !!)
+    t = t.replace(/!{3,}/g, "!!").replace(/\?{3,}/g, "??");
+    // very mild repeated letter collapse (heellooo -> heelloo)
+    t = t.replace(/([a-zA-ZäöüÄÖÜß])\1{2,}/g, "$1$1");
+    return t.trim();
+  } catch (_) {
+    return String(raw || "");
+  }
+}
+
+function similarityByWords(a, b) {
+  try {
+    const toSet = (s) => new Set(String(s || "").toLowerCase().match(/[\p{L}\p{N}]+/gu) || []);
+    const A = toSet(a);
+    const B = toSet(b);
+    if (A.size === 0 && B.size === 0) return 1;
+    let inter = 0;
+    for (const w of A) if (B.has(w)) inter += 1;
+    const uni = A.size + B.size - inter;
+    return uni ? inter / uni : 0;
+  } catch (_) {
+    return 0;
+  }
+}
+
+function looksUnchanged(input, output) {
+  try {
+    const a = String(input || "").trim();
+    const b = String(output || "").trim();
+    if (!a && !b) return true;
+    if (a.toLowerCase() === b.toLowerCase()) return true;
+    // Remove punctuation/spaces and compare
+    const ra = a.replace(/[\s\p{P}\p{S}]/gu, "");
+    const rb = b.replace(/[\s\p{P}\p{S}]/gu, "");
+    if (ra && ra === rb) return true;
+    // High word overlap indicates likely unchanged
+    return similarityByWords(a, b) > 0.9;
+  } catch (_) {
+    return false;
+  }
+}
+
+async function translateWithFallback(text, from, to, allowSwitch = true) {
+  const res = await runProviderTranslate(text, from, to);
+  if (!TRANSLATOR_AUTOFIX) return res;
+  if (res && res.ok && !looksUnchanged(text, res.translated)) return res;
+  if (!allowSwitch) return res;
+  // Try the opposite direction once if output looks unchanged
+  const altFrom = to;
+  const altTo = from;
+  const alt = await runProviderTranslate(text, altFrom, altTo);
+  if (alt && alt.ok && !looksUnchanged(text, alt.translated)) {
+    // annotate meta to indicate fallback used
+    try { alt.meta = Object.assign({}, alt.meta || {}, { fallback: true, from: altFrom, to: altTo }); } catch (_) {}
+    return alt;
+  }
+  return res;
+}
+
 async function translatePipeline({ text, direction = "auto", formatMode = "auto" }) {
   const detectedFormat = formatMode === "auto" ? detectFormat(text) : formatMode;
-  let from = detectLang(text);
+  const cleaned = TRANSLATOR_AUTOFIX ? normalizeForTranslate(text) : String(text || "");
+  let from = detectLang(cleaned);
   let to = from === "de" ? "en" : "de";
   if (direction === "de-en") {
     from = "de";
@@ -831,7 +924,7 @@ async function translatePipeline({ text, direction = "auto", formatMode = "auto"
   }
 
   if (detectedFormat === "email") {
-    const { headers, body } = splitEmail(text);
+    const { headers, body } = splitEmail(cleaned);
     const headerLines = Object.entries(headers).map(([k, v]) => {
       const mapped = mapHeaderKey(k, from, to);
       // Do not translate email addresses/dates
@@ -866,10 +959,9 @@ async function translatePipeline({ text, direction = "auto", formatMode = "auto"
     outParts.push("");
     for (const c of chunks) {
       if (c.type === "text") {
-        // run provider per block
-        // Note: synchronous serial translation to keep it simple
+        // run provider per block with fallback if needed
         // eslint-disable-next-line no-await-in-loop
-        const res = await runProviderTranslate(c.value, from, to);
+        const res = await translateWithFallback(c.value, from, to, direction === "auto");
         outParts.push(res.translated);
       } else {
         outParts.push(c.value);
@@ -885,7 +977,7 @@ async function translatePipeline({ text, direction = "auto", formatMode = "auto"
   }
 
   // Plain text: single shot
-  const res = await runProviderTranslate(text, from, to);
+  const res = await translateWithFallback(cleaned, from, to, direction === "auto");
   return {
     ok: !!res.ok,
     from,

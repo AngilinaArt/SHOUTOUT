@@ -221,6 +221,35 @@ body.pos-center #toast {
   backdrop-filter: blur(10px); /* Glaseffekt */
 }
 
+/* Close "X" oben rechts in der Bubble */
+#toast .toast-close {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 1px solid rgba(175, 198, 243, 0.3);
+  background: rgba(29, 33, 40, 0.65);
+  color: #afc6f3;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  opacity: 0.85;
+  backdrop-filter: blur(8px);
+}
+
+#toast .toast-close:hover {
+  background: rgba(29, 33, 40, 0.85);
+  opacity: 1;
+  transform: scale(1.05);
+}
+
 #toast .bubble:after {
   content: "";
   position: absolute;
@@ -239,6 +268,7 @@ body.pos-center #toast {
   color: #afc6f3; /* Cursor text color */
   opacity: 0.9;
   margin-bottom: 4px;
+  padding-right: 28px; /* Platz für Close-Button oben rechts */
 }
 
 #toast .recipient-info {
@@ -269,20 +299,7 @@ body.pos-center #toast {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 }
 
-#toast .toast-ok {
-  background: rgba(255, 255, 255, 0.1);
-  color: #afc6f3;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  backdrop-filter: blur(10px);
-  transition: all 0.2s ease;
-}
-
-#toast .toast-ok:hover {
-  background: rgba(255, 255, 255, 0.2);
-  border-color: rgba(255, 255, 255, 0.3);
-  /* transform: translateY(-1px); */
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-}
+/* removed old .toast-ok styles */
 
 #toast .toast-reply {
   background: rgba(175, 198, 243, 0.2); /* Cursor accent color */
