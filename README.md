@@ -41,13 +41,17 @@ Baue den Client selbst lokal oder nutze das GitHub Actions Workflow `.github/wor
 git clone https://github.com/yourusername/shoutout.git
 cd shoutout
 
-# Dependencies installieren
+# Dependencies für server/client/bot installieren
 npm install
-cd server && npm install
-cd ../client && npm install
 
-# Alle Services starten
+# Server und Electron-Client zusammen starten
 npm run dev
+```
+
+Für reine Server-Tests:
+
+```bash
+npm run dev:server
 ```
 
 ### 🌐 Übersetzung (serverseitig, optional)
@@ -169,40 +173,82 @@ cd shoutout
 npm install
 ```
 
-#### 2. Server starten
+Das Root-Setup nutzt npm Workspaces für `server/`, `client/` und `bot/`. Du musst nicht mehr separat in jedem Unterordner `npm install` ausführen.
+
+#### 2. Env-Dateien anlegen
 
 ```bash
-cd server
+cp server/env.example server/.env
+cp client/env.example client/.env
 
-# Dependencies installieren
-npm install
+# Optional, nur wenn du den Discord-Bot lokal testen willst:
+cp bot/env.example bot/.env
+```
 
-# .env Datei erstellen
-cp .env.example .env
+Für einen schnellen lokalen Test kannst du in `server/.env` den Invite-Modus deaktivieren:
 
-# Server starten
-npm start
+```bash
+INVITE_ENABLED=false
+ALLOW_NO_AUTH=false
+BROADCAST_SECRET=local-dev-secret
+```
+
+Wenn du den Invite-Flow testen willst, setze stattdessen `INVITE_ENABLED=true` und mindestens einen `INVITE_CODES`-Wert.
+
+#### 3. Server starten
+
+```bash
+npm run dev:server
 ```
 
 **Server läuft auf:** `http://localhost:3001`
 
-#### 3. Desktop App starten
+#### 4. Desktop App starten
 
 ```bash
-cd client
-
-# Dependencies installieren
-npm install
-
-# App starten
-npm start
+npm run dev:client
 ```
 
-#### 4. Alle Services gleichzeitig starten
+#### 5. Server und Client gleichzeitig starten
 
 ```bash
-# Im Root-Verzeichnis
 npm run dev
+```
+
+#### 6. Checks ausführen
+
+```bash
+npm run check
+```
+
+Der Check prüft aktuell Syntax für Server/Client/Bot und führt Production-Audits für alle Workspaces aus.
+
+### 🧪 Teststart mit der Codex App
+
+1. Öffne das Projekt in Codex mit dem Workspace-Root `shoutout/`.
+2. Bitte Codex einmalig: `npm install` ausführen, falls `node_modules/` fehlt oder Abhängigkeiten geändert wurden.
+3. Starte für einen gezielten Test zuerst nur den Server:
+
+```bash
+npm run dev:server
+```
+
+4. Wenn der Server `Server started on port 3001` meldet, starte in einem zweiten Terminal den Client:
+
+```bash
+npm run dev:client
+```
+
+5. Alternativ kann Codex beides zusammen starten:
+
+```bash
+npm run dev
+```
+
+Für Debugging ist die getrennte Variante besser, weil Server- und Electron-Logs nicht vermischt werden. Healthcheck:
+
+```bash
+curl http://localhost:3001/health
 ```
 
 ### 🔐 Environment Variables
@@ -266,24 +312,21 @@ SERVER_URL=http://localhost:3001
 #### macOS Build
 
 ```bash
-cd client
-npm run build:mac
+npm run build:client:mac
 # Erstellt: dist/Shoutout.dmg
 ```
 
 #### Windows Build
 
 ```bash
-cd client
-npm run build:win
+npm run build:client:win
 # Erstellt: dist/Shoutout Setup.exe
 ```
 
 #### Linux Build
 
 ```bash
-cd client
-npm run build:linux
+npm --workspace client run build:linux
 # Erstellt: dist/shoutout.AppImage
 ```
 
@@ -586,7 +629,7 @@ Hinweis: Der Server trennt bestehende Verbindungen des Tokens sofort (4001 „To
 pkill -f "electron"
 
 # Dependencies neu installieren
-rm -rf node_modules package-lock.json
+rm -rf node_modules server/node_modules client/node_modules bot/node_modules
 npm install
 ```
 
@@ -604,10 +647,10 @@ lsof -i :3001
 
 ```bash
 # Dependencies prüfen
-npm ls electron
+npm --workspace client ls electron
 
 # electron-builder neu installieren
-npm install --save-dev electron-builder
+npm install --workspace client --save-dev electron-builder
 ```
 
 #### macOS: Ghosting/Phantom bei Toasts
@@ -620,7 +663,7 @@ Status: Behoben durch Workaround in `client/renderer/style.css` und `client/rend
 
 Manuelle Checks/Workarounds, falls es bei dir dennoch auftritt:
 
-- Diagnose: `cd client && npm start -- --disable-gpu` — wenn das Phantom verschwindet, ist es GPU/Compositing-bedingt.
+- Diagnose: `npm --workspace client start -- --disable-gpu` — wenn das Phantom verschwindet, ist es GPU/Compositing-bedingt.
 - DevTools‑Test: In Elements `.bubble` auswählen und `backdrop-filter` temporär deaktivieren; Toast schließen.
 - Anzeigeeinstellungen: Systemeinstellungen → Bedienungshilfen → Anzeige → „Transparenz reduzieren“ testweise umschalten.
 - Skalierung: Systemeinstellungen → Displays → Auf „Standard“ statt „Mehr Platz“ testen.
@@ -632,7 +675,7 @@ Hinweis: Der eingebaute Fix erzwingt ein sauberes Repaint über `translateZ(0)`,
 
 - DevTools: `client/.env` → `OPEN_DEVTOOLS=true`
 - About-Logs: `client/.env` → `DEBUG_ABOUT=1`
-- Server-Logs: `docker compose logs -f server` (oder `cd server && npm start` im Dev)
+- Server-Logs: `docker compose logs -f server` (oder `npm run start:server` im Dev)
 
 ---
 
@@ -657,8 +700,8 @@ git checkout -b feature/new-feature
 # Änderungen machen
 # ... code ...
 
-# Tests laufen lassen
-npm test
+# Checks laufen lassen
+npm run check
 
 # Committen
 git add .
@@ -671,14 +714,11 @@ git push origin feature/new-feature
 ### 🧪 Testing
 
 ```bash
-# Alle Tests laufen lassen
-npm test
-
-# Spezifische Tests
-npm run test:client
-npm run test:server
-npm run test:bot
+# Syntax-Checks und Production-Audits
+npm run check
 ```
+
+Automatisierte Unit-/Integrationstests sind noch nicht eingerichtet.
 
 ---
 
@@ -701,8 +741,8 @@ npm run test:bot
 
 **Made with ❤️ and 🐹 by the Shoutout Team Angilina und Cursor AI Claude und GPT**
 
-**Letzte Aktualisierung**: September 2025
-**Version**: 1.0.3  
+**Letzte Aktualisierung**: April 2026
+**Version**: 1.0.4  
 **Status**: 🟢 Produktionsreif
 # 🧭 Self‑Hosting Quick Start
 
@@ -722,8 +762,10 @@ npm run test:bot
   - optional: `OPEN_DEVTOOLS=true` für Tests
 
 4) Client starten/bauen
-- Dev: `cd client && npm start`
-- Build: `npm run build:mac|build:win|build:linux`
+- Dev: `npm run dev:client`
+- Build macOS: `npm run build:client:mac`
+- Build Windows: `npm run build:client:win`
+- Build Linux: `npm --workspace client run build:linux`
 
 5) Erster Start
 - Client zeigt „Invite‑Code eingeben“. Code eingeben → Token wird lokal gespeichert → Verbindung steht.

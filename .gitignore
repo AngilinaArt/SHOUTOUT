@@ -37,6 +37,7 @@ server/**/__pycache__/
 server/**/*.pyc
 coverage/
 tmp/
+.codex-run/
 
 # Editors
 .vscode/
